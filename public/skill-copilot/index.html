@@ -61,6 +61,23 @@
   .space-item.active { background: rgba(129,140,248,0.12); color: var(--accent); font-weight: 600; }
   .space-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); flex-shrink: 0; }
   .space-item .count { margin-left: auto; font-size: 10px; color: var(--text3); }
+  .thread-item {
+    display: flex; align-items: center; gap: 4px;
+    padding: 5px 8px 5px 12px; border-radius: 6px;
+    cursor: pointer; font-size: 11px; color: var(--text3);
+    transition: all 0.15s; margin-left: 8px; margin-bottom: 1px;
+  }
+  .thread-item:hover { background: rgba(129,140,248,0.05); color: var(--text2); }
+  .thread-item.active { background: rgba(129,140,248,0.1); color: var(--accent); }
+  .thread-del { opacity: 0; font-size: 14px; color: var(--text3); cursor: pointer; flex-shrink: 0; }
+  .thread-item:hover .thread-del { opacity: 1; }
+  .thread-del:hover { color: var(--bad); }
+  .new-thread-btn {
+    display: block; width: 100%; padding: 5px 12px; border-radius: 8px; cursor: pointer;
+    font-size: 11px; color: var(--text3); background: none; border: 1px dashed var(--border);
+    transition: all 0.15s; font-family: inherit; margin: 4px 0 4px 8px; text-align: left;
+  }
+  .new-thread-btn:hover { color: var(--accent2); border-color: var(--accent2); }
   .new-space-btn {
     display: flex; align-items: center; gap: 6px;
     padding: 6px 12px; border-radius: 8px; cursor: pointer;
@@ -254,6 +271,7 @@
   <div class="spaces-section">
     <div class="section-label">Spaces</div>
     <div id="spaceList"></div>
+    <button class="new-thread-btn" onclick="newThread();renderAll();toast('新会话已开始','info')">+ 新建会话</button>
     <button class="new-space-btn" onclick="createSpace()">+ 新建 Space</button>
   </div>
 
@@ -273,7 +291,7 @@
   <div class="chat-header">
     <div class="space-title" id="spaceTitle">默认空间</div>
     <div class="space-actions">
-      <button onclick="clearCurrentSpace()">清空对话</button>
+      <button onclick="clearCurrentThread()">清空会话</button>
     </div>
   </div>
 
@@ -330,28 +348,57 @@ let pendingFiles = [];
 let isListening = false; let recognition = null;
 const apiKey = () => localStorage.getItem('sk_key') || '';
 
-// ============ SPACES ENGINE ============
+// ============ SPACES + THREADS ENGINE ============
+let currentThreadId = null;
+
 function loadSpaces() {
   try { spaces = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { spaces = {}; }
-  if (!spaces['default']) spaces['default'] = { name: '默认空间', messages: [], createdAt: Date.now() };
+  if (!spaces['default']) spaces['default'] = { name: '默认空间', threads: {}, threadOrder: [], createdAt: Date.now() };
   if (!spaces[currentSpaceId]) currentSpaceId = 'default';
+  // Migrate old format (messages array) -> new format (threads)
+  for (const [id, sp] of Object.entries(spaces)) {
+    if (!sp.threads && sp.messages) {
+      const thId = 'th_' + (sp.createdAt || Date.now());
+      sp.threads = { [thId]: { id: thId, title: sp.messages[0]?.text?.slice(0, 40) || '导入的对话', messages: sp.messages, createdAt: sp.createdAt || Date.now() } };
+      sp.threadOrder = [thId];
+      delete sp.messages;
+    }
+    if (!sp.threads) { sp.threads = {}; sp.threadOrder = []; }
+  }
+  const space = spaces[currentSpaceId];
+  if (!currentThreadId || !space.threads[currentThreadId]) {
+    if (space.threadOrder.length > 0) currentThreadId = space.threadOrder[0];
+    else newThread();
+  }
+  currentThreadId = spaces[currentSpaceId].threadOrder[0] || currentThreadId;
+  if (!spaces[currentSpaceId].threads[currentThreadId]) newThread();
 }
 
-function saveSpaces() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(spaces));
+function saveSpaces() { localStorage.setItem(STORAGE_KEY, JSON.stringify(spaces)); }
+
+function newThread() {
+  const space = spaces[currentSpaceId];
+  currentThreadId = 'th_' + Date.now();
+  space.threads[currentThreadId] = { id: currentThreadId, title: '', messages: [], createdAt: Date.now() };
+  space.threadOrder.unshift(currentThreadId);
+  saveSpaces();
 }
 
-function getCurrentMessages() {
-  return spaces[currentSpaceId]?.messages || [];
+function getCurrentThread() {
+  const space = spaces[currentSpaceId];
+  if (!space.threads[currentThreadId]) newThread();
+  return space.threads[currentThreadId];
 }
+
+function getCurrentMessages() { return getCurrentThread().messages; }
 
 function addMessageToSpace(role, text, skill) {
-  const msgs = getCurrentMessages();
-  msgs.push({
-    role, text,
-    skill: skill ? { id: skill.id, name: skill.name, icon: skill.icon } : null,
-    time: Date.now()
-  });
+  const thread = getCurrentThread();
+  thread.messages.push({ role, text, skill: skill ? { id: skill.id, name: skill.name, icon: skill.icon } : null, time: Date.now() });
+  // Auto-title from first user message
+  if (!thread.title && role === 'user' && text) {
+    thread.title = text.slice(0, 40) + (text.length > 40 ? '...' : '');
+  }
   saveSpaces();
 }
 
@@ -359,8 +406,10 @@ function createSpace() {
   showModal('新建 Space', '输入 Space 名称', false, (name) => {
     if (!name) return;
     const id = 'sp_' + Date.now();
-    spaces[id] = { name, messages: [], createdAt: Date.now() };
+    spaces[id] = { name, threads: {}, threadOrder: [], createdAt: Date.now() };
     currentSpaceId = id;
+    currentThreadId = null;
+    newThread();
     saveSpaces();
     renderAll();
     toast('已创建: ' + name, 'success');
@@ -370,6 +419,16 @@ function createSpace() {
 function switchSpace(id) {
   currentSpaceId = id;
   activeSkill = null;
+  const space = spaces[currentSpaceId];
+  // Pick most recent thread or create new one
+  currentThreadId = space.threadOrder.length > 0 ? space.threadOrder[0] : null;
+  if (!currentThreadId) newThread();
+  renderAll();
+}
+
+function switchThread(thId) {
+  currentThreadId = thId;
+  activeSkill = null;
   renderAll();
 }
 
@@ -378,27 +437,49 @@ function deleteSpace() {
   if (!confirm('删除 "' + spaces[currentSpaceId]?.name + '" 及其所有对话？')) return;
   delete spaces[currentSpaceId];
   currentSpaceId = 'default';
+  currentThreadId = null;
+  newThread();
   saveSpaces();
   renderAll();
   toast('已删除', 'info');
 }
 
-function clearCurrentSpace() {
-  if (!confirm('清空当前空间所有对话？')) return;
-  spaces[currentSpaceId].messages = [];
+function deleteThread(thId) {
+  const space = spaces[currentSpaceId];
+  if (Object.keys(space.threads).length <= 1) { toast('至少保留一个会话', 'info'); return; }
+  delete space.threads[thId];
+  space.threadOrder = space.threadOrder.filter(id => id !== thId);
+  if (currentThreadId === thId) {
+    currentThreadId = space.threadOrder[0];
+    if (!currentThreadId) newThread();
+  }
+  saveSpaces();
+  renderAll();
+  toast('已删除会话', 'info');
+}
+
+function clearCurrentThread() {
+  if (!confirm('清空当前会话？')) return;
+  const thread = getCurrentThread();
+  thread.messages = [];
+  thread.title = '';
   saveSpaces();
   renderMessages();
 }
 
 function exportSpace() {
-  const msgs = getCurrentMessages();
-  let text = '# ' + spaces[currentSpaceId].name + '\n\n';
-  msgs.forEach(m => {
-    text += `**${m.role === 'user' ? 'You' : 'AI'}** ${m.skill ? '(' + m.skill.name + ')' : ''} - ${new Date(m.time).toLocaleString('zh-CN')}\n${m.text}\n\n---\n\n`;
-  });
+  const space = spaces[currentSpaceId];
+  let text = '# ' + space.name + '\n\n';
+  for (const thId of space.threadOrder) {
+    const th = space.threads[thId];
+    text += `## ${th.title || '未命名会话'} (${new Date(th.createdAt).toLocaleString('zh-CN')})\n\n`;
+    th.messages.forEach(m => {
+      text += `**${m.role === 'user' ? 'You' : 'AI'}** ${m.skill ? '(' + m.skill.name + ')' : ''}\n${m.text}\n\n---\n\n`;
+    });
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type: 'text/markdown' }));
-  a.download = spaces[currentSpaceId].name + '.md';
+  a.download = space.name + '.md';
   a.click();
 }
 
@@ -424,12 +505,27 @@ function renderAll() {
 
 function renderSpaceList() {
   const el = document.getElementById('spaceList');
-  el.innerHTML = Object.entries(spaces).map(([id, sp]) =>
-    `<div class="space-item ${id === currentSpaceId ? 'active' : ''}" onclick="switchSpace('${id}')">
+  let html = '';
+  for (const [spId, sp] of Object.entries(spaces)) {
+    const isActiveSpace = spId === currentSpaceId;
+    html += `<div class="space-item ${isActiveSpace ? 'active' : ''}" onclick="switchSpace('${spId}')">
       <span class="dot"></span> ${escHtml(sp.name)}
-      <span class="count">${sp.messages.length}</span>
-    </div>`
-  ).join('');
+      <span class="count">${sp.threadOrder?.length || 0}</span>
+    </div>`;
+    // Show threads of active space
+    if (isActiveSpace && sp.threadOrder?.length) {
+      for (const thId of sp.threadOrder) {
+        const th = sp.threads[thId];
+        if (!th) continue;
+        const isActiveThread = thId === currentThreadId;
+        html += `<div class="thread-item ${isActiveThread ? 'active' : ''}" onclick="event.stopPropagation();switchThread('${thId}')">
+          <span style="margin-left:20px;font-size:11px;color:${isActiveThread ? 'var(--accent)' : 'var(--text3)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${escHtml(th.title || '新会话')}</span>
+          <span class="thread-del" onclick="event.stopPropagation();deleteThread('${thId}')" title="删除">&times;</span>
+        </div>`;
+      }
+    }
+  }
+  el.innerHTML = html;
 }
 
 function renderSkillList() {

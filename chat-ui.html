@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Chat</title>
+<style>
+  :root {
+    --bg: #0f0f0f; --surface: #1a1a1a; --border: #2a2a2a;
+    --text: #e8e8e8; --text-secondary: #999; --accent: #3b82f6;
+    --accent-hover: #2563eb; --code-bg: #111;
+    --user-msg-bg: #1e293b; --assistant-msg-bg: #1a1a1a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    height: 100vh; display: flex; flex-direction: column;
+  }
+  .header { padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .header h1 { font-size: 15px; font-weight: 600; }
+  .header-right { display: flex; gap: 8px; align-items: center; }
+  .header select, .header input {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    padding: 4px 10px; border-radius: 6px; font-size: 12px; outline: none; font-family: inherit;
+  }
+  .header input { width: 200px; }
+  .header input:focus, .header select:focus { border-color: var(--accent); }
+
+  .messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .msg { display: flex; gap: 10px; animation: fadeIn 0.2s; }
+  .msg.user { flex-direction: row-reverse; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .msg .avatar { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .msg.user .avatar { background: var(--accent); }
+  .msg.assistant .avatar { background: #252525; border: 1px solid var(--border); }
+  .msg .content { max-width: calc(100% - 50px); }
+  .msg .bubble { padding: 12px 16px; border-radius: 10px; line-height: 1.6; font-size: 13px; word-wrap: break-word; white-space: pre-wrap; }
+  .msg.user .bubble { background: var(--user-msg-bg); border-bottom-right-radius: 4px; }
+  .msg.assistant .bubble { background: var(--assistant-msg-bg); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .msg.assistant .bubble code { background: #111; padding: 1px 5px; border-radius: 3px; font-size: 12px; border: 1px solid var(--border); }
+  .msg.assistant .bubble pre {
+    background: #0d0d0d; padding: 12px 16px; border-radius: 6px;
+    overflow-x: auto; margin: 6px 0; border: 1px solid var(--border); font-size: 12px;
+  }
+  .msg.assistant .bubble pre code { background: none; padding: 0; border: none; }
+  .attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .attach-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #222; border: 1px solid var(--border); border-radius: 14px;
+    padding: 3px 10px; font-size: 11px; color: var(--text-secondary);
+  }
+  .attach-chip img { width: 20px; height: 20px; border-radius: 3px; object-fit: cover; }
+  .image-in-chat { max-width: 220px; max-height: 180px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; }
+  .typing { color: var(--text-secondary); padding: 4px 0; }
+
+  .drop-zone {
+    display: none; position: fixed; inset: 0; z-index: 99;
+    background: rgba(59,130,246,0.10); border: 3px dashed var(--accent);
+    align-items: center; justify-content: center; font-size: 18px; color: var(--accent);
+    pointer-events: none;
+  }
+  .drop-zone.active { display: flex; }
+
+  .stored-files { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 20px 0; }
+  .stored-file {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #1e1e1e; border: 1px solid var(--border); border-radius: 14px;
+    padding: 3px 10px; font-size: 11px; color: var(--text-secondary); cursor: pointer;
+  }
+  .stored-file:hover { background: #252525; }
+  .stored-file .remove { color: #666; cursor: pointer; margin-left: 2px; }
+  .stored-file .remove:hover { color: #ef4444; }
+
+  .input-area { padding: 12px 20px 16px; border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+  .input-wrap {
+    display: flex; gap: 6px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 4px 4px 4px 14px; align-items: flex-end;
+    transition: border-color 0.15s;
+  }
+  .input-wrap:focus-within { border-color: var(--accent); }
+  .input-wrap textarea {
+    flex: 1; background: transparent; border: none; color: var(--text);
+    font-size: 13px; font-family: inherit; resize: none; outline: none;
+    min-height: 26px; max-height: 150px; line-height: 1.5; padding: 4px 0;
+  }
+  .input-wrap textarea::placeholder { color: #555; }
+  .input-wrap .btn {
+    background: transparent; border: none; color: var(--text-secondary);
+    cursor: pointer; padding: 6px 8px; font-size: 16px; border-radius: 6px;
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .input-wrap .btn:hover { color: var(--text); background: #1e1e1e; }
+  .input-wrap .btn-send {
+    background: var(--accent); border: none; color: #fff;
+    padding: 8px 15px; border-radius: 6px; cursor: pointer;
+    font-size: 12px; font-weight: 500; font-family: inherit; flex-shrink: 0;
+  }
+  .input-wrap .btn-send:hover { background: var(--accent-hover); }
+  .input-wrap .btn-send:disabled { opacity: 0.4; }
+
+  .status-bar { padding: 6px 20px; font-size: 10px; color: var(--text-secondary); border-top: 1px solid var(--border); display: flex; gap: 16px; }
+</style>
+</head>
+<body>
+
+<div class="drop-zone" id="dropZone">&#x1F4C1; 拖放文件到此处添加到对话</div>
+
+<header class="header">
+  <h1>&#x26A1; Code Chat</h1>
+  <div class="header-right">
+    <input type="password" id="apiKey" placeholder="DeepSeek API Key" onchange="saveSettings()">
+    <select id="modelSelect" onchange="saveSettings()">
+      <option value="deepseek-chat">DeepSeek V3</option>
+      <option value="deepseek-reasoner">DeepSeek R1</option>
+    </select>
+    <button style="background:transparent;border:1px solid var(--border);color:var(--text-secondary);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit" onclick="clearAll()">清空</button>
+    <button style="background:transparent;border:1px solid var(--border);color:var(--text-secondary);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit" onclick="exportChat()">导出</button>
+  </div>
+</header>
+
+<div class="messages" id="messages">
+  <div class="msg assistant">
+    <div class="avatar">&#x1F916;</div>
+    <div class="content">
+      <div class="bubble">
+        <div style="text-align:center;padding:30px 0;color:var(--text-secondary);line-height:2;">
+          <div style="font-size:36px;margin-bottom:10px;">&#x26A1;</div>
+          <b>AI Code Chat</b><br>
+          直接在浏览器中与 AI 对话<br>
+          <small>粘贴代码 | 拖放文件 | 粘贴截图 | 截屏分享</small><br>
+          <small style="color:#555">需要填入 DeepSeek API Key（仅存储在本机浏览器）</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="stored-files" id="storedFiles"></div>
+
+<div class="input-area">
+  <div class="input-wrap">
+    <button class="btn" onclick="openFiles()" title="添加文件">&#x1F4CE;</button>
+    <textarea id="input" rows="1" placeholder="输入消息... Enter 发送, Shift+Enter 换行&#10;可以直接粘贴图片, 或拖放文件到窗口" onkeydown="handleKey(event)"></textarea>
+    <button class="btn" id="screenshotBtn" onclick="captureScreen()" title="截屏">&#x1F4F8;</button>
+    <button class="btn-send" id="sendBtn" onclick="send()">发送</button>
+  </div>
+</div>
+
+<div class="status-bar">
+  <span id="statusText">就绪 — 输入 API Key 后即可使用</span>
+  <span id="tokenCount" style="margin-left:auto;"></span>
+</div>
+
+<input type="file" id="fileInput" multiple style="display:none" onchange="handleFileInput(this)">
+
+<script>
+const API_URL = 'https://api.deepseek.com/chat/completions';
+let pendingAttachments = [];
+let conversationHistory = [];
+
+// Load settings
+const apiKeyEl = document.getElementById('apiKey');
+const modelEl = document.getElementById('modelSelect');
+apiKeyEl.value = localStorage.getItem('ds_api_key') || '';
+modelEl.value = localStorage.getItem('ds_model') || 'deepseek-chat';
+
+function saveSettings() {
+  localStorage.setItem('ds_api_key', apiKeyEl.value);
+  localStorage.setItem('ds_model', modelEl.value);
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+}
+
+function addMsg(role, text, attachments) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  let attachHtml = '';
+  if (attachments?.length) {
+    attachHtml = '<div class="attachments">' + attachments.map(a =>
+      a.isImage ? `<img class="image-in-chat" src="${a.content}" alt="${esc(a.name)}" onclick="viewImage('${a.content}')">`
+                : `<span class="attach-chip">&#x1F4C4; ${esc(a.name)}</span>`
+    ).join('') + '</div>';
+  }
+  const bodyHtml = text
+    ? text.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>').replace(/`([^`]+)`/g, '<code>$1</code>')
+    : '';
+  div.innerHTML = `
+    <div class="avatar">${role === 'user' ? '&#x1F464;' : '&#x1F916;'}</div>
+    <div class="content"><div class="bubble">${bodyHtml}${attachHtml}</div></div>
+  `;
+  document.getElementById('messages').appendChild(div);
+  document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function send() {
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  const apiKey = apiKeyEl.value.trim();
+  if (!text && !pendingAttachments.length) return;
+  if (!apiKey) { document.getElementById('statusText').textContent = '请先填入 DeepSeek API Key'; return; }
+
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('statusText').textContent = '发送中...';
+
+  const atts = [...pendingAttachments];
+  pendingAttachments = [];
+  updateStoredFiles();
+
+  let userContent = '';
+  for (const a of atts) {
+    if (a.isImage) userContent += `[图片已附: ${a.name}]\n`;
+    else userContent += `[文件: ${a.name}]\n\`\`\`\n${a.content.slice(0, 3000)}${a.content.length > 3000 ? '\n...(truncated)' : ''}\n\`\`\`\n`;
+  }
+  if (text) userContent += text;
+  addMsg('user', text, atts);
+  conversationHistory.push({ role: 'user', content: userContent });
+
+  // Build vision-capable messages
+  let messages = conversationHistory.map(m => {
+    if (m.content.includes('[图片已附:')) {
+      const parts = [];
+      const match = m.content.match(/\[图片已附: ([^\]]+)\]/);
+      const img = match ? atts.find(a => a.name === match[1]) : null;
+      if (img) parts.push({ type: 'image_url', image_url: { url: img.content } });
+      const t = m.content.replace(/\[图片已附: [^\]]+\]\n/g, '');
+      if (t) parts.push({ type: 'text', text: t });
+      return { role: m.role, content: parts };
+    }
+    return m;
+  });
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({ model: modelEl.value, messages, max_tokens: 4096 })
+    });
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content || data.error?.message || JSON.stringify(data);
+    addMsg('assistant', reply);
+    conversationHistory.push({ role: 'assistant', content: reply });
+    document.getElementById('statusText').textContent = '就绪';
+  } catch (e) {
+    addMsg('assistant', 'Error: ' + e.message);
+    document.getElementById('statusText').textContent = '请求失败';
+  }
+  document.getElementById('sendBtn').disabled = false;
+}
+
+// File handling
+function openFiles() { document.getElementById('fileInput').click(); }
+
+function handleFileInput(el) {
+  for (const file of el.files) readFile(file);
+  el.value = '';
+}
+
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const isImage = file.type.startsWith('image/');
+    pendingAttachments.push({ name: file.name, content: reader.result, isImage, size: file.size });
+    updateStoredFiles();
+  };
+  if (file.type.startsWith('image/')) reader.readAsDataURL(file);
+  else reader.readAsText(file);
+}
+
+// Drag & drop
+document.addEventListener('dragover', e => { e.preventDefault(); document.getElementById('dropZone').classList.add('active'); });
+document.addEventListener('dragleave', e => { e.preventDefault(); document.getElementById('dropZone').classList.remove('active'); });
+document.addEventListener('drop', e => {
+  e.preventDefault(); document.getElementById('dropZone').classList.remove('active');
+  for (const file of e.dataTransfer.files) readFile(file);
+});
+
+// Paste image
+document.addEventListener('paste', e => {
+  for (const item of e.clipboardData?.items || []) {
+    if (item.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const name = 'screenshot-' + Date.now() + '.png';
+        pendingAttachments.push({ name, content: reader.result, isImage: true });
+        updateStoredFiles();
+      };
+      reader.readAsDataURL(item.getAsFile());
+    }
+  }
+});
+
+function updateStoredFiles() {
+  const el = document.getElementById('storedFiles');
+  if (!pendingAttachments.length) { el.innerHTML = ''; return; }
+  el.innerHTML = pendingAttachments.map((a, i) =>
+    `<span class="stored-file" title="${esc(a.name)}">
+      ${a.isImage ? '&#x1F5BC;' : '&#x1F4C4;'} ${esc(a.name.slice(0, 25))}
+      <span class="remove" onclick="removeAttachment(${i})">&times;</span>
+    </span>`
+  ).join('');
+}
+
+function removeAttachment(i) { pendingAttachments.splice(i, 1); updateStoredFiles(); }
+
+function captureScreen() {
+  if (navigator.mediaDevices?.getDisplayMedia) {
+    navigator.mediaDevices.getDisplayMedia({ video: true }).then(stream => {
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        video.play();
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        stream.getTracks().forEach(t => t.stop());
+        pendingAttachments.push({ name: 'screenshot-' + Date.now() + '.png', content: canvas.toDataURL('image/png'), isImage: true });
+        updateStoredFiles();
+      };
+    }).catch(() => {
+      document.getElementById('statusText').textContent = '截屏需要浏览器权限';
+    });
+  }
+}
+
+function viewImage(src) { window.open(src, '_blank'); }
+function clearAll() { document.getElementById('messages').innerHTML = ''; conversationHistory = []; }
+function exportChat() {
+  let text = '';
+  document.querySelectorAll('.msg').forEach(m => {
+    const bubble = m.querySelector('.bubble');
+    if (bubble) text += '[' + (m.classList.contains('user') ? 'You' : 'AI') + '] ' + bubble.innerText + '\n\n';
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+  a.download = 'chat-' + new Date().toISOString().slice(0, 10) + '.txt';
+  a.click();
+}
+
+document.getElementById('input').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+});
+document.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.key==='o') { e.preventDefault(); openFiles(); } });
+document.getElementById('input').focus();
+</script>
+</body>
+</html>

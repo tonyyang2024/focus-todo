@@ -1,0 +1,29 @@
+{
+  "name": "code-chat-panel",
+  "displayName": "Code Chat Panel",
+  "description": "Modern chat-style interactive panel for VS Code",
+  "version": "1.0.0",
+  "engines": { "vscode": "^1.80.0" },
+  "activationEvents": ["onView:codechat.view"],
+  "main": "./extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [{
+        "id": "codechat-sidebar",
+        "title": "Code Chat",
+        "icon": "$(comment-discussion)"
+      }]
+    },
+    "views": {
+      "codechat-sidebar": [{
+        "type": "webview",
+        "id": "codechat.view",
+        "name": "Interactive REPL"
+      }]
+    },
+    "commands": [{
+      "command": "codechat.open",
+      "title": "Code Chat: Open Panel"
+    }]
+  }
+}

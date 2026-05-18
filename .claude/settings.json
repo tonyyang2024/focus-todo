@@ -1,0 +1,60 @@
+{
+  "description": "Yoohome 个人助手 - Claude Code + DeepSeek 项目配置",
+  "model": "deepseek-chat",
+  "env": {
+    "PROJECT_NAME": "yoohome-claudecloud",
+    "WORKSPACE": "C:\\workspace\\yoohome-claudecloud"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(git:*)",
+      "Bash(node:*)",
+      "Bash(python:*)",
+      "Bash(pip:*)",
+      "Bash(dir)",
+      "Bash(ls)",
+      "Bash(cat)",
+      "Bash(type)",
+      "Bash(mkdir:*)",
+      "Bash(tsc:*)",
+      "Bash(dir:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(type:*)",
+      "Bash(echo:*)",
+      "WebSearch",
+      "WebFetch",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(npm publish:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)"
+    ]
+  },
+  "hooks": {
+    "onStart": [
+      {
+        "description": "显示助手就绪信息和当前工作区状态",
+        "command": "echo 'Yoohome 个人助手已就绪' && echo '工作区: C:\\workspace\\yoohome-claudecloud' && echo '时间: %date% %time%'"
+      },
+      {
+        "description": "检查 git 仓库状态",
+        "command": "cd C:\\workspace\\yoohome-claudecloud && git status --short 2>nul || echo '非 git 仓库或未初始化'"
+      }
+    ],
+    "onStop": [
+      {
+        "description": "记录会话结束时间",
+        "command": "echo %date% %time% >> C:\\workspace\\yoohome-claudecloud\\.claude\\session-log.txt"
+      }
+    ]
+  }
+}

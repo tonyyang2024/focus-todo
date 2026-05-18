@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #1e1e1e; --surface: #252526; --border: #3e3e42;
+    --text: #cccccc; --text-secondary: #8a8a8a; --accent: #0078d4;
+    --user-bg: #094771; --assistant-bg: #2d2d2d; --code-bg: #1a1a1a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+    font-size: var(--vscode-font-size, 13px);
+    background: var(--bg); color: var(--text);
+    height: 100vh; display: flex; flex-direction: column;
+  }
+  .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .msg { display: flex; gap: 8px; animation: fadeIn 0.2s ease; }
+  .msg.user { flex-direction: row-reverse; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .msg .avatar {
+    width: 26px; height: 26px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0; margin-top: 1px;
+  }
+  .msg.user .avatar { background: var(--accent); }
+  .msg.assistant .avatar { background: #3c3c3c; }
+  .msg .content { max-width: calc(100% - 44px); display: flex; flex-direction: column; }
+  .msg .bubble {
+    padding: 10px 14px; border-radius: 10px; line-height: 1.55; font-size: 13px;
+    word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;
+  }
+  .msg.user .bubble { background: var(--user-bg); border-bottom-right-radius: 4px; }
+  .msg.assistant .bubble { background: var(--assistant-bg); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .msg.assistant .bubble code {
+    background: #1a1a1a; padding: 1px 5px; border-radius: 3px; font-size: 12px;
+    border: 1px solid var(--border);
+  }
+  .msg.assistant .bubble pre {
+    background: #0d0d0d; padding: 10px 14px; border-radius: 6px;
+    overflow-x: auto; margin: 6px 0; border: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .msg.assistant .bubble pre code { background: none; padding: 0; border: none; }
+  .attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .attachment-chip {
+    display: flex; align-items: center; gap: 4px;
+    background: #333; border: 1px solid #555; border-radius: 14px;
+    padding: 4px 10px; font-size: 11px; max-width: 180px;
+  }
+  .attachment-chip img { width: 20px; height: 20px; border-radius: 3px; object-fit: cover; }
+  .attachment-chip .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .attachment-chip .remove {
+    cursor: pointer; color: #888; margin-left: 2px; font-size: 14px; line-height: 1;
+  }
+  .attachment-chip .remove:hover { color: #f48771; }
+  .image-preview { max-width: 200px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; }
+  .drop-zone {
+    display: none; position: absolute; inset: 0;
+    background: rgba(0,120,212,0.15); border: 2px dashed var(--accent);
+    align-items: center; justify-content: center; font-size: 16px;
+    color: var(--accent); z-index: 10; pointer-events: none;
+  }
+  .drop-zone.active { display: flex; }
+  body { position: relative; }
+  .toolbar {
+    padding: 8px 16px; display: flex; gap: 8px;
+    border-top: 1px solid var(--border); flex-wrap: wrap; align-items: center;
+  }
+  .toolbar button, .toolbar label.btn-file {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary);
+    padding: 5px 12px; border-radius: 14px; cursor: pointer; font-size: 11px;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .toolbar button:hover, .toolbar label.btn-file:hover { background: #3c3c3c; color: var(--text); }
+  .toolbar .model-select {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary);
+    padding: 4px 10px; border-radius: 14px; font-size: 11px; outline: none; font-family: inherit;
+  }
+  .input-area { padding: 10px 16px 14px; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .input-wrap {
+    display: flex; gap: 6px; background: var(--code-bg);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 4px 4px 4px 12px; align-items: flex-end;
+    transition: border-color 0.15s;
+  }
+  .input-wrap:focus-within { border-color: var(--accent); }
+  .input-wrap textarea {
+    flex: 1; background: transparent; border: none; color: var(--text);
+    font-size: 13px; font-family: var(--vscode-editor-font-family, 'Consolas', 'Courier New', monospace);
+    resize: none; outline: none; min-height: 26px; max-height: 150px;
+    line-height: 1.5; padding: 4px 0;
+  }
+  .input-wrap textarea::placeholder { color: #555; }
+  .input-wrap .btn-icon {
+    background: transparent; border: none; color: var(--text-secondary);
+    cursor: pointer; padding: 6px 8px; font-size: 16px; border-radius: 6px;
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .input-wrap .btn-icon:hover { color: var(--text); background: #333; }
+  .input-wrap .btn-send {
+    background: var(--accent); border: none; color: #fff;
+    padding: 8px 14px; border-radius: 6px; cursor: pointer;
+    font-size: 12px; font-weight: 500; font-family: inherit; flex-shrink: 0;
+  }
+  .input-wrap .btn-send:hover { opacity: 0.9; }
+  .input-wrap .btn-send:disabled { opacity: 0.4; }
+  .key-setup { padding: 8px 16px; border-top: 1px solid var(--border); display: flex; gap: 6px; align-items: center; }
+  .key-setup input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 6px; font-size: 11px; outline: none; font-family: inherit; }
+  .key-setup input:focus { border-color: var(--accent); }
+  .key-setup span { font-size: 10px; color: var(--text-secondary); white-space: nowrap; }
+  .typing { color: var(--text-secondary); font-style: italic; padding: 4px 0; }
+  .stored-files { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 16px 0; }
+  .stored-file {
+    display: flex; align-items: center; gap: 4px;
+    background: #2d2d2d; border: 1px solid var(--border); border-radius: 14px;
+    padding: 3px 10px; font-size: 10px; cursor: pointer;
+  }
+  .stored-file:hover { background: #3c3c3c; }
+  .stored-file .remove-file { cursor: pointer; color: #888; margin-left: 2px; }
+  .stored-file .remove-file:hover { color: #f48771; }
+</style>
+</head>
+<body>
+
+<div class="drop-zone" id="dropZone">&#x1F4C1; 拖放文件到这里添加到对话</div>
+
+<div class="messages" id="messages">
+  <div class="msg assistant">
+    <div class="avatar">&#x1F916;</div>
+    <div class="content">
+      <div class="bubble">
+        <div style="text-align:center;color:var(--text-secondary);line-height:1.8;padding:20px 0;">
+          <div style="font-size:28px;margin-bottom:8px;">&#x26A1;</div>
+          <b>AI Code Chat</b><br>
+          提问、粘贴代码、发送截图<br>
+          拖放文件到窗口即可添加到对话<br>
+          <small style="color:#666">点击右下角 &#x1F4CE; 添加文件 &nbsp;|&nbsp; 可直接粘贴图片</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="stored-files" id="storedFiles"></div>
+
+<div class="key-setup">
+  <span>API Key:</span>
+  <input type="password" id="apiKey" placeholder="输入 DeepSeek API Key (sk-...)" onchange="saveKey()">
+  <span style="font-size:9px;color:#666">仅存本地</span>
+</div>
+<div class="toolbar">
+  <button onclick="clearAll()">&#x1F5D1; 清空</button>
+  <button onclick="exportChat()">&#x1F4E5; 导出</button>
+  <select class="model-select" id="modelSelect" onchange="switchModel(this.value)">
+    <option value="deepseek-chat">DeepSeek V3</option>
+    <option value="deepseek-reasoner">DeepSeek R1</option>
+  </select>
+  <span style="font-size:10px;color:var(--text-secondary);margin-left:auto;" id="statusText">就绪</span>
+</div>
+
+<div class="input-area">
+  <div class="input-wrap">
+    <button class="btn-icon" onclick="addFiles()" title="添加文件">&#x1F4CE;</button>
+    <textarea id="input" rows="1" placeholder="输入消息... 可以直接粘贴图片&#10;Enter 发送, Shift+Enter 换行" onkeydown="handleKey(event)"></textarea>
+    <button class="btn-icon" onclick="captureScreen()" title="截屏(需要权限)">&#x1F4F8;</button>
+    <button class="btn-send" id="sendBtn" onclick="send()">发送</button>
+  </div>
+</div>
+
+<script>
+const vscode = acquireVsCodeApi();
+let pendingAttachments = [];
+let conversationHistory = [];
+let msgId = 0;
+
+function addMsg(role, text, attachments) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  let attachHtml = '';
+  if (attachments && attachments.length) {
+    attachHtml = '<div class="attachments">' + attachments.map(a => {
+      if (a.isImage) return `<img class="image-preview" src="${a.content}" alt="${a.name}" onclick="showImage('${a.content}')">`;
+      return `<span class="attachment-chip">&#x1F4C4; <span class="name">${esc(a.name)}</span></span>`;
+    }).join('') + '</div>';
+  }
+  let bodyHtml = '';
+  if (text) {
+    bodyHtml = text
+      .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>');
+  }
+  div.innerHTML = `
+    <div class="avatar">${role === 'user' ? '&#x1F464;' : '&#x1F916;'}</div>
+    <div class="content"><div class="bubble">${bodyHtml}${attachHtml}</div></div>
+  `;
+  const msgs = document.getElementById('messages');
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addTyping() {
+  const div = document.createElement('div');
+  div.className = 'msg assistant';
+  div.id = 'typing-' + msgId;
+  div.innerHTML = `
+    <div class="avatar">&#x1F916;</div>
+    <div class="content"><div class="bubble"><span class="typing">思考中...</span></div></div>
+  `;
+  document.getElementById('messages').appendChild(div);
+}
+
+function removeTyping() {
+  const el = document.getElementById('typing-' + msgId);
+  if (el) el.remove();
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+}
+
+async function send() {
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  const apiKey = (document.getElementById('apiKey')?.value || localStorage.getItem('deepseek_key') || '').trim();
+  if (!text && !pendingAttachments.length) return;
+  if (!apiKey) { document.getElementById('statusText').textContent = '请先输入 DeepSeek API Key'; return; }
+
+  const atts = [...pendingAttachments];
+  pendingAttachments = [];
+
+  // Build user message
+  let userContent = '';
+  for (const a of atts) {
+    if (a.isImage) {
+      userContent += `[图片: ${a.name}]\n`;
+    } else {
+      userContent += `[文件: ${a.name}]\n\`\`\`\n${a.content.slice(0, 3000)}\n\`\`\`\n`;
+    }
+  }
+  if (text) userContent += text;
+
+  addMsg('user', text, atts);
+  updateStoredFiles();
+  conversationHistory.push({ role: 'user', content: userContent });
+
+  // Add image data separately if supported
+  const apiMessages = conversationHistory.map(m => {
+    if (m.content.includes('[图片:')) {
+      const parts = [];
+      const imgMatch = m.content.match(/\[图片: ([^\]]+)\]/);
+      if (imgMatch && atts.find(a => a.name === imgMatch[1] && a.isImage)) {
+        parts.push({
+          type: 'image_url',
+          image_url: { url: atts.find(a => a.name === imgMatch[1]).content }
+        });
+      }
+      const textPart = m.content.replace(/\[图片: [^\]]+\]\n/g, '');
+      if (textPart) parts.push({ type: 'text', text: textPart });
+      return { role: m.role, content: parts };
+    }
+    return m;
+  });
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('sendBtn').disabled = true;
+  document.getElementById('statusText').textContent = '等待回复...';
+
+  addTyping();
+  const id = ++msgId;
+
+  // Send via extension
+  vscode.postMessage({
+    type: 'api',
+    id,
+    endpoint: 'https://api.deepseek.com/v1/chat/completions',
+    apiKey: apiKey,
+    model: document.getElementById('modelSelect').value,
+    messages: apiMessages
+  });
+}
+
+// Receive responses
+window.addEventListener('message', (e) => {
+  const msg = e.data;
+  if (msg.type === 'apiResponse' && msg.id === msgId) {
+    removeTyping();
+    addMsg('assistant', msg.content);
+    conversationHistory.push({ role: 'assistant', content: typeof msg.content === 'string' ? msg.content : msg.content });
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('statusText').textContent = '就绪';
+  }
+  if (msg.type === 'fileOpened') {
+    pendingAttachments.push(msg);
+    addMsg('user', '[添加了文件: ' + esc(msg.name) + ']', msg.isImage ? [msg] : [msg]);
+    updateStoredFiles();
+  }
+});
+
+// Drag & Drop
+document.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); document.getElementById('dropZone').classList.add('active'); });
+document.addEventListener('dragleave', e => { e.preventDefault(); e.stopPropagation(); document.getElementById('dropZone').classList.remove('active'); });
+document.addEventListener('drop', e => {
+  e.preventDefault(); e.stopPropagation(); document.getElementById('dropZone').classList.remove('active');
+  for (const file of e.dataTransfer.files) readLocalFile(file);
+});
+
+// Paste image
+document.addEventListener('paste', e => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const blob = item.getAsFile();
+      const reader = new FileReader();
+      reader.onload = () => {
+        pendingAttachments.push({ name: 'screenshot-' + Date.now() + '.png', content: reader.result, isImage: true, isBinary: true });
+        addMsg('user', '[粘贴了截图]', [{ name: '截图', content: reader.result, isImage: true }]);
+        updateStoredFiles();
+      };
+      reader.readAsDataURL(blob);
+    }
+  }
+});
+
+function readLocalFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const isImage = file.type.startsWith('image/');
+    pendingAttachments.push({ name: file.name, content: reader.result, isImage, isBinary: !isImage, size: file.size });
+    updateStoredFiles();
+  };
+  if (file.type.startsWith('image/')) {
+    reader.readAsDataURL(file);
+  } else {
+    reader.readAsText(file);
+  }
+}
+
+function addFiles() { vscode.postMessage({ type: 'openFile' }); }
+
+function updateStoredFiles() {
+  const container = document.getElementById('storedFiles');
+  if (!pendingAttachments.length) { container.innerHTML = ''; return; }
+  container.innerHTML = pendingAttachments.map((a, i) =>
+    `<span class="stored-file" title="${esc(a.name)}">
+      ${a.isImage ? '&#x1F5BC;' : '&#x1F4C4;'} ${esc(a.name.slice(0,20))}
+      <span class="remove-file" onclick="removeAttachment(${i})">&times;</span>
+    </span>`
+  ).join('');
+}
+
+function removeAttachment(i) {
+  pendingAttachments.splice(i, 1);
+  updateStoredFiles();
+}
+
+function captureScreen() {
+  if (navigator.mediaDevices?.getDisplayMedia) {
+    navigator.mediaDevices.getDisplayMedia({ video: true }).then(stream => {
+      const track = stream.getVideoTracks()[0];
+      const canvas = document.createElement('canvas');
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        video.play();
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        track.stop();
+        const url = canvas.toDataURL('image/png');
+        pendingAttachments.push({ name: 'screenshot-' + Date.now() + '.png', content: url, isImage: true, isBinary: true });
+        addMsg('user', '[截屏]', [{ name: '截屏', content: url, isImage: true }]);
+        updateStoredFiles();
+      };
+    }).catch(() => {
+      document.getElementById('statusText').textContent = '截屏需要权限或浏览器不支持';
+    });
+  } else {
+    document.getElementById('statusText').textContent = '当前环境不支持截屏';
+  }
+}
+
+function showImage(src) {
+  const win = window.open('', '_blank');
+  win.document.write('<img src="' + src + '" style="max-width:100%">');
+}
+
+function clearAll() {
+  document.getElementById('messages').innerHTML = '';
+  conversationHistory = [];
+  pendingAttachments = [];
+  updateStoredFiles();
+}
+
+function exportChat() {
+  const msgs = document.querySelectorAll('.msg');
+  let text = '';
+  msgs.forEach(m => {
+    const role = m.classList.contains('user') ? 'You' : 'AI';
+    const bubble = m.querySelector('.bubble');
+    if (bubble) text += '[' + role + '] ' + bubble.innerText + '\n\n';
+  });
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'chat-' + new Date().toISOString().slice(0, 10) + '.txt';
+  a.click();
+}
+
+function switchModel(model) { localStorage.setItem('ds_model', model); document.getElementById('statusText').textContent = '已切换: ' + model; }
+function saveKey() {
+  const key = document.getElementById('apiKey').value.trim();
+  localStorage.setItem('deepseek_key', key);
+}
+
+// Init API key from localStorage
+(function init() {
+  const savedKey = localStorage.getItem('deepseek_key') || '';
+  const el = document.getElementById('apiKey');
+  if (el && savedKey) el.value = savedKey;
+  const savedModel = localStorage.getItem('ds_model') || 'deepseek-chat';
+  document.getElementById('modelSelect').value = savedModel;
+})();
+
+document.getElementById('input').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+});
+
+// Keyboard shortcut for add files
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'o') { e.preventDefault(); addFiles(); }
+});
+
+document.getElementById('input').focus();
+</script>
+</body>
+</html>

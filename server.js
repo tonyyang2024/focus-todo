@@ -1,7 +1,13 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
+const SftpClient = require('ssh2-sftp-client');
 const db = require('./db');
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+const SFTP_CONFIG_FILE = path.join(__dirname, 'data', 'sftp-config.json');
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'focus-todo-secret-change-in-production';
@@ -144,6 +150,96 @@ app.post('/api/pomodoro/increment', authRequired, (req, res) => {
 app.get('/api/pomodoro/count', authRequired, (req, res) => {
   res.json({ todaySessions: db.getTodayPomodoroCount(req.user.id) });
 });
+
+// --- SFTP Config ---
+app.get('/api/sftp/config', (req, res) => {
+  try {
+    if (fs.existsSync(SFTP_CONFIG_FILE)) {
+      const cfg = JSON.parse(fs.readFileSync(SFTP_CONFIG_FILE, 'utf8'));
+      if (cfg.password) cfg.password = '********';
+      res.json(cfg);
+    } else {
+      res.json({ host: '', port: 22, username: '', password: '', remotePath: '/uploads' });
+    }
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/sftp/config', express.json(), (req, res) => {
+  try {
+    const { host, port, username, password, remotePath } = req.body;
+    const cfg = { host, port: port || 22, username, remotePath: remotePath || '/uploads' };
+    // Only update password if a new one is provided
+    if (password && password !== '********') cfg.password = password;
+    else {
+      const existing = fs.existsSync(SFTP_CONFIG_FILE) ? JSON.parse(fs.readFileSync(SFTP_CONFIG_FILE, 'utf8')) : {};
+      cfg.password = existing.password || '';
+    }
+    fs.writeFileSync(SFTP_CONFIG_FILE, JSON.stringify(cfg, null, 2));
+    res.json({ message: '配置已保存' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/sftp/test', express.json(), async (req, res) => {
+  const sftp = new SftpClient();
+  try {
+    const cfg = getSftpConfig(req.body);
+    await sftp.connect({ host: cfg.host, port: cfg.port, username: cfg.username, password: cfg.password });
+    const list = await sftp.list(cfg.remotePath);
+    await sftp.end();
+    res.json({ ok: true, files: list.length, message: '连接成功！目录下有 ' + list.length + ' 个文件' });
+  } catch (e) {
+    try { await sftp.end(); } catch {}
+    res.json({ ok: false, message: '连接失败: ' + e.message });
+  }
+});
+
+// --- SFTP Upload ---
+app.post('/api/sftp/upload', upload.array('files', 50), async (req, res) => {
+  const sftp = new SftpClient();
+  const results = [];
+  try {
+    const cfg = getSftpConfig(req.body);
+    await sftp.connect({ host: cfg.host, port: cfg.port, username: cfg.username, password: cfg.password });
+
+    // Ensure remote path exists (create recursively)
+    await ensureDir(sftp, cfg.remotePath);
+
+    for (const file of req.files) {
+      try {
+        const remoteFile = cfg.remotePath.replace(/\/$/, '') + '/' + (req.body.prefix || '') + file.originalname;
+        await sftp.put(file.buffer, remoteFile);
+        results.push({ name: file.originalname, size: file.size, status: 'ok' });
+      } catch (e) {
+        results.push({ name: file.originalname, size: file.size, status: 'error', error: e.message });
+      }
+    }
+    await sftp.end();
+    res.json({ results });
+  } catch (e) {
+    try { await sftp.end(); } catch {}
+    res.status(500).json({ error: 'SFTP 连接失败: ' + e.message });
+  }
+});
+
+function getSftpConfig(body) {
+  const fileCfg = fs.existsSync(SFTP_CONFIG_FILE) ? JSON.parse(fs.readFileSync(SFTP_CONFIG_FILE, 'utf8')) : {};
+  return {
+    host: body.host || fileCfg.host || '',
+    port: parseInt(body.port) || fileCfg.port || 22,
+    username: body.username || fileCfg.username || '',
+    password: body.password || fileCfg.password || '',
+    remotePath: body.remotePath || fileCfg.remotePath || '/uploads'
+  };
+}
+
+async function ensureDir(sftp, dirPath) {
+  const parts = dirPath.split('/').filter(Boolean);
+  let current = '';
+  for (const part of parts) {
+    current += '/' + part;
+    try { await sftp.mkdir(current); } catch {}
+  }
+}
 
 // --- SPA fallback ---
 app.get('*', (req, res) => {

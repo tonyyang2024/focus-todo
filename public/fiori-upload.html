@@ -178,12 +178,28 @@
   input[type="file"] { display: none; }
 
   @media (max-width: 768px) {
-    .content { padding: 12px; }
-    .page-header { flex-direction: column; align-items: flex-start; }
-    .toolbar { flex-direction: column; }
+    .content { padding: 8px; }
+    .shell-bar { padding: 0 12px; }
+    .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .page-header h1 { font-size: 17px; }
+    .page-header > div:last-child { margin-left: 0; width: 100%; display: flex; gap: 6px; flex-wrap: wrap; }
+    .toolbar { flex-direction: column; gap: 8px; padding: 10px 12px; }
     .toolbar input[type="search"] { width: 100%; }
-    .stats { margin-left: 0; }
-    .file-row .fname { max-width: 140px; }
+    .stats { margin-left: 0; font-size: 11px; }
+    .table-wrap { font-size: 11px; }
+    th, td { padding: 8px 6px; }
+    .file-row .fname { max-width: 120px; font-size: 12px; }
+    .actions-cell { flex-wrap: wrap; }
+    .btn-sm { padding: 3px 6px; font-size: 10px; }
+    .card-body { padding: 12px; }
+    .drop-zone { padding: 24px 12px; }
+    .drop-zone .icon { font-size: 32px; }
+  }
+  @media (max-width: 480px) {
+    .page-header h1 { font-size: 16px; }
+    th:nth-child(3), td:nth-child(3) { display: none; } /* hide type column */
+    th:nth-child(4), td:nth-child(4) { display: none; } /* hide size column */
+    .file-row .fname { max-width: 100px; }
   }
 </style>
 </head>
@@ -205,6 +221,7 @@
       <div class="subtitle">批量上传、预览、下载、管理所有附件</div>
     </div>
     <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn btn-ghost" onclick="openSftpSettings()">&#x2699; SFTP 设置</button>
       <button class="btn btn-secondary" onclick="exportLedger()">&#x1F4E4; 导出清单</button>
       <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">&#x1F4C1; 上传附件</button>
     </div>
@@ -275,6 +292,38 @@
 <!-- Preview Modal -->
 <div class="modal-overlay" id="previewModal" onclick="if(event.target===this)closePreview()">
   <div class="modal" id="previewContent"></div>
+</div>
+
+<!-- SFTP Settings Modal -->
+<div class="modal-overlay" id="sftpModal" onclick="if(event.target===this)closeSftpSettings()">
+  <div class="modal">
+    <h3>&#x2699; SFTP 服务器配置</h3>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <label style="font-size:12px;color:var(--sapText2)">主机地址
+        <input type="text" id="sftpHost" placeholder="192.168.1.100 或 sftp.example.com" style="width:100%;padding:10px 12px;border:1px solid var(--sapBorder);border-radius:6px;font-size:13px;font-family:inherit;outline:none;margin-top:4px">
+      </label>
+      <div style="display:flex;gap:12px">
+        <label style="flex:1;font-size:12px;color:var(--sapText2)">端口
+          <input type="number" id="sftpPort" value="22" style="width:100%;padding:10px 12px;border:1px solid var(--sapBorder);border-radius:6px;font-size:13px;font-family:inherit;outline:none;margin-top:4px">
+        </label>
+        <label style="flex:1;font-size:12px;color:var(--sapText2)">用户名
+          <input type="text" id="sftpUser" placeholder="用户名" style="width:100%;padding:10px 12px;border:1px solid var(--sapBorder);border-radius:6px;font-size:13px;font-family:inherit;outline:none;margin-top:4px">
+        </label>
+      </div>
+      <label style="font-size:12px;color:var(--sapText2)">密码
+        <input type="password" id="sftpPass" placeholder="SFTP 密码" style="width:100%;padding:10px 12px;border:1px solid var(--sapBorder);border-radius:6px;font-size:13px;font-family:inherit;outline:none;margin-top:4px">
+      </label>
+      <label style="font-size:12px;color:var(--sapText2)">远程路径
+        <input type="text" id="sftpPath" placeholder="/uploads" value="/uploads" style="width:100%;padding:10px 12px;border:1px solid var(--sapBorder);border-radius:6px;font-size:13px;font-family:inherit;outline:none;margin-top:4px">
+      </label>
+    </div>
+    <div id="sftpStatus" style="font-size:12px;margin-top:8px;min-height:20px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-secondary" onclick="testSftp()">&#x1F50D; 测试连接</button>
+      <button class="btn btn-secondary" onclick="closeSftpSettings()">取消</button>
+      <button class="btn btn-primary" onclick="saveSftpSettings()">保存配置</button>
+    </div>
+  </div>
 </div>
 
 <!-- Toast -->
@@ -392,56 +441,149 @@ async function uploadAll() {
   if (!pending.length) return;
   document.getElementById('btnUploadAll').disabled = true;
 
-  for (const q of pending) {
-    q.status = 'uploading';
-    renderQueue();
-
-    // Simulate upload with progress (real app would use fetch/XHR to server)
-    await simulateUpload(q);
-
-    // Add to ledger
-    ledger.unshift({
-      id: 'f_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
-      name: q.name, size: q.size, type: q.type,
-      uploadTime: new Date().toISOString(),
-      dataUrl: q.dataUrl || null,
-      selected: false
-    });
-    saveLedger();
+  const cfg = getSftpConfigLocal();
+  if (!cfg.host || !cfg.username) {
+    toast('请先配置 SFTP 服务器'); openSftpSettings(); document.getElementById('btnUploadAll').disabled = false; return;
   }
 
-  document.getElementById('btnUploadAll').disabled = false;
-  clearQueue();
-  document.getElementById('uploadCard').style.display = 'none';
-  renderLedger();
-  updateFileCount();
-  toast('全部上传完成！');
-}
+  const formData = new FormData();
+  for (const q of pending) {
+    q.status = 'uploading'; q.progress = 10;
+    formData.append('files', q.file, q.name);
+  }
+  renderQueue();
 
-function simulateUpload(q) {
-  return new Promise(resolve => {
-    // Read file as data URL for local storage
-    const reader = new FileReader();
-    reader.onprogress = e => {
+  // Add SFTP config to form
+  formData.append('host', cfg.host);
+  formData.append('port', cfg.port);
+  formData.append('username', cfg.username);
+  formData.append('password', cfg.password);
+  formData.append('remotePath', cfg.remotePath);
+  formData.append('prefix', new Date().toISOString().slice(0,10).replace(/-/g,'') + '_');
+
+  try {
+    // Use XHR for progress tracking
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
-        q.progress = Math.round((e.loaded / e.total) * 100);
+        const pct = Math.round((e.loaded / e.total) * 100);
+        pending.forEach(q => { q.progress = pct; q.status = 'uploading'; });
         renderQueue();
       }
     };
-    reader.onload = () => {
-      q.dataUrl = reader.result;
-      q.progress = 100;
-      q.status = 'done';
-      renderQueue();
-      setTimeout(resolve, 150);
-    };
-    reader.onerror = () => {
-      q.status = 'error';
-      renderQueue();
-      resolve();
-    };
-    reader.readAsDataURL(q.file);
-  });
+    await new Promise((resolve, reject) => {
+      xhr.open('POST', '/api/sftp/upload');
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          data.results.forEach(r => {
+            const q = pending.find(p => p.name === r.name);
+            if (q) {
+              q.status = r.status === 'ok' ? 'done' : 'error';
+              q.progress = r.status === 'ok' ? 100 : 0;
+              if (r.status === 'ok') {
+                const filePath = (cfg.remotePath.replace(/\/$/,'') + '/' + (new Date().toISOString().slice(0,10).replace(/-/g,'') + '_') + r.name);
+                ledger.unshift({
+                  id: 'f_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+                  name: r.name, size: r.size, type: q.type,
+                  uploadTime: new Date().toISOString(),
+                  sftpPath: filePath,
+                  sftpHost: cfg.host,
+                  selected: false
+                });
+              }
+            }
+          });
+          saveLedger();
+          resolve();
+        } else {
+          reject(new Error('Upload failed'));
+        }
+      };
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.send(formData);
+    });
+    toast('上传完成！');
+  } catch (e) {
+    pending.forEach(q => { if (q.status === 'uploading') q.status = 'error'; });
+    renderQueue();
+    toast('上传失败: ' + e.message);
+  }
+
+  document.getElementById('btnUploadAll').disabled = false;
+  setTimeout(() => { clearQueue(); document.getElementById('uploadCard').style.display = 'none'; }, 2000);
+  renderLedger();
+  updateFileCount();
+}
+
+// ============ SFTP CONFIG ============
+function getSftpConfigLocal() {
+  return {
+    host: document.getElementById('sftpHost')?.value || localStorage.getItem('sftp_host') || '',
+    port: document.getElementById('sftpPort')?.value || localStorage.getItem('sftp_port') || '22',
+    username: document.getElementById('sftpUser')?.value || localStorage.getItem('sftp_user') || '',
+    password: document.getElementById('sftpPass')?.value || localStorage.getItem('sftp_pass') || '',
+    remotePath: document.getElementById('sftpPath')?.value || localStorage.getItem('sftp_path') || '/uploads'
+  };
+}
+
+function openSftpSettings() {
+  document.getElementById('sftpHost').value = localStorage.getItem('sftp_host') || '';
+  document.getElementById('sftpPort').value = localStorage.getItem('sftp_port') || '22';
+  document.getElementById('sftpUser').value = localStorage.getItem('sftp_user') || '';
+  document.getElementById('sftpPass').value = '';
+  document.getElementById('sftpPath').value = localStorage.getItem('sftp_path') || '/uploads';
+  document.getElementById('sftpStatus').textContent = '';
+  document.getElementById('sftpModal').classList.add('open');
+  // Also load from server
+  fetch('/api/sftp/config').then(r => r.json()).then(cfg => {
+    if (cfg.host && !localStorage.getItem('sftp_host')) {
+      document.getElementById('sftpHost').value = cfg.host || '';
+      document.getElementById('sftpPort').value = cfg.port || '22';
+      document.getElementById('sftpUser').value = cfg.username || '';
+      document.getElementById('sftpPath').value = cfg.remotePath || '/uploads';
+    }
+  }).catch(() => {});
+}
+
+function closeSftpSettings() {
+  document.getElementById('sftpModal').classList.remove('open');
+}
+
+function saveSftpSettings() {
+  const cfg = getSftpConfigLocal();
+  localStorage.setItem('sftp_host', cfg.host);
+  localStorage.setItem('sftp_port', cfg.port);
+  localStorage.setItem('sftp_user', cfg.username);
+  localStorage.setItem('sftp_pass', cfg.password);
+  localStorage.setItem('sftp_path', cfg.remotePath);
+  // Also save to server
+  fetch('/api/sftp/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cfg)
+  }).catch(() => {});
+  closeSftpSettings();
+  toast('SFTP 配置已保存');
+}
+
+async function testSftp() {
+  const cfg = getSftpConfigLocal();
+  if (!cfg.host) { document.getElementById('sftpStatus').innerHTML = '<span style="color:var(--sapBad)">请输入主机地址</span>'; return; }
+  document.getElementById('sftpStatus').textContent = '测试中...';
+  try {
+    const res = await fetch('/api/sftp/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg)
+    });
+    const data = await res.json();
+    document.getElementById('sftpStatus').innerHTML = data.ok
+      ? '<span style="color:var(--sapGood)">&#x2713; ' + data.message + '</span>'
+      : '<span style="color:var(--sapBad)">&#x2717; ' + data.message + '</span>';
+  } catch (e) {
+    document.getElementById('sftpStatus').innerHTML = '<span style="color:var(--sapBad)">连接失败: ' + e.message + '</span>';
+  }
 }
 
 // ============ LEDGER ============
@@ -478,10 +620,9 @@ function renderLedger() {
         <td><span class="ftype">${f.type}</span></td>
         <td>${formatSize(f.size)}</td>
         <td style="font-size:12px;color:var(--sapText2)">${formatDate(f.uploadTime)}</td>
-        <td><span style="color:var(--sapGood);font-size:12px">&#x2713; 已上传</span></td>
+        <td><span style="color:var(--sapGood);font-size:12px">&#x2713; ${f.sftpHost||'SFTP'}</span></td>
         <td class="actions-cell">
-          <button class="btn btn-ghost btn-sm" onclick="previewFile('${f.id}')">&#x1F441; 预览</button>
-          <button class="btn btn-ghost btn-sm" onclick="downloadFile('${f.id}')">&#x1F4E5;</button>
+          <button class="btn btn-ghost btn-sm" onclick="copySftpPath('${f.id}')" title="复制SFTP路径">&#x1F4CB;</button>
           <button class="btn btn-danger btn-sm" onclick="deleteFile('${f.id}')">&#x1F5D1;</button>
         </td>
       </tr>
@@ -508,29 +649,26 @@ function previewFile(id) {
   if (!f) return;
   const modal = document.getElementById('previewModal');
   const content = document.getElementById('previewContent');
-
-  if (f.type === 'image' && f.dataUrl) {
-    content.innerHTML = `<h3>${esc(f.name)}</h3><p style="font-size:12px;color:var(--sapText2)">${formatSize(f.size)} · ${formatDate(f.uploadTime)}</p><img src="${f.dataUrl}" alt="${esc(f.name)}" style="max-width:100%;border-radius:8px">`;
-  } else if (f.dataUrl && f.dataUrl.startsWith('data:text')) {
-    const text = atob(f.dataUrl.split(',')[1]).slice(0, 10000);
-    content.innerHTML = `<h3>${esc(f.name)}</h3><p style="font-size:12px;color:var(--sapText2)">${formatSize(f.size)}</p><pre>${esc(text)}</pre>`;
+  if (f.sftpPath) {
+    content.innerHTML = `<h3>${esc(f.name)}</h3><p style="color:var(--sapText2);font-size:13px">文件已上传至 SFTP 服务器</p><p style="background:#f5f6f7;padding:10px;border-radius:6px;font-family:monospace;font-size:12px">${esc(f.sftpHost)}:${esc(f.sftpPath)}</p><button class="btn btn-primary" onclick="copySftpPath('${id}');closePreview()">&#x1F4CB; 复制路径</button>`;
   } else {
-    content.innerHTML = `<h3>${esc(f.name)}</h3><p>无法预览此文件类型。请下载后查看。</p><button class="btn btn-primary" onclick="downloadFile('${id}')">&#x1F4E5; 下载</button>`;
+    content.innerHTML = `<h3>${esc(f.name)}</h3><p>文件信息不可用</p>`;
   }
   modal.classList.add('open');
 }
 
-function closePreview() {
-  document.getElementById('previewModal').classList.remove('open');
+function closePreview() { document.getElementById('previewModal').classList.remove('open'); }
+
+function copySftpPath(id) {
+  const f = ledger.find(f => f.id === id);
+  if (!f?.sftpPath) { toast('路径不可用'); return; }
+  navigator.clipboard.writeText(f.sftpPath).then(() => toast('SFTP 路径已复制')).catch(() => toast('复制失败'));
 }
 
 function downloadFile(id) {
-  const f = ledger.find(f => f.id === id);
-  if (!f || !f.dataUrl) return;
-  const a = document.createElement('a');
-  a.href = f.dataUrl;
-  a.download = f.name;
-  a.click();
+  // SFTP files need server-side download - for now copy path
+  copySftpPath(id);
+  toast('请通过 SFTP 客户端下载');
 }
 
 function deleteFile(id) {

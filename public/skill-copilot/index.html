@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f0f0f">
@@ -12,64 +12,82 @@
   :root {
     --bg: #0f0f0f; --surface: #1a1a1a; --border: #2a2a2a;
     --text: #e8e8e8; --text2: #999; --accent: #3b82f6;
-    --safe-bottom: env(safe-area-inset-bottom, 12px);
+    --q1: #ef4444; --q2: #3b82f6; --q3: #f59e0b; --q4: #22c55e;
+    --safe: env(safe-area-inset-bottom, 12px);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: var(--bg); color: var(--text);
-    height: 100vh; height: 100dvh;
-    display: flex; flex-direction: column;
-    overflow: hidden;
-    -webkit-tap-highlight-color: transparent;
-    user-select: none;
+    height: 100dvh; display: flex; flex-direction: column;
+    overflow: hidden; -webkit-tap-highlight-color: transparent;
   }
 
-  /* Header */
   .header {
-    padding: 16px 20px 12px; text-align: center;
+    padding: 20px 20px 16px; text-align: center;
     background: var(--surface); border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
-  .header h1 { font-size: 18px; font-weight: 700; }
-  .header .sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .header h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
+  .header .sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
 
-  /* Skills bar */
-  .skills-bar {
-    padding: 12px 16px; display: flex; gap: 8px;
-    overflow-x: auto; flex-shrink: 0;
-    -webkit-overflow-scrolling: touch;
+  /* ===== Skill Grid ===== */
+  .skill-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; padding: 16px; overflow-y: auto;
+    flex-shrink: 0; max-height: 45%;
   }
-  .skills-bar::-webkit-scrollbar { display: none; }
-  .skill-chip {
-    display: flex; align-items: center; gap: 5px;
-    padding: 8px 14px; background: var(--surface);
-    border: 1px solid var(--border); border-radius: 20px;
-    font-size: 12px; white-space: nowrap; cursor: pointer;
-    transition: all 0.15s; color: var(--text2); flex-shrink: 0;
+  .skill-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 14px; cursor: pointer;
+    transition: all 0.15s; position: relative; overflow: hidden;
+    display: flex; flex-direction: column; gap: 6px;
   }
-  .skill-chip:active { transform: scale(0.95); }
-  .skill-chip.active { background: #1e293b; border-color: var(--accent); color: var(--accent); }
+  .skill-card:active { transform: scale(0.96); }
+  .skill-card.active { border-color: var(--accent); background: #121d2e; }
+  .skill-card .card-icon { font-size: 28px; }
+  .skill-card .card-name { font-size: 13px; font-weight: 600; }
+  .skill-card .card-desc { font-size: 10px; color: var(--text2); line-height: 1.4; }
+  .skill-card .card-badge {
+    position: absolute; top: 10px; right: 10px;
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .skill-card .card-badge.local { background: var(--q4); }
+  .skill-card .card-badge.ai { background: var(--accent); }
 
-  /* Chat area */
+  /* ===== Messages ===== */
   .messages {
-    flex: 1; overflow-y: auto; padding: 16px;
-    display: flex; flex-direction: column; gap: 10px;
-    -webkit-overflow-scrolling: touch;
+    flex: 1; overflow-y: auto; padding: 12px 16px;
+    display: flex; flex-direction: column; gap: 8px;
+    -webkit-overflow-scrolling: touch; min-height: 0;
   }
-  .msg { max-width: 88%; padding: 12px 15px; border-radius: 12px; font-size: 14px; line-height: 1.55; word-break: break-word; animation: in 0.2s; }
-  @keyframes in { from { opacity: 0; transform: translateY(8px); } }
+  .msg {
+    max-width: 90%; padding: 10px 14px; border-radius: 12px;
+    font-size: 13px; line-height: 1.5; word-break: break-word;
+    animation: in 0.2s;
+  }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } }
   .msg.user { align-self: flex-end; background: #1e3a5f; border-bottom-right-radius: 3px; }
   .msg.ai { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
-  .msg.ai .result-block { background: #111; border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-top: 6px; font-family: 'SF Mono',Consolas,monospace; font-size: 11px; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
-  .msg .label { font-size: 9px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
-  .msg a { color: var(--accent); }
+  .msg .skill-tag {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--accent); margin-bottom: 4px; font-weight: 600;
+  }
+  .msg .result {
+    background: #111; border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; margin-top: 6px; font-family: 'SF Mono',Consolas,monospace;
+    font-size: 11px; white-space: pre-wrap; overflow-x: auto;
+  }
+  .msg .stat-row {
+    display: flex; gap: 16px; margin-top: 6px; font-size: 11px; color: var(--text2);
+  }
+  .msg .stat-row .good { color: var(--q4); }
+  .msg .stat-row .bad { color: var(--q3); }
 
-  /* Input */
+  /* ===== Input ===== */
   .input-area {
-    padding: 10px 16px calc(10px + var(--safe-bottom));
-    background: var(--surface); border-top: 1px solid var(--border);
-    flex-shrink: 0;
+    padding: 10px 16px calc(10px + var(--safe));
+    background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0;
   }
   .input-row { display: flex; gap: 8px; align-items: center; }
   .input-row input {
@@ -80,64 +98,65 @@
   }
   .input-row input:focus { border-color: var(--accent); }
   .input-row input::placeholder { color: #555; }
-  .btn {
+  .circle-btn {
     width: 44px; height: 44px; border-radius: 50%;
     border: 1px solid var(--border); background: var(--surface);
     color: var(--text); font-size: 18px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     transition: all 0.15s; flex-shrink: 0;
   }
-  .btn:active { transform: scale(0.9); }
-  .btn.send { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn.recording { background: #ef4444; border-color: #ef4444; animation: pulse 1.2s infinite; }
+  .circle-btn:active { transform: scale(0.9); }
+  .circle-btn.send { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .circle-btn.recording { background: #ef4444; border-color: #ef4444; animation: pulse 1.2s infinite; }
   @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)} 50%{box-shadow:0 0 0 12px rgba(239,68,68,0)} }
 
-  /* File drop */
-  .file-hint { text-align: center; padding: 8px; font-size: 10px; color: var(--text2); }
-  .file-chip {
-    display: inline-flex; align-items: center; gap: 4px;
-    background: #1e3a5f; border-radius: 12px; padding: 3px 10px;
-    font-size: 11px; margin: 2px;
-  }
-  .file-chip .x { cursor: pointer; color: #999; }
-  .file-chip .x:hover { color: #ef4444; }
-
-  /* Toast */
   .toast {
     position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
     background: #333; color: #fff; padding: 10px 20px; border-radius: 20px;
     font-size: 13px; z-index: 99; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
   }
   .toast.show { opacity: 1; }
 
+  .file-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #1e3a5f; border-radius: 12px; padding: 4px 10px;
+    font-size: 11px; margin: 2px;
+  }
+  .file-chip .x { cursor: pointer; color: #888; }
   input[type="file"] { display: none; }
+  #fileArea { padding: 0 16px 4px; display: flex; flex-wrap: wrap; gap: 4px; min-height: 0; }
+  .empty-chat {
+    text-align: center; color: var(--text2); padding: 40px 16px;
+    font-size: 14px; line-height: 1.8;
+  }
 </style>
 </head>
 <body>
 
 <div class="header">
   <h1>&#x1F916; Skill Copilot</h1>
-  <div class="sub" id="statusText">说出你想做的事</div>
+  <div class="sub" id="statusText">点击技能卡片 或 语音说出你想做的事</div>
 </div>
 
-<div class="skills-bar" id="skillsBar"></div>
+<div class="skill-grid" id="skillGrid"></div>
 
 <div class="messages" id="messages">
-  <div class="msg ai" style="text-align:center;color:var(--text2);padding:30px 20px;">
-    <div style="font-size:40px;margin-bottom:12px;">&#x1F3AF;</div>
-    语音或文字告诉我你想做什么<br>
-    <small style="color:#555">"压缩这个文件" · "帮我写个脚本" · "调试这段代码"</small>
+  <div class="empty-chat">
+    <div style="font-size:40px;margin-bottom:12px;">&#x1F447;</div>
+    选一个技能，或直接说你想做什么<br>
+    <small style="color:#555">比如："帮我写一个 Python 爬虫"</small>
   </div>
 </div>
 
-<div id="fileChips" style="padding:0 16px 4px;display:flex;flex-wrap:wrap;gap:4px;"></div>
+<div id="fileArea"></div>
 
 <div class="input-area">
   <div class="input-row">
-    <button class="btn" id="micBtn" onclick="toggleVoice()">&#x1F3A4;</button>
-    <input type="text" id="input" placeholder="输入指令..." onkeydown="if(event.key==='Enter')send()">
-    <button class="btn" onclick="document.getElementById('fileInput').click()">&#x1F4CE;</button>
-    <button class="btn send" id="sendBtn" onclick="send()">&#x27A4;</button>
+    <button class="circle-btn" id="micBtn" onclick="toggleVoice()">&#x1F3A4;</button>
+    <input type="text" id="input" placeholder="输入指令或说出需求..." onkeydown="if(event.key==='Enter')send()">
+    <button class="circle-btn" onclick="document.getElementById('fileInput').click()">&#x1F4CE;</button>
+    <button class="circle-btn send" id="sendBtn" onclick="send()">&#x27A4;</button>
   </div>
 </div>
 
@@ -145,108 +164,79 @@
 <input type="file" id="fileInput" multiple onchange="handleFiles(this)">
 
 <script>
-// ===================== Skill Registry =====================
-// Add new skills here — the framework handles the rest
+// ============ SKILL REGISTRY ============
 const SKILLS = [
-  {
-    id: 'compress',
-    icon: '&#x1F5DC;',
-    name: '文件压缩',
-    keywords: ['压缩','解压','tar','zip','gzip','打包','解包','extract','compress'],
-    handler: 'compressFile',
-    desc: '压缩/解压各种格式文件'
-  },
-  {
-    id: 'code',
-    icon: '&#x1F4BB;',
-    name: '写代码',
-    keywords: ['写','生成','代码','脚本','编程','创建','做出','帮我做'],
-    handler: 'aiTask',
-    prompt: '你是一个编程助手。根据用户需求编写代码，简洁直接。',
-    desc: '根据需求生成代码/脚本'
-  },
-  {
-    id: 'debug',
-    icon: '&#x1F50D;',
-    name: '调试',
-    keywords: ['调试','bug','报错','错误','修复','fix','不工作','出问题'],
-    handler: 'aiTask',
-    prompt: '你是一个调试专家。分析错误，找出根因，给出修复方案。',
-    desc: '分析错误并给出修复方案'
-  },
-  {
-    id: 'review',
-    icon: '&#x270D;',
-    name: '代码审查',
-    keywords: ['审查','review','检查','优化','重构','refactor'],
-    handler: 'aiTask',
-    prompt: '你是一个代码审查专家。审查代码质量、安全性、性能，给出具体改进建议。',
-    desc: '审查并优化代码'
-  },
-  {
-    id: 'explain',
-    icon: '&#x1F4D6;',
-    name: '解释',
-    keywords: ['解释','说明','是什么','什么意思','讲解','介绍'],
-    handler: 'aiTask',
-    prompt: '用简洁清晰的中文解释概念。先给一句话核心答案，再展开细节。',
-    desc: '解释技术概念'
-  },
-  {
-    id: 'plan',
-    icon: '&#x1F4CB;',
-    name: '规划',
-    keywords: ['规划','计划','方案','设计','架构','怎么做','如何'],
-    handler: 'aiTask',
-    prompt: '你是一个技术架构师。帮用户制定清晰的实施计划，分步骤说明。',
-    desc: '制定实施方案'
-  }
+  { id:'compress', icon:'&#x1F5DC;', name:'文件压缩', desc:'压缩文件/文件夹，支持 zip、gzip，大幅减小体积',
+    keywords:['压缩','解压','tar','zip','gzip','打包','解包','extract'], handler:'compressFile', type:'local' },
+  { id:'code', icon:'&#x1F4BB;', name:'写代码', desc:'根据需求生成代码、脚本、网页',
+    keywords:['写','生成','代码','脚本','编程','创建','做一个','帮我做'], handler:'aiTask', type:'ai',
+    prompt:'你是编程专家。直接给出可运行代码，附带简要说明。' },
+  { id:'debug', icon:'&#x1F50D;', name:'调试修复', desc:'分析报错、找 Bug、给出修复方案',
+    keywords:['调试','bug','报错','错误','修复','fix','不工作'], handler:'aiTask', type:'ai',
+    prompt:'你是调试专家。分析错误根因，给出具体修复步骤。' },
+  { id:'review', icon:'&#x270D;', name:'代码审查', desc:'审查代码质量、安全性、性能',
+    keywords:['审查','review','检查','优化','重构','refactor'], handler:'aiTask', type:'ai',
+    prompt:'你是代码审查专家。检查质量、安全、性能，给出具体改进建议。' },
+  { id:'explain', icon:'&#x1F4D6;', name:'解释概念', desc:'用通俗语言解释技术概念',
+    keywords:['解释','说明','是什么','什么意思','讲解','介绍','原理'], handler:'aiTask', type:'ai',
+    prompt:'用一句话给出核心答案，再用通俗语言展开。' },
+  { id:'plan', icon:'&#x1F4CB;', name:'方案规划', desc:'制定技术方案、实施计划',
+    keywords:['规划','计划','方案','设计','架构','怎么做','如何实现'], handler:'aiTask', type:'ai',
+    prompt:'你是技术架构师。给出分步骤的可执行方案。' },
+  { id:'translate', icon:'&#x1F310;', name:'翻译', desc:'中英互译，保持专业术语准确',
+    keywords:['翻译','translate','英文','中文'], handler:'aiTask', type:'ai',
+    prompt:'你是专业翻译。准确翻译，保留技术术语。中英互译。' },
+  { id:'summarize', icon:'&#x1F4DD;', name:'总结摘要', desc:'提取长文核心要点',
+    keywords:['总结','摘要','概括','归纳','总结一下'], handler:'aiTask', type:'ai',
+    prompt:'你是信息整理专家。提取核心要点，结构化呈现。' },
 ];
 
-// ===================== State =====================
+// ============ STATE ============
 let activeSkill = null;
 let pendingFiles = [];
 let isListening = false;
 let recognition = null;
 const apiKey = () => localStorage.getItem('sk_key') || '';
 
-// ===================== Init =====================
+// ============ INIT ============
 (function init() {
-  renderSkills();
+  renderSkillGrid();
   if (!apiKey()) {
-    const key = prompt('输入 DeepSeek API Key (sk-...):\n仅存本地，不会上传', '');
-    if (key) localStorage.setItem('sk_key', key.trim());
+    const k = prompt('输入 DeepSeek API Key (sk-...):\n仅存本地', '');
+    if (k) localStorage.setItem('sk_key', k.trim());
   }
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
 
-function renderSkills() {
-  const bar = document.getElementById('skillsBar');
-  bar.innerHTML = SKILLS.map(s =>
-    `<div class="skill-chip" data-skill="${s.id}" onclick="toggleSkill('${s.id}')">${s.icon} ${s.name}</div>`
-  ).join('');
+function renderSkillGrid() {
+  const grid = document.getElementById('skillGrid');
+  grid.innerHTML = SKILLS.map(s => `
+    <div class="skill-card" data-skill="${s.id}" onclick="toggleSkill('${s.id}')">
+      <div class="card-badge ${s.type}"></div>
+      <div class="card-icon">${s.icon}</div>
+      <div class="card-name">${s.name}</div>
+      <div class="card-desc">${s.desc}</div>
+    </div>
+  `).join('');
 }
 
 function toggleSkill(id) {
-  const wasActive = activeSkill === id;
-  activeSkill = wasActive ? null : id;
-  document.querySelectorAll('.skill-chip').forEach(c => c.classList.remove('active'));
-  if (!wasActive) document.querySelector(`[data-skill="${id}"]`).classList.add('active');
-  document.getElementById('statusText').textContent = wasActive ? '说出你想做的事' : `已选: ${SKILLS.find(s=>s.id===id).name}`;
+  const was = activeSkill === id;
+  activeSkill = was ? null : id;
+  document.querySelectorAll('.skill-card').forEach(c => c.classList.remove('active'));
+  if (!was) document.querySelector(`[data-skill="${id}"]`).classList.add('active');
+  const s = SKILLS.find(s => s.id === id);
+  document.getElementById('statusText').textContent = was ? '点击技能卡片 或 语音说出你想做的事' : `已选: ${s.name} — ${s.desc}`;
+  if (!was) document.getElementById('input').focus();
 }
 
-// ===================== Skill Matching =====================
 function matchSkill(text) {
-  const lower = text.toLowerCase();
-  // Check active skill first
+  const l = text.toLowerCase();
   if (activeSkill) return SKILLS.find(s => s.id === activeSkill);
-  // Then keyword match
-  return SKILLS.find(s => s.keywords.some(k => lower.includes(k)));
+  return SKILLS.find(s => s.keywords.some(k => l.includes(k)));
 }
 
-// ===================== Send =====================
+// ============ SEND ============
 async function send() {
   const input = document.getElementById('input');
   const text = input.value.trim();
@@ -254,82 +244,115 @@ async function send() {
   input.value = '';
 
   const skill = matchSkill(text);
-  const handler = skill ? skill.handler : 'aiTask';
-
-  // Show user message
-  let preview = text;
-  if (pendingFiles.length) preview = '[文件: ' + pendingFiles.map(f=>f.name).join(', ') + '] ' + (text || '');
-  addMsg('user', preview, skill);
-
+  const handler = skill?.handler || 'aiTask';
+  addMsg('user', text || (pendingFiles.length ? '处理文件' : ''), skill);
   document.getElementById('sendBtn').disabled = true;
   document.getElementById('statusText').textContent = '处理中...';
 
   try {
-    switch (handler) {
-      case 'compressFile': await compressFile(text, pendingFiles); break;
-      case 'aiTask': await aiTask(text, skill, pendingFiles); break;
-      default: await aiTask(text, skill, pendingFiles);
-    }
+    if (handler === 'compressFile') await compressFile(text, pendingFiles);
+    else await aiTask(text, skill, pendingFiles);
   } catch (e) {
-    addMsg('ai', '出错了: ' + e.message);
+    addMsg('ai', '出错: ' + e.message);
   }
-
   pendingFiles = [];
   updateFileChips();
   document.getElementById('sendBtn').disabled = false;
   document.getElementById('statusText').textContent = '就绪';
 }
 
-// ===================== Skill Handlers =====================
+// ============ COMPRESSION ============
 async function compressFile(text, files) {
   if (!files.length) {
-    addMsg('ai', '请先添加要压缩的文件（点 &#x1F4CE; 按钮或拖放文件）。支持的格式：\n• 打包为 .zip\n• 创建 .tar.gz（需后端）\n• 单文件 gzip 压缩');
+    addMsg('ai', '请先添加要压缩的文件（点 &#x1F4CE; 或拖放）。支持:\n• .zip (Deflate 最大压缩)\n• .gz (gzip 单文件)\n• 自动选最佳格式');
     return;
   }
 
+  // Load JSZip + pako
   if (typeof JSZip === 'undefined') {
-    // Load JSZip dynamically
-    await new Promise((resolve, reject) => {
+    await new Promise((res, rej) => {
       const s = document.createElement('script');
       s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
-      s.onload = resolve; s.onerror = reject;
-      document.head.appendChild(s);
+      s.onload = res; s.onerror = rej; document.head.appendChild(s);
+    });
+  }
+  if (typeof pako === 'undefined') {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
+      s.onload = res; s.onerror = rej; document.head.appendChild(s);
     });
   }
 
-  const zip = new JSZip();
+  let totalOriginal = 0;
+  const fileData = [];
   for (const f of files) {
-    if (f.data) {
-      zip.file(f.name, f.data);
-    }
+    const bytes = f.data || new TextEncoder().encode(f.text || '');
+    totalOriginal += bytes.length;
+    fileData.push({ name: f.name, bytes });
   }
-  const blob = await zip.generateAsync({ type: 'blob' });
-  const url = URL.createObjectURL(blob);
-  const name = files.length === 1 ? files[0].name + '.zip' : 'archive.zip';
-  const size = (blob.size / 1024).toFixed(1);
 
-  addMsg('ai', `压缩完成！\n文件名: ${name}\n大小: ${size} KB\n\n<span class="result-block">点击下方链接下载</span>`);
-  // Auto download
+  addMsg('ai', `正在压缩 ${files.length} 个文件 (原始 ${(totalOriginal/1024).toFixed(1)} KB)...`);
+
+  // For single file: use gzip (pako) for best compression
+  // For multiple: use zip with max deflate
+  let outBlob, outName, compressedSize;
+
+  if (files.length === 1) {
+    // gzip with pako (level 9)
+    const compressed = pako.gzip(fileData[0].bytes, { level: 9 });
+    compressedSize = compressed.length;
+    outBlob = new Blob([compressed], { type: 'application/gzip' });
+    outName = fileData[0].name + '.gz';
+  } else {
+    // zip with JSZip, DEFLATE level 9
+    const zip = new JSZip();
+    for (const f of fileData) {
+      zip.file(f.name, f.bytes, { compression: 'DEFLATE', compressionOptions: { level: 9 } });
+    }
+    outBlob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 9 }
+    });
+    compressedSize = outBlob.size;
+    outName = 'archive.zip';
+  }
+
+  const ratio = ((1 - compressedSize / totalOriginal) * 100).toFixed(1);
+  const msgHtml =
+    `<b>压缩完成!</b>
+    <div class="stat-row"><span>原始: ${(totalOriginal/1024).toFixed(1)} KB</span> <span>&rarr;</span> <span class="good">压缩后: ${(compressedSize/1024).toFixed(1)} KB</span></div>
+    <div class="stat-row"><span class="good">减小 ${ratio}%</span> <span>格式: ${outName.split('.').pop().toUpperCase()}</span></div>`;
+
+  addMsg('ai', msgHtml);
   const a = document.createElement('a');
-  a.href = url; a.download = name; a.click();
+  a.href = URL.createObjectURL(outBlob);
+  a.download = outName;
+  a.click();
+
+  if (ratio < 0) {
+    addMsg('ai', '提示: 文件已经高度压缩(如图片/视频)，无法进一步减小。\n对于这类文件，建议转为更高效的格式(如 PNG→WebP)。');
+  }
 }
 
+// ============ AI TASK ============
 async function aiTask(text, skill, files) {
   const key = apiKey();
-  if (!key) { addMsg('ai', '请先设置 DeepSeek API Key。重新打开页面即可输入。'); return; }
+  if (!key) { addMsg('ai', '请先设置 DeepSeek API Key。刷新页面重新输入。'); return; }
 
-  let content = text;
+  let content = text || '';
   if (files.length) {
-    content = '附件文件: ' + files.map(f => f.name).join(', ') + '\n';
-    for (const f of files) {
-      if (f.text) content += `\n--- ${f.name} ---\n${f.text.slice(0, 4000)}`;
-    }
-    if (text) content += '\n用户指令: ' + text;
+    content = '附带了以下文件:\n' + files.map(f =>
+      `--- ${f.name} (${(f.size/1024).toFixed(1)}KB) ---\n${(f.text||'[二进制]').slice(0,4000)}`
+    ).join('\n') + '\n\n用户指令: ' + content;
   }
 
   const messages = [];
   if (skill?.prompt) messages.push({ role: 'system', content: skill.prompt });
   messages.push({ role: 'user', content });
+
+  addMsg('ai', '<i>AI 思考中...</i>');
 
   const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
@@ -337,57 +360,87 @@ async function aiTask(text, skill, files) {
     body: JSON.stringify({ model: 'deepseek-chat', messages, max_tokens: 4096 })
   });
   const data = await res.json();
-  const reply = data.choices?.[0]?.message?.content || 'API 错误: ' + (data.error?.message || JSON.stringify(data).slice(0, 200));
+  const reply = data.choices?.[0]?.message?.content
+    || 'API 错误: ' + (data.error?.message || JSON.stringify(data).slice(0, 200));
+
+  // Remove "thinking..." and show real reply
+  const msgs = document.getElementById('messages');
+  msgs.lastChild.remove();
   addMsg('ai', reply);
 }
 
-// ===================== UI =====================
+// ============ UI HELPERS ============
 function addMsg(role, text, skill) {
+  const msgs = document.getElementById('messages');
+  // Remove empty state
+  const empty = msgs.querySelector('.empty-chat');
+  if (empty) empty.remove();
+
   const div = document.createElement('div');
   div.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
   let html = '';
-  if (skill) html += `<div class="label">${skill.icon} ${skill.name}</div>`;
+  if (skill) html += `<div class="skill-tag">${skill.icon} ${skill.name}</div>`;
   html += text
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<div class="result-block">$2</div>')
-    .replace(/`([^`]+)`/g, '<code style="background:#111;padding:1px 4px;border-radius:3px;font-size:12px">$1</code>');
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<div class="result">$2</div>')
+    .replace(/`([^`]+)`/g, '<code style="background:#111;padding:1px 5px;border-radius:3px;font-size:12px;border:1px solid var(--border)">$1</code>');
   div.innerHTML = html;
-  document.getElementById('messages').appendChild(div);
-  document.getElementById('messages').scrollTop = 99999;
+  msgs.appendChild(div);
+  msgs.scrollTop = 99999;
 }
 
 function updateFileChips() {
-  const el = document.getElementById('fileChips');
+  const el = document.getElementById('fileArea');
   if (!pendingFiles.length) { el.innerHTML = ''; return; }
   el.innerHTML = pendingFiles.map((f, i) =>
-    `<span class="file-chip">&#x1F4C4; ${f.name.slice(0, 20)} <span class="x" onclick="removeFile(${i})">&times;</span></span>`
+    `<span class="file-chip">&#x1F4C4; ${f.name.slice(0,22)} <span class="x" onclick="removeFile(${i})">&times;</span></span>`
   ).join('');
 }
-
 function removeFile(i) { pendingFiles.splice(i, 1); updateFileChips(); }
 
-function handleFiles(input) {
-  for (const f of input.files) readFile(f);
-  input.value = '';
-}
+function handleFiles(input) { for (const f of input.files) readFile(f); input.value = ''; }
 
 function readFile(file) {
   const reader = new FileReader();
   reader.onload = () => {
     const obj = { name: file.name, size: file.size };
-    if (file.type.startsWith('text') || file.name.match(/\.(js|ts|py|html|css|json|md|txt|xml|yml|yaml|sh|bat)$/i)) {
-      obj.text = reader.result;
-    } else {
-      obj.data = new Uint8Array(reader.result);
-    }
+    const isText = file.type.startsWith('text') ||
+      file.name.match(/\.(js|ts|py|html|css|json|md|txt|xml|yml|yaml|sh|bat|log|sql|csv)$/i);
+    if (isText) obj.text = reader.result;
+    else obj.data = new Uint8Array(reader.result);
     pendingFiles.push(obj);
     updateFileChips();
-    toast(`已添加: ${file.name}`);
+    toast('已添加: ' + file.name + ` (${(file.size/1024).toFixed(1)}KB)`);
   };
-  if (file.type.startsWith('text') || file.name.match(/\.(js|ts|py|html|css|json|md|txt|xml|yml|yaml|sh|bat)$/i)) {
-    reader.readAsText(file);
-  } else {
-    reader.readAsArrayBuffer(file);
-  }
+  const isText = file.type.startsWith('text') ||
+    file.name.match(/\.(js|ts|py|html|css|json|md|txt|xml|yml|yaml|sh|bat|log|sql|csv)$/i);
+  if (isText) reader.readAsText(file);
+  else reader.readAsArrayBuffer(file);
+}
+
+// ============ VOICE ============
+function toggleVoice() { isListening ? stopVoice() : startVoice(); }
+function startVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { toast('浏览器不支持语音'); return; }
+  recognition = new SR();
+  recognition.continuous = false; recognition.lang = 'zh-CN';
+  recognition.onresult = e => {
+    const text = e.results[0][0].transcript;
+    document.getElementById('input').value = text;
+    stopVoice(); send();
+  };
+  recognition.onerror = e => { stopVoice(); if (e.error !== 'aborted') toast('语音失败: ' + e.error); };
+  recognition.onend = () => stopVoice();
+  recognition.start();
+  isListening = true;
+  document.getElementById('micBtn').classList.add('recording');
+  document.getElementById('statusText').textContent = '正在听...';
+}
+function stopVoice() {
+  if (recognition) { try { recognition.stop(); } catch(e){}; recognition = null; }
+  isListening = false;
+  document.getElementById('micBtn').classList.remove('recording');
+  document.getElementById('statusText').textContent = '就绪';
 }
 
 // Drag & drop
@@ -397,41 +450,6 @@ document.addEventListener('drop', e => {
   for (const f of e.dataTransfer.files) readFile(f);
 });
 
-// ===================== Voice =====================
-function toggleVoice() {
-  if (isListening) { stopVoice(); return; }
-  startVoice();
-}
-
-function startVoice() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) { toast('浏览器不支持语音'); return; }
-  recognition = new SpeechRecognition();
-  recognition.continuous = false;
-  recognition.interimResults = false;
-  recognition.lang = 'zh-CN';
-  recognition.onresult = e => {
-    const text = e.results[0][0].transcript;
-    document.getElementById('input').value = text;
-    stopVoice();
-    send();
-  };
-  recognition.onerror = e => { stopVoice(); if (e.error !== 'aborted') toast('语音识别失败: ' + e.error); };
-  recognition.onend = () => stopVoice();
-  recognition.start();
-  isListening = true;
-  document.getElementById('micBtn').classList.add('recording');
-  document.getElementById('statusText').textContent = '正在听...';
-}
-
-function stopVoice() {
-  if (recognition) { try { recognition.stop(); } catch(e) {}; recognition = null; }
-  isListening = false;
-  document.getElementById('micBtn').classList.remove('recording');
-  document.getElementById('statusText').textContent = '就绪';
-}
-
-// ===================== Utils =====================
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');

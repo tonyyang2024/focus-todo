@@ -289,6 +289,16 @@
     <div id="skillList"></div>
   </div>
 
+  <div class="skills-section" style="border-top:1px solid var(--border);margin-top:4px;padding-top:8px">
+    <div class="section-label">&#x1F9E0; Knowledge Base</div>
+    <div style="padding:4px 4px 6px">
+      <input type="text" id="kbSearch" placeholder="搜索知识库..." oninput="searchKB()"
+        style="width:100%;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:11px;outline:none;font-family:inherit">
+      <div id="kbResults" style="font-size:10px;max-height:120px;overflow-y:auto;margin-top:4px"></div>
+      <button onclick="saveToKB()" style="width:100%;padding:5px;margin-top:4px;background:rgba(129,140,248,0.1);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;font-size:10px;font-family:inherit">+ 保存当前会话到知识库</button>
+    </div>
+  </div>
+
   <div class="sidebar-footer">
     <button onclick="exportSpace()">&#x1F4E4; 导出</button>
     <button onclick="deleteSpace()">&#x1F5D1; 删除</button>
@@ -948,6 +958,53 @@ setTimeout(() => {
   if (autoEl) autoEl.checked = auto !== 'false';
   if (ttsEl) ttsEl.checked = tts === 'true';
 }, 600);
+
+// ============ KNOWLEDGE BASE ============
+let kbTimeout;
+function searchKB() {
+  clearTimeout(kbTimeout);
+  kbTimeout = setTimeout(async () => {
+    const q = document.getElementById('kbSearch')?.value?.trim();
+    const el = document.getElementById('kbResults');
+    if (!q) { el.innerHTML = ''; return; }
+    try {
+      const res = await fetch('/api/memory/search?q=' + encodeURIComponent(q));
+      const items = await res.json();
+      el.innerHTML = items.length ? items.map(i =>
+        `<div style="padding:4px 6px;cursor:pointer;border-radius:4px;margin:1px 0" onclick="loadKBItem('${i.key}')" title="${i.key}">
+          &#x1F4C4; ${i.key.slice(0,25)}<br><span style="color:var(--text3)">${(i.tags||'').slice(0,30)}</span>
+        </div>`
+      ).join('') : '<div style="color:var(--text3);padding:4px">未找到</div>';
+    } catch { el.innerHTML = ''; }
+  }, 300);
+}
+
+async function loadKBItem(key) {
+  try {
+    const res = await fetch('/api/kb/' + encodeURIComponent(key));
+    const item = await res.json();
+    if (item) {
+      addMessageToSpace('ai', '知识库: ' + key + '\n\n' + (typeof item.value === 'string' ? item.value : JSON.stringify(item.value, null, 2)), null);
+      renderMessages();
+      toast('已加载: ' + key, 'info');
+    }
+  } catch { toast('加载失败', 'error'); }
+}
+
+async function saveToKB() {
+  const msgs = getCurrentMessages();
+  if (!msgs.length) { toast('当前会话没有内容'); return; }
+  const key = 'session_' + currentSpaceId + '_' + Date.now();
+  const text = msgs.map(m => `[${m.role}] ${stripHtml(m.text || '')}`).join('\n').slice(0, 5000);
+  try {
+    await fetch('/api/memory/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value: { messages: msgs.length, preview: text.slice(0, 200), full: text }, tags: ['session', (spaces[currentSpaceId]?.name || 'default')] })
+    });
+    toast('已保存到知识库', 'success');
+  } catch { toast('保存失败', 'error'); }
+}
 
 // ============ UTILS ============
 document.addEventListener('dragover', e => e.preventDefault());

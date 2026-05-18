@@ -270,6 +270,50 @@ app.delete('/api/memory/:key', (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- Knowledge Base ---
+app.get('/api/kb/search', (req, res) => {
+  try {
+    const { q, tag } = req.query;
+    let rows = db.listMemoryKeys();
+    if (q) rows = db.searchMemory(q);
+    if (tag) rows = rows.filter(r => (r.tags || '').includes(tag));
+    res.json(rows.map(r => ({ key: r.key, tags: r.tags, updatedAt: r.updated_at })));
+  } catch (e) { res.json([]); }
+});
+
+app.get('/api/kb/:key', (req, res) => {
+  try {
+    const results = db.searchMemory(req.params.key);
+    res.json(results[0] ? { key: results[0].key, value: JSON.parse(results[0].value), tags: results[0].tags } : null);
+  } catch (e) { res.status(404).json({ error: 'Not found' }); }
+});
+
+// --- Task Queue ---
+app.get('/api/tasks/queue', (req, res) => {
+  try { res.json(db.searchMemory('task:').map(r => ({ id: r.key, ...JSON.parse(r.value), tags: r.tags }))); }
+  catch (e) { res.json([]); }
+});
+
+app.post('/api/tasks/queue', express.json(), (req, res) => {
+  try {
+    const { title, description, priority, skill } = req.body;
+    const id = 'task:' + Date.now();
+    db.saveMemory(id, { title, description, priority: priority || 'normal', skill, status: 'pending', createdAt: new Date().toISOString() }, ['task', 'pending']);
+    res.status(201).json({ id, status: 'pending' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/api/tasks/queue/:id', express.json(), (req, res) => {
+  try {
+    const rows = db.searchMemory(req.params.id);
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    const task = JSON.parse(rows[0].value);
+    Object.assign(task, req.body);
+    db.saveMemory(req.params.id, task, ['task', task.status || 'pending']);
+    res.json(task);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // --- SPA fallback ---
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

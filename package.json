@@ -4,13 +4,17 @@
   "description": "Todo + Pomodoro with user accounts",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "sftp": "node sftp-server.js",
+    "sftp-add-user": "node sftp-server.js --add-user",
+    "sftp-list-users": "node sftp-server.js --list-users"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.1.1",
+    "sftp-server": "^1.0.6",
     "sql.js": "^1.12.0",
     "ssh2-sftp-client": "^12.1.1"
   }

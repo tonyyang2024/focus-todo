@@ -314,7 +314,10 @@ app.patch('/api/tasks/queue/:id', express.json(), (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- SPA fallback ---
+// --- Route fallbacks ---
+app.get('/todolist', (req, res) => res.redirect('/todolist/'));
+app.get('/todolist/*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'todolist', 'index.html')));
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

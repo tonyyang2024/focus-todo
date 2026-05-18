@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Focus Todo</title>
+<style>
+  :root {
+    --bg: #0f0f0f; --surface: #1a1a1a; --border: #2a2a2a;
+    --text: #e8e8e8; --text-secondary: #999; --text-muted: #666;
+    --accent: #3b82f6;
+    --q1: #ef4444; --q1-bg: rgba(239,68,68,0.08); --q1-border: rgba(239,68,68,0.25);
+    --q2: #3b82f6; --q2-bg: rgba(59,130,246,0.08); --q2-border: rgba(59,130,246,0.25);
+    --q3: #f59e0b; --q3-bg: rgba(245,158,11,0.08); --q3-border: rgba(245,158,11,0.25);
+    --q4: #6b7280; --q4-bg: rgba(107,114,128,0.08); --q4-border: rgba(107,114,128,0.25);
+    --pomodoro: #ef4444; --pomodoro-break: #22c55e;
+    --radius: 8px; --transition: 0.2s ease;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  /* ===== Login Page ===== */
+  .login-overlay {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200;
+  }
+  .login-overlay.hidden { display: none; }
+  .login-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 36px 32px;
+    width: 360px; max-width: 90vw;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  .login-card h2 { font-size: 20px; text-align: center; }
+  .login-card .logo-lg { font-size: 48px; text-align: center; }
+  .login-card label {
+    display: flex; flex-direction: column; gap: 4px;
+    font-size: 12px; color: var(--text-secondary);
+  }
+  .login-card input {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: #0f0f0f;
+    color: var(--text);
+    font-size: 14px; outline: none;
+    transition: border-color var(--transition);
+  }
+  .login-card input:focus { border-color: var(--accent); }
+  .login-card .btn { padding: 10px; font-size: 14px; width: 100%; cursor: pointer; }
+  .login-card .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .login-card .btn-primary:hover { background: #2563eb; }
+  .login-error { color: var(--q1); font-size: 12px; text-align: center; min-height: 18px; }
+
+  /* ===== Header ===== */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 24px; background: var(--surface);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .logo { font-size: 20px; }
+  .app-title { font-size: 15px; font-weight: 600; }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .user-info { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .user-role {
+    font-size: 10px; padding: 2px 6px; border-radius: 8px;
+    background: var(--q1-bg); color: var(--q1); font-weight: 600;
+  }
+  .user-role.admin { background: var(--q2-bg); color: var(--q2); }
+  .btn {
+    padding: 6px 12px; border: 1px solid var(--border);
+    border-radius: var(--radius); background: var(--surface);
+    color: var(--text); cursor: pointer; font-size: 12px;
+    transition: all var(--transition); white-space: nowrap;
+  }
+  .btn:hover { background: #252525; border-color: #444; }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-danger { border-color: var(--q1); color: var(--q1); }
+  .btn-danger:hover { background: rgba(239,68,68,0.1); }
+  .btn-ghost { border-color: transparent; background: transparent; color: var(--text-secondary); }
+  .btn-ghost:hover { color: var(--text); }
+  .btn-sm { padding: 3px 8px; font-size: 11px; }
+
+  /* ===== Pomodoro ===== */
+  .pomodoro-count { font-size: 11px; color: var(--text-muted); }
+  .pomodoro-time { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 44px; text-align: center; }
+  .pomodoro-controls { display: flex; gap: 4px; }
+
+  /* ===== Layout ===== */
+  .main-layout { display: flex; flex: 1; overflow: hidden; }
+  .sidebar {
+    width: 120px; flex-shrink: 0;
+    background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; padding: 16px 0;
+  }
+  .sidebar-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 8px; }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px; border-radius: var(--radius);
+    cursor: pointer; font-size: 13px; color: var(--text-secondary);
+    transition: all var(--transition);
+    border: none; background: none; width: 100%; text-align: left;
+  }
+  .sidebar-item:hover { background: #1f1f1f; color: var(--text); }
+  .sidebar-item.active { background: #1e293b; color: var(--accent); font-weight: 600; }
+  .sidebar-icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-stats {
+    margin-top: auto; padding: 16px 12px;
+    border-top: 1px solid var(--border);
+  }
+  .sidebar-stats .stat { font-size: 11px; color: var(--text-muted); line-height: 1.6; }
+  .sidebar-stats .stat strong { color: var(--text-secondary); }
+
+  /* ===== Content ===== */
+  .content { flex: 1; padding: 16px; overflow-y: auto; }
+  .matrix {
+    display: grid; grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr; gap: 12px; height: 100%; min-height: 0;
+  }
+  .quadrant {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden;
+  }
+  .quadrant.q1 { border-top: 3px solid var(--q1); }
+  .quadrant.q2 { border-top: 3px solid var(--q2); }
+  .quadrant.q3 { border-top: 3px solid var(--q3); }
+  .quadrant.q4 { border-top: 3px solid var(--q4); }
+  .q-header {
+    padding: 10px 14px 8px;
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .q-title { font-size: 13px; font-weight: 600; }
+  .q1 .q-title { color: var(--q1); } .q2 .q-title { color: var(--q2); }
+  .q3 .q-title { color: var(--q3); } .q4 .q-title { color: var(--q4); }
+  .q-badge {
+    font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 600;
+  }
+  .q1 .q-badge { background: var(--q1-bg); color: var(--q1); }
+  .q2 .q-badge { background: var(--q2-bg); color: var(--q2); }
+  .q3 .q-badge { background: var(--q3-bg); color: var(--q3); }
+  .q4 .q-badge { background: var(--q4-bg); color: var(--q4); }
+  .q-subtitle { font-size: 10px; color: var(--text-muted); padding: 0 14px 4px; }
+  .q-tasks {
+    flex: 1; overflow-y: auto; padding: 0 14px 8px;
+    display: flex; flex-direction: column; gap: 4px; min-height: 0;
+  }
+  .q-tasks::-webkit-scrollbar { width: 4px; }
+  .q-tasks::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .task-card {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 8px 10px; background: #141414; border-radius: 6px;
+    border: 1px solid transparent; transition: all var(--transition); font-size: 13px;
+  }
+  .task-card:hover { border-color: var(--border); }
+  .task-card.completed { opacity: 0.45; }
+  .task-card.completed .task-title { text-decoration: line-through; }
+  .task-check {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--border); cursor: pointer;
+    flex-shrink: 0; margin-top: 1px;
+    transition: all var(--transition); background: transparent;
+  }
+  .task-check:hover { border-color: var(--accent); }
+  .task-check.done { background: var(--accent); border-color: var(--accent); }
+  .task-check.done::after {
+    content: '\2713'; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #fff; font-weight: 700;
+  }
+  .task-body { flex: 1; min-width: 0; }
+  .task-title { word-break: break-word; line-height: 1.4; }
+  .task-meta { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+  .task-del {
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; font-size: 14px; padding: 0 2px;
+    opacity: 0; transition: opacity var(--transition); flex-shrink: 0;
+  }
+  .task-card:hover .task-del { opacity: 1; }
+  .task-del:hover { color: var(--q1); }
+  .add-task-btn {
+    display: flex; align-items: center; gap: 4px;
+    padding: 8px 14px; color: var(--text-muted); font-size: 12px;
+    cursor: pointer; background: none; border: none;
+    width: 100%; text-align: left; border-radius: 6px;
+    transition: all var(--transition); flex-shrink: 0; margin: 0 14px 10px;
+  }
+  .add-task-btn:hover { color: var(--text-secondary); background: #141414; }
+  .empty-hint { text-align: center; color: var(--text-muted); font-size: 12px; padding: 20px 0; }
+
+  /* ===== Modal ===== */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: auto; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; width: 400px; max-width: 90vw;
+    display: flex; flex-direction: column; gap: 16px;
+    max-height: 85vh; overflow-y: auto;
+  }
+  .modal h3 { font-size: 16px; font-weight: 600; }
+  .modal label {
+    font-size: 12px; color: var(--text-secondary);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .modal input[type="text"], .modal input[type="password"], .modal input[type="number"] {
+    padding: 8px 12px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: #0f0f0f; color: var(--text); font-size: 14px; outline: none;
+    transition: border-color var(--transition);
+  }
+  .modal input:focus { border-color: var(--accent); }
+  .modal select {
+    padding: 8px 12px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: #0f0f0f; color: var(--text); font-size: 13px; outline: none;
+  }
+  .quadrant-select { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .quadrant-select .q-opt {
+    padding: 8px; border: 2px solid var(--border); border-radius: 6px;
+    cursor: pointer; font-size: 12px; text-align: center;
+    transition: all var(--transition); background: transparent; color: var(--text-secondary);
+  }
+  .quadrant-select .q-opt:hover { border-color: #444; }
+  .quadrant-select .q-opt.sel-q1 { border-color: var(--q1); color: var(--q1); background: var(--q1-bg); }
+  .quadrant-select .q-opt.sel-q2 { border-color: var(--q2); color: var(--q2); background: var(--q2-bg); }
+  .quadrant-select .q-opt.sel-q3 { border-color: var(--q3); color: var(--q3); background: var(--q3-bg); }
+  .quadrant-select .q-opt.sel-q4 { border-color: var(--q4); color: var(--q4); background: var(--q4-bg); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-actions .btn { padding: 8px 16px; font-size: 13px; }
+  .modal-error { color: var(--q1); font-size: 12px; }
+
+  /* ===== User Management ===== */
+  .user-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .user-table th { text-align: left; color: var(--text-secondary); font-size: 11px; padding: 8px 4px 4px; border-bottom: 1px solid var(--border); }
+  .user-table td { padding: 8px 4px; border-bottom: 1px solid var(--border); }
+  .user-table .role-badge {
+    font-size: 10px; padding: 2px 6px; border-radius: 8px;
+    background: var(--q4-bg); color: var(--q4);
+  }
+  .user-table .role-badge.admin { background: var(--q2-bg); color: var(--q2); }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 768px) {
+    .sidebar { width: 70px; }
+    .sidebar-item { font-size: 11px; padding: 8px; justify-content: center; }
+    .sidebar-item span:last-child { display: none; }
+    .matrix { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); }
+    .header { padding: 8px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== Login Overlay ===== -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <div class="logo-lg">&#x1F345;</div>
+    <h2>Focus Todo</h2>
+    <label>用户名 <input type="text" id="loginUsername" placeholder="输入用户名" autofocus></label>
+    <label>密码 <input type="password" id="loginPassword" placeholder="输入密码"></label>
+    <div class="login-error" id="loginError"></div>
+    <button class="btn btn-primary" onclick="handleLogin()">登录</button>
+  </div>
+</div>
+
+<!-- ===== Header ===== -->
+<header class="header">
+  <div class="header-left">
+    <span class="logo">&#x1F345;</span>
+    <span class="app-title">Focus Todo</span>
+  </div>
+  <div class="header-right">
+    <span class="pomodoro-count" id="sessionCount">0 个番茄</span>
+    <span class="pomodoro-time" id="pomodoroTime">25:00</span>
+    <div class="pomodoro-controls">
+      <button class="btn btn-primary btn-sm" id="btnStart" onclick="toggleTimer()">开始</button>
+      <button class="btn btn-sm" onclick="resetTimer()">重置</button>
+      <button class="btn btn-ghost btn-sm" onclick="openPomodoroSettings()" title="设置">&#x2699;</button>
+    </div>
+    <div class="user-info">
+      <span id="displayName"></span>
+      <span class="user-role" id="displayRole"></span>
+      <button class="btn btn-sm" id="btnUsers" onclick="openUserManagement()" style="display:none">用户管理</button>
+      <button class="btn btn-sm" onclick="changePassword()">改密</button>
+      <button class="btn btn-ghost btn-sm" onclick="handleLogout()">退出</button>
+    </div>
+  </div>
+</header>
+
+<!-- Main -->
+<div class="main-layout">
+  <aside class="sidebar">
+    <nav class="sidebar-nav">
+      <button class="sidebar-item active" data-view="daily" onclick="switchView('daily', this)">
+        <span class="sidebar-icon">&#x1F4C5;</span> <span>今日</span>
+      </button>
+      <button class="sidebar-item" data-view="weekly" onclick="switchView('weekly', this)">
+        <span class="sidebar-icon">&#x1F4C6;</span> <span>本周</span>
+      </button>
+      <button class="sidebar-item" data-view="monthly" onclick="switchView('monthly', this)">
+        <span class="sidebar-icon">&#x1F4C8;</span> <span>本月</span>
+      </button>
+    </nav>
+    <div class="sidebar-stats">
+      <div class="stat">总任务: <strong id="statTotal">0</strong></div>
+      <div class="stat">已完成: <strong id="statDone">0</strong></div>
+      <div class="stat">完成率: <strong id="statRate">0%</strong></div>
+    </div>
+  </aside>
+
+  <main class="content">
+    <div class="matrix">
+      <div class="quadrant q1">
+        <div class="q-header">
+          <div class="q-title">&#x1F534; 重要且紧急</div>
+          <span class="q-badge" id="badge1">0</span>
+        </div>
+        <div class="q-subtitle">必须立刻做</div>
+        <div class="q-tasks" id="tasks1"></div>
+        <button class="add-task-btn" onclick="openAddTask(1)">+ 添加任务</button>
+      </div>
+      <div class="quadrant q2">
+        <div class="q-header">
+          <div class="q-title">&#x1F535; 重要不紧急</div>
+          <span class="q-badge" id="badge2">0</span>
+        </div>
+        <div class="q-subtitle">做好计划，每天推进</div>
+        <div class="q-tasks" id="tasks2"></div>
+        <button class="add-task-btn" onclick="openAddTask(2)">+ 添加任务</button>
+      </div>
+      <div class="quadrant q3">
+        <div class="q-header">
+          <div class="q-title">&#x1F7E0; 不重要紧急</div>
+          <span class="q-badge" id="badge3">0</span>
+        </div>
+        <div class="q-subtitle">尽快处理或委托他人</div>
+        <div class="q-tasks" id="tasks3"></div>
+        <button class="add-task-btn" onclick="openAddTask(3)">+ 添加任务</button>
+      </div>
+      <div class="quadrant q4">
+        <div class="q-header">
+          <div class="q-title">&#x26AA; 不重要不紧急</div>
+          <span class="q-badge" id="badge4">0</span>
+        </div>
+        <div class="q-subtitle">尽量减少，有空再做</div>
+        <div class="q-tasks" id="tasks4"></div>
+        <button class="add-task-btn" onclick="openAddTask(4)">+ 添加任务</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Add Task Modal -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <h3>添加新任务</h3>
+    <label>任务名称 <input type="text" id="taskTitleInput" placeholder="输入任务内容..."></label>
+    <label>所属象限
+      <div class="quadrant-select" id="quadrantSelect">
+        <div class="q-opt sel-q1" data-q="1" onclick="selectQuadrant(1)">重要且紧急</div>
+        <div class="q-opt" data-q="2" onclick="selectQuadrant(2)">重要不紧急</div>
+        <div class="q-opt" data-q="3" onclick="selectQuadrant(3)">不重要紧急</div>
+        <div class="q-opt" data-q="4" onclick="selectQuadrant(4)">不重要不紧急</div>
+      </div>
+    </label>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeAddTask()">取消</button>
+      <button class="btn btn-primary" onclick="addTask()">添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- User Management Modal -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <h3>用户管理</h3>
+    <div style="display:flex;gap:8px;">
+      <input type="text" id="newUsername" placeholder="用户名" style="flex:1">
+      <input type="password" id="newPassword" placeholder="密码（至少6位）" style="flex:1">
+      <select id="newRole">
+        <option value="user">普通用户</option>
+        <option value="admin">管理员</option>
+      </select>
+      <button class="btn btn-primary" onclick="registerUser()">创建</button>
+    </div>
+    <div class="modal-error" id="userError"></div>
+    <table class="user-table">
+      <thead><tr><th>用户名</th><th>角色</th><th>创建时间</th><th></th></tr></thead>
+      <tbody id="userTableBody"></tbody>
+    </table>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeUserManagement()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-overlay" id="passwordModal">
+  <div class="modal">
+    <h3>修改密码</h3>
+    <label>原密码 <input type="password" id="oldPw" placeholder="输入原密码"></label>
+    <label>新密码 <input type="password" id="newPw" placeholder="输入新密码（至少6位）"></label>
+    <div class="modal-error" id="passwordError"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closePasswordModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitChangePassword()">确认修改</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pomodoro Settings Modal -->
+<div class="modal-overlay" id="pomodoroSettingsModal">
+  <div class="modal">
+    <h3>番茄钟设置</h3>
+    <label>专注时长 (分钟) <input type="number" id="focusDuration" value="25" min="1" max="120"></label>
+    <label>休息时长 (分钟) <input type="number" id="breakDuration" value="5" min="1" max="30"></label>
+    <div class="modal-actions">
+      <button class="btn" onclick="closePomodoroSettings()">取消</button>
+      <button class="btn btn-primary" onclick="savePomodoroSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ State ============
+let token = localStorage.getItem('focus-token') || '';
+let currentUser = null;
+let currentView = 'daily';
+let tasks = [];
+let selectedQuadrant = 1;
+
+let pomodoro = {
+  focusDuration: 25,
+  breakDuration: 5,
+  isBreak: false,
+  isRunning: false,
+  timeLeft: 25 * 60,
+  totalSeconds: 25 * 60,
+  intervalId: null,
+  todaySessions: 0
+};
+
+// ============ API Helper ============
+async function api(method, path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || '请求失败');
+  return data;
+}
+
+// ============ Auth ============
+async function handleLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  document.getElementById('loginError').textContent = '';
+  try {
+    const data = await api('POST', '/api/auth/login', { username, password });
+    token = data.token;
+    currentUser = data.user;
+    localStorage.setItem('focus-token', token);
+    pomodoro.todaySessions = data.pomodoroToday || 0;
+    document.getElementById('loginOverlay').classList.add('hidden');
+    onLoggedIn();
+  } catch (e) {
+    document.getElementById('loginError').textContent = e.message;
+  }
+}
+
+async function checkAuth() {
+  if (!token) return false;
+  try {
+    const data = await api('GET', '/api/auth/me');
+    currentUser = data;
+    pomodoro.todaySessions = data.pomodoroToday || 0;
+    document.getElementById('loginOverlay').classList.add('hidden');
+    onLoggedIn();
+    return true;
+  } catch {
+    token = '';
+    localStorage.removeItem('focus-token');
+    return false;
+  }
+}
+
+function handleLogout() {
+  token = '';
+  currentUser = null;
+  tasks = [];
+  localStorage.removeItem('focus-token');
+  pauseTimer();
+  document.getElementById('loginOverlay').classList.remove('hidden');
+  document.getElementById('loginUsername').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginError').textContent = '';
+}
+
+function onLoggedIn() {
+  document.getElementById('displayName').textContent = currentUser.username;
+  const roleEl = document.getElementById('displayRole');
+  roleEl.textContent = currentUser.role === 'admin' ? '管理员' : '用户';
+  roleEl.className = 'user-role' + (currentUser.role === 'admin' ? ' admin' : '');
+  document.getElementById('btnUsers').style.display = currentUser.role === 'admin' ? '' : 'none';
+  updatePomodoroUI();
+  loadTasks();
+}
+
+// ============ User Management ============
+function openUserManagement() {
+  document.getElementById('userError').textContent = '';
+  document.getElementById('newUsername').value = '';
+  document.getElementById('newPassword').value = '';
+  document.getElementById('userModal').classList.add('open');
+  loadUserList();
+}
+
+function closeUserManagement() {
+  document.getElementById('userModal').classList.remove('open');
+}
+
+async function loadUserList() {
+  try {
+    const users = await api('GET', '/api/users');
+    document.getElementById('userTableBody').innerHTML = users.map(u =>
+      `<tr>
+        <td>${escapeHtml(u.username)}</td>
+        <td><span class="role-badge ${u.role}">${u.role === 'admin' ? '管理员' : '用户'}</span></td>
+        <td style="color:var(--text-muted);font-size:11px">${u.created_at ? u.created_at.slice(0,10) : '-'}</td>
+        <td>${u.role !== 'admin' ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">删除</button>` : ''}</td>
+      </tr>`
+    ).join('');
+  } catch (e) {
+    document.getElementById('userError').textContent = e.message;
+  }
+}
+
+async function registerUser() {
+  const username = document.getElementById('newUsername').value.trim();
+  const password = document.getElementById('newPassword').value;
+  const role = document.getElementById('newRole').value;
+  document.getElementById('userError').textContent = '';
+  try {
+    await api('POST', '/api/auth/register', { username, password, role });
+    document.getElementById('newUsername').value = '';
+    document.getElementById('newPassword').value = '';
+    loadUserList();
+  } catch (e) {
+    document.getElementById('userError').textContent = e.message;
+  }
+}
+
+function showToast(msg, type) {
+  const exists = document.querySelector('.custom-toast');
+  if (exists) exists.remove();
+  const colors = { success: 'rgba(52,211,153,0.15)', error: 'rgba(248,113,113,0.15)', info: 'rgba(129,140,248,0.15)' };
+  const borders = { success: 'rgba(52,211,153,0.4)', error: 'rgba(248,113,113,0.4)', info: 'rgba(129,140,248,0.4)' };
+  const icons = { success: '&#x2705;', error: '&#x274C;', info: '&#x2139;' };
+  const el = document.createElement('div');
+  el.className = 'custom-toast';
+  el.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);z-index:9999;
+    background:${colors[type]||colors.info};backdrop-filter:blur(12px);border:1px solid ${borders[type]||borders.info};
+    color:var(--text);padding:12px 22px;border-radius:14px;font-size:13px;transition:all 0.3s cubic-bezier(0.4,0,0.2,1);
+    opacity:0;pointer-events:none;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,0.3);`;
+  el.innerHTML = `<span>${icons[type]||''}</span>${msg}`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => { el.style.opacity = '1'; el.style.transform = 'translateX(-50%) translateY(0)'; });
+  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(-50%) translateY(20px)'; setTimeout(() => el.remove(), 300); }, 2500);
+}
+
+function showConfirm(title, msg, onOk) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);';
+  overlay.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;width:340px;max-width:90vw;box-shadow:0 16px 48px rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:14px;animation:fadeIn 0.2s ease">
+    <h3 style="font-size:15px;font-weight:600;margin:0;color:var(--text)">${title}</h3>
+    <p style="font-size:13px;color:var(--text-secondary);line-height:1.5;margin:0">${msg}</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button style="padding:8px 18px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text-secondary);cursor:pointer;font-size:13px;font-family:inherit" id="cfCancel">取消</button>
+      <button style="padding:8px 18px;border-radius:10px;border:none;background:linear-gradient(135deg,#f87171,#ef4444);color:#fff;cursor:pointer;font-size:13px;font-family:inherit;font-weight:500" id="cfOk">确认</button>
+    </div></div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#cfOk').onclick = () => { overlay.remove(); onOk(); };
+  overlay.querySelector('#cfCancel').onclick = () => overlay.remove();
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+async function deleteUser(id) {
+  showConfirm('删除用户', '确定删除该用户？其所有任务也会被删除。此操作不可恢复。', async () => {
+  try {
+    await api('DELETE', '/api/users/' + id);
+    loadUserList();
+  } catch (e) {
+    document.getElementById('userError').textContent = e.message;
+  }
+  });
+}
+
+// ============ Password ============
+function changePassword() {
+  document.getElementById('oldPw').value = '';
+  document.getElementById('newPw').value = '';
+  document.getElementById('passwordError').textContent = '';
+  document.getElementById('passwordModal').classList.add('open');
+}
+
+function closePasswordModal() {
+  document.getElementById('passwordModal').classList.remove('open');
+}
+
+async function submitChangePassword() {
+  const oldPassword = document.getElementById('oldPw').value;
+  const newPassword = document.getElementById('newPw').value;
+  document.getElementById('passwordError').textContent = '';
+  try {
+    await api('POST', '/api/auth/change-password', { oldPassword, newPassword });
+    closePasswordModal();
+    showToast('密码修改成功');
+  } catch (e) {
+    document.getElementById('passwordError').textContent = e.message;
+  }
+}
+
+// ============ Tasks ============
+async function loadTasks() {
+  try {
+    tasks = await api('GET', '/api/tasks?timeframe=' + currentView);
+    renderAll();
+  } catch (e) {
+    if (e.message.includes('登录')) handleLogout();
+  }
+}
+
+async function addTask() {
+  const input = document.getElementById('taskTitleInput');
+  const title = input.value.trim();
+  if (!title) return;
+  try {
+    await api('POST', '/api/tasks', { title, quadrant: selectedQuadrant, timeframe: currentView });
+    input.value = '';
+    selectedQuadrant = 1;
+    closeAddTask();
+    loadTasks();
+  } catch (e) {
+    if (e.message.includes('登录')) handleLogout();
+  }
+}
+
+async function toggleTask(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  try {
+    await api('PATCH', '/api/tasks/' + id, { completed: !task.completed });
+    loadTasks();
+  } catch (e) {
+    if (e.message.includes('登录')) handleLogout();
+  }
+}
+
+async function deleteTask(id) {
+  try {
+    await api('DELETE', '/api/tasks/' + id);
+    loadTasks();
+  } catch (e) {
+    if (e.message.includes('登录')) handleLogout();
+  }
+}
+
+function openAddTask(q) {
+  selectedQuadrant = q;
+  document.getElementById('taskTitleInput').value = '';
+  document.getElementById('addModal').classList.add('open');
+  updateQuadrantSelectUI();
+  setTimeout(() => document.getElementById('taskTitleInput').focus(), 100);
+}
+
+function closeAddTask() { document.getElementById('addModal').classList.remove('open'); }
+
+function selectQuadrant(q) { selectedQuadrant = q; updateQuadrantSelectUI(); }
+
+function updateQuadrantSelectUI() {
+  document.querySelectorAll('#quadrantSelect .q-opt').forEach(opt => {
+    opt.className = 'q-opt';
+    const q = parseInt(opt.dataset.q);
+    if (q === selectedQuadrant) opt.classList.add('sel-q' + q);
+  });
+}
+
+// ============ Rendering ============
+function renderAll() {
+  for (let q = 1; q <= 4; q++) renderQuadrant(q);
+  updateBadges();
+  updateStats();
+}
+
+function renderQuadrant(q) {
+  const container = document.getElementById('tasks' + q);
+  const filtered = tasks.filter(t => t.quadrant === q);
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty-hint">暂无任务，点击下方按钮添加</div>';
+  } else {
+    container.innerHTML = filtered.map(t => `
+      <div class="task-card ${t.completed ? 'completed' : ''}">
+        <div class="task-check ${t.completed ? 'done' : ''}" onclick="toggleTask('${t.id}')"></div>
+        <div class="task-body">
+          <div class="task-title">${escapeHtml(t.title)}</div>
+          <div class="task-meta">${formatDate(t.created_at)}</div>
+        </div>
+        <button class="task-del" onclick="deleteTask('${t.id}')" title="删除">&times;</button>
+      </div>
+    `).join('');
+  }
+}
+
+function updateBadges() {
+  for (let q = 1; q <= 4; q++) {
+    const count = tasks.filter(t => t.quadrant === q && !t.completed).length;
+    document.getElementById('badge' + q).textContent = count;
+  }
+}
+
+function updateStats() {
+  const total = tasks.length;
+  const done = tasks.filter(t => t.completed).length;
+  const rate = total > 0 ? Math.round((done / total) * 100) : 0;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statDone').textContent = done;
+  document.getElementById('statRate').textContent = rate + '%';
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function formatDate(isoStr) {
+  if (!isoStr) return '';
+  const d = new Date(isoStr + (isoStr.endsWith('Z') ? '' : 'Z'));
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前';
+  if (diff < 604800000) return Math.floor(diff / 86400000) + ' 天前';
+  return d.toLocaleDateString('zh-CN');
+}
+
+// ============ View Switching ============
+function switchView(view, el) {
+  currentView = view;
+  document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));
+  el.classList.add('active');
+  if (token) loadTasks();
+}
+
+// ============ Pomodoro ============
+function toggleTimer() {
+  pomodoro.isRunning ? pauseTimer() : startTimer();
+}
+
+function startTimer() {
+  if (Notification && Notification.permission === 'default') Notification.requestPermission();
+  pomodoro.isRunning = true;
+  updatePomodoroUI();
+  pomodoro.intervalId = setInterval(tick, 1000);
+}
+
+function pauseTimer() {
+  pomodoro.isRunning = false;
+  if (pomodoro.intervalId) { clearInterval(pomodoro.intervalId); pomodoro.intervalId = null; }
+  updatePomodoroUI();
+}
+
+function resetTimer() {
+  pauseTimer();
+  pomodoro.isBreak = false;
+  pomodoro.timeLeft = pomodoro.focusDuration * 60;
+  pomodoro.totalSeconds = pomodoro.focusDuration * 60;
+  updatePomodoroUI();
+}
+
+function tick() {
+  if (pomodoro.timeLeft > 0) {
+    pomodoro.timeLeft--;
+    updatePomodoroUI();
+    return;
+  }
+  if (!pomodoro.isBreak) {
+    pomodoro.todaySessions++;
+    if (token) api('POST', '/api/pomodoro/increment').catch(() => {});
+    notify('专注时间结束！休息一下吧。');
+    pomodoro.isBreak = true;
+    pomodoro.timeLeft = pomodoro.breakDuration * 60;
+    pomodoro.totalSeconds = pomodoro.breakDuration * 60;
+  } else {
+    notify('休息结束，开始新的番茄钟吧！');
+    pomodoro.isBreak = false;
+    pomodoro.timeLeft = pomodoro.focusDuration * 60;
+    pomodoro.totalSeconds = pomodoro.focusDuration * 60;
+    pauseTimer();
+  }
+  updatePomodoroUI();
+}
+
+function notify(msg) {
+  if (Notification && Notification.permission === 'granted') {
+    new Notification('Focus Todo', { body: msg });
+  }
+}
+
+function updatePomodoroUI() {
+  const mins = Math.floor(pomodoro.timeLeft / 60);
+  const secs = pomodoro.timeLeft % 60;
+  document.getElementById('pomodoroTime').textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+  const btn = document.getElementById('btnStart');
+  if (pomodoro.isRunning) {
+    btn.textContent = pomodoro.isBreak ? '休息中' : '暂停';
+    btn.className = 'btn btn-sm';
+    btn.style.borderColor = pomodoro.isBreak ? 'var(--pomodoro-break)' : 'var(--q3)';
+    btn.style.color = pomodoro.isBreak ? 'var(--pomodoro-break)' : 'var(--q3)';
+  } else {
+    btn.textContent = '开始';
+    btn.className = 'btn btn-primary btn-sm';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+  }
+  document.getElementById('sessionCount').textContent = pomodoro.todaySessions + ' 个番茄';
+}
+
+// ============ Settings Modals ============
+function openPomodoroSettings() {
+  document.getElementById('focusDuration').value = pomodoro.focusDuration;
+  document.getElementById('breakDuration').value = pomodoro.breakDuration;
+  document.getElementById('pomodoroSettingsModal').classList.add('open');
+}
+
+function closePomodoroSettings() {
+  document.getElementById('pomodoroSettingsModal').classList.remove('open');
+}
+
+function savePomodoroSettings() {
+  pomodoro.focusDuration = parseInt(document.getElementById('focusDuration').value) || 25;
+  pomodoro.breakDuration = parseInt(document.getElementById('breakDuration').value) || 5;
+  pomodoro.timeLeft = pomodoro.focusDuration * 60;
+  pomodoro.totalSeconds = pomodoro.focusDuration * 60;
+  pomodoro.isBreak = false;
+  pauseTimer();
+  updatePomodoroUI();
+  closePomodoroSettings();
+}
+
+// ============ Keyboard ============
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === ' ' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); toggleTimer(); }
+  if (e.key === 'Escape') {
+    closeAddTask(); closeUserManagement();
+    closePasswordModal(); closePomodoroSettings();
+  }
+});
+
+// Modal overlay click to close
+['addModal','userModal','passwordModal','pomodoroSettingsModal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', function(e) {
+    if (e.target === this) { this.classList.remove('open'); }
+  });
+});
+
+// Enter key on modals
+document.getElementById('taskTitleInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') addTask();
+});
+document.getElementById('loginOverlay').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') handleLogin();
+});
+
+// ============ Init ============
+pomodoro.timeLeft = pomodoro.focusDuration * 60;
+pomodoro.totalSeconds = pomodoro.focusDuration * 60;
+checkAuth();
+updatePomodoroUI();
+</script>
+</body>
+</html>

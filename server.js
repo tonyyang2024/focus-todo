@@ -241,6 +241,35 @@ async function ensureDir(sftp, dirPath) {
   }
 }
 
+// --- AgentDB Memory ---
+app.post('/api/memory/save', express.json(), (req, res) => {
+  try {
+    const { key, value, tags } = req.body;
+    if (!key || !value) return res.status(400).json({ error: 'key and value required' });
+    db.saveMemory(key, value, tags || []);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/memory/search', (req, res) => {
+  try {
+    const rows = db.searchMemory(req.query.q || '');
+    res.json(rows.map(r => ({ key: r.key, value: JSON.parse(r.value), tags: r.tags, updatedAt: r.updated_at })));
+  } catch (e) { res.json([]); }
+});
+
+app.get('/api/memory/keys', (req, res) => {
+  try {
+    const rows = db.listMemoryKeys();
+    res.json(rows.map(r => ({ key: r.key, tags: r.tags, updatedAt: r.updated_at })));
+  } catch (e) { res.json([]); }
+});
+
+app.delete('/api/memory/:key', (req, res) => {
+  try { db.deleteMemory(req.params.key); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // --- SPA fallback ---
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

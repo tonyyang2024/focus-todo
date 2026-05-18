@@ -208,10 +208,44 @@ function incrementPomodoro(userId) {
   return getTodayPomodoroCount(userId);
 }
 
+// --- Agent Memory ---
+function initMemory() {
+  db.run(`CREATE TABLE IF NOT EXISTS agent_memory (
+    key TEXT PRIMARY KEY, value TEXT, tags TEXT, updated_at TEXT DEFAULT (datetime('now'))
+  )`);
+  save();
+}
+
+function saveMemory(key, value, tags) {
+  initMemory();
+  run('INSERT OR REPLACE INTO agent_memory (key, value, tags, updated_at) VALUES (?, ?, ?, datetime("now"))',
+    [key, JSON.stringify(value), (tags || []).join(',')]);
+}
+
+function searchMemory(q) {
+  initMemory();
+  if (q) {
+    return queryAll('SELECT * FROM agent_memory WHERE key LIKE ? OR value LIKE ? OR tags LIKE ? ORDER BY updated_at DESC LIMIT 20',
+      ['%' + q + '%', '%' + q + '%', '%' + q + '%']);
+  }
+  return queryAll('SELECT * FROM agent_memory ORDER BY updated_at DESC LIMIT 20');
+}
+
+function listMemoryKeys() {
+  initMemory();
+  return queryAll('SELECT key, tags, updated_at FROM agent_memory ORDER BY updated_at DESC LIMIT 100');
+}
+
+function deleteMemory(key) {
+  initMemory();
+  run('DELETE FROM agent_memory WHERE key = ?', [key]);
+}
+
 module.exports = {
   init,
   createUser, getUserByUsername, getUserById, listUsers, deleteUser,
   verifyPassword, updatePassword,
   getTasks, createTask, updateTask, deleteTask,
-  getTodayPomodoroCount, incrementPomodoro
+  getTodayPomodoroCount, incrementPomodoro,
+  saveMemory, searchMemory, listMemoryKeys, deleteMemory
 };

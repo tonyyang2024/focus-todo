@@ -318,10 +318,19 @@
 
   <div class="input-area">
     <div class="input-row">
-      <button class="circle-btn" id="micBtn" onclick="toggleVoice()">&#x1F3A4;</button>
+      <button class="circle-btn" id="micBtn" onclick="toggleVoice()" title="语音输入">&#x1F3A4;</button>
       <input type="text" id="input" placeholder="输入指令..." onkeydown="if(event.key==='Enter')send()">
+      <button class="circle-btn" id="ttsBtn" onclick="toggleTTS()" title="语音播报" style="font-size:14px">&#x1F50A;</button>
       <button class="circle-btn" onclick="document.getElementById('fileInput').click()">&#x1F4CE;</button>
       <button class="circle-btn send" id="sendBtn" onclick="send()">&#x27A4;</button>
+    </div>
+    <div style="display:flex;gap:12px;padding:6px 4px 0;font-size:10px;color:var(--text3)">
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+        <input type="checkbox" id="autoSubmit" checked onchange="saveSettings()"> 语音自动发送
+      </label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer">
+        <input type="checkbox" id="ttsEnabled" onchange="saveSettings()"> 朗读回复
+      </label>
     </div>
   </div>
 </div>
@@ -348,6 +357,11 @@ const SKILLS = [
   { id:'plan', icon:'&#x1F4CB;', name:'方案规划', desc:'制定技术方案与计划', keywords:['规划','计划','方案','设计','架构','怎么做'], handler:'aiTask', type:'ai', prompt:'你是技术架构师。给出分步骤的可执行方案。' },
   { id:'translate', icon:'&#x1F310;', name:'翻译', desc:'中英互译,术语准确', keywords:['翻译','translate','英文','中文'], handler:'aiTask', type:'ai', prompt:'你是专业翻译。准确翻译，保留技术术语。' },
   { id:'summarize', icon:'&#x1F4DD;', name:'总结摘要', desc:'提取长文核心要点', keywords:['总结','摘要','概括','归纳'], handler:'aiTask', type:'ai', prompt:'你是信息整理专家。提取核心要点，结构化呈现。' },
+  { id:'file-process', icon:'&#x1F4C3;', name:'文件处理', desc:'PDF/Word/Excel/PPT 读写分析', keywords:['pdf','word','excel','ppt','docx','xlsx','pptx','文档','表格','幻灯片','读取','解析'], handler:'aiTask', type:'ai', prompt:'你是文件处理专家。分析文件内容，提取关键信息，给出处理建议。如果用户上传了文件，优先分析文件内容。' },
+  { id:'data-analysis', icon:'&#x1F4CA;', name:'数据分析', desc:'CSV/JSON/表格数据统计分析', keywords:['分析','数据','统计','csv','json','表格','报表','图表','趋势'], handler:'aiTask', type:'ai', prompt:'你是数据分析师。解读数据含义，发现趋势和异常，给出可操作的建议。' },
+  { id:'browser', icon:'&#x1F310;', name:'网页操作', desc:'网页内容抓取、搜索、截图', keywords:['打开','搜索','网页','网站','链接','url','截图','抓取','爬取'], handler:'aiTask', type:'ai', prompt:'你是网页操作助手。根据URL获取和分析网页内容，或指导用户进行浏览器操作。' },
+  { id:'shell', icon:'&#x2699;', name:'命令行', desc:'生成和执行Shell/Bash命令', keywords:['命令','shell','bash','cmd','powershell','执行','运行','终端'], handler:'aiTask', type:'ai', prompt:'你是命令行专家。生成安全、可执行的shell命令。标注每个命令的作用和风险。' },
+  { id:'git', icon:'&#x1F4E6;', name:'Git 操作', desc:'代码提交、分支、合并管理', keywords:['git','commit','push','pull','merge','branch','分支','提交','推送','合并','版本'], handler:'aiTask', type:'ai', prompt:'你是Git专家。给出正确的Git命令序列，附带说明。' },
 ];
 
 // ============ STATE ============
@@ -860,7 +874,7 @@ function updateFileChips() {
 }
 function removeFile(i) { pendingFiles.splice(i, 1); updateFileChips(); }
 
-// ============ VOICE ============
+// ============ VOICE + TTS (Voice Code Windows) ============
 function toggleVoice() { isListening ? stopVoice() : startVoice(); }
 function startVoice() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -868,7 +882,8 @@ function startVoice() {
   recognition = new SR(); recognition.continuous = false; recognition.lang = 'zh-CN';
   recognition.onresult = e => {
     document.getElementById('input').value = e.results[0][0].transcript;
-    stopVoice(); send();
+    stopVoice();
+    if (document.getElementById('autoSubmit')?.checked !== false) send();
   };
   recognition.onerror = e => { stopVoice(); if (e.error !== 'aborted') toast('语音失败: ' + e.error); };
   recognition.onend = () => stopVoice();
@@ -880,6 +895,59 @@ function stopVoice() {
   isListening = false;
   document.getElementById('micBtn').classList.remove('recording');
 }
+
+// TTS - reads AI replies aloud (voice-dialog MCP equivalent for Windows/Web)
+let ttsSpeaking = false;
+function toggleTTS() {
+  if (ttsSpeaking) { stopTTS(); return; }
+  const msgs = getCurrentMessages();
+  const lastAI = [...msgs].reverse().find(m => m.role === 'ai');
+  if (!lastAI) { toast('没有可朗读的回复', 'info'); return; }
+  if (!('speechSynthesis' in window)) { toast('浏览器不支持 TTS', 'error'); return; }
+  speakText(stripHtml(lastAI.text));
+}
+function speakText(text) {
+  stopTTS();
+  const u = new SpeechSynthesisUtterance(text.slice(0, 2000));
+  u.lang = 'zh-CN'; u.rate = 1.0; u.pitch = 1.0;
+  u.onstart = () => { ttsSpeaking = true; updateTTSButton(); };
+  u.onend = () => { ttsSpeaking = false; updateTTSButton(); };
+  u.onerror = () => { ttsSpeaking = false; updateTTSButton(); };
+  speechSynthesis.speak(u);
+}
+function stopTTS() { speechSynthesis.cancel(); ttsSpeaking = false; updateTTSButton(); }
+function updateTTSButton() {
+  const btn = document.getElementById('ttsBtn');
+  if (!btn) return;
+  btn.innerHTML = ttsSpeaking ? '&#x1F507;' : '&#x1F50A;';
+  btn.style.color = ttsSpeaking ? 'var(--accent)' : '';
+}
+function stripHtml(s) { return s.replace(/<[^>]+>/g, '').replace(/&#\d+;/g, '').replace(/&[a-z]+;/g, ''); }
+function saveVoiceSettings() {
+  localStorage.setItem('sc_autosubmit', document.getElementById('autoSubmit')?.checked);
+  localStorage.setItem('sc_tts', document.getElementById('ttsEnabled')?.checked);
+}
+
+// Auto-read AI replies when TTS enabled
+const _origRenderMsgs = renderMessages;
+renderMessages = function() {
+  _origRenderMsgs();
+  if (document.getElementById('ttsEnabled')?.checked) {
+    const msgs = getCurrentMessages();
+    const lastAI = [...msgs].reverse().find(m => m.role === 'ai');
+    if (lastAI?.text) setTimeout(() => speakText(stripHtml(lastAI.text)), 500);
+  }
+};
+
+// Load voice settings
+setTimeout(() => {
+  const auto = localStorage.getItem('sc_autosubmit');
+  const tts = localStorage.getItem('sc_tts');
+  const autoEl = document.getElementById('autoSubmit');
+  const ttsEl = document.getElementById('ttsEnabled');
+  if (autoEl) autoEl.checked = auto !== 'false';
+  if (ttsEl) ttsEl.checked = tts === 'true';
+}, 600);
 
 // ============ UTILS ============
 document.addEventListener('dragover', e => e.preventDefault());

@@ -192,6 +192,15 @@
   .msg .stat-row { display: flex; gap: 12px; margin-top: 4px; font-size: 11px; color: var(--text2); }
   .msg .stat-row .good { color: var(--good); font-weight: 600; }
   .msg .stat-row .bad { color: var(--warn); }
+  .msg.ai .msg-actions {
+    margin-top: 6px; display: flex; gap: 6px;
+  }
+  .msg.ai .msg-actions button {
+    background: rgba(129,140,248,0.08); border: 1px solid var(--border);
+    color: var(--text2); padding: 3px 10px; border-radius: 12px;
+    cursor: pointer; font-size: 10px; transition: all 0.15s; font-family: inherit;
+  }
+  .msg.ai .msg-actions button:hover { background: rgba(129,140,248,0.16); color: var(--accent); border-color: var(--accent); }
 
   .empty-chat {
     flex: 1; display: flex; align-items: center; justify-content: center;
@@ -324,13 +333,15 @@
 // ============ SKILL REGISTRY ============
 const SKILLS = [
   { id:'compress', icon:'&#x1F5DC;', name:'文件压缩', desc:'压缩为 zip/gzip,减小体积', keywords:['压缩','解压','tar','zip','gzip','打包'], handler:'compressFile', type:'local' },
-  { id:'code', icon:'&#x1F4BB;', name:'写代码', desc:'生成可执行代码，在线预览运行', keywords:['写','生成','代码','脚本','编程','创建','做一个','帮我写','帮我做'], handler:'codeTask', type:'ai',
-    prompt:`你是编程专家。生成的代码必须可执行。要求:
-1. 先判断用户需求最适合的语言(Web→HTML/CSS/JS, 脚本→Python/Node.js, 工具→Bash)
-2. HTML/CSS/JS 输出完整单文件(内嵌style+script),可直接在浏览器运行
-3. 其他语言标注运行方式(如 node script.js / python main.py)
-4. 代码要有错误处理和注释
-5. 输出格式: 用 \`\`\`语言名 包裹代码块, 之后用一段话说明运行方法` },
+  { id:'code', icon:'&#x1F4BB;', name:'写代码', desc:'生成可运行代码，自动预览，可迭代修改', keywords:['写','生成','代码','脚本','编程','创建','做一个','帮我写','帮我做','改一下','修改','调整','优化代码'], handler:'codeTask', type:'ai',
+    prompt:`你是一个资深全栈工程师。生成的代码必须完整、可运行、零依赖(除了CDN)。
+规则:
+1. 所有Web应用(含UI界面)必须输出完整单文件HTML(内嵌CSS+JS)，可在浏览器直接打开
+2. 引用外部库用CDN(如SAP UI5、React、Vue等)，不要用npm
+3. 代码带完整的错误处理和友好提示
+4. 输出格式: 首先用简短文字说明功能，然后用 \`\`\`html 包裹完整代码
+5. 如果用户要的功能太复杂，先做一个功能完整的简化版，标注哪些是简化项
+6. 如果是"改/修改/调整"已有代码，只输出改动部分或完整新版本` },
   { id:'debug', icon:'&#x1F50D;', name:'调试修复', desc:'分析报错,找Bug,给方案', keywords:['调试','bug','报错','错误','修复','fix'], handler:'aiTask', type:'ai', prompt:'你是调试专家。分析错误根因，给出修复步骤。' },
   { id:'review', icon:'&#x270D;', name:'代码审查', desc:'审查代码质量与安全', keywords:['审查','review','检查','优化','重构'], handler:'aiTask', type:'ai', prompt:'你是代码审查专家。检查质量、安全、性能，给改进建议。' },
   { id:'explain', icon:'&#x1F4D6;', name:'解释概念', desc:'通俗讲解技术概念', keywords:['解释','说明','是什么','什么意思','讲解','原理'], handler:'aiTask', type:'ai', prompt:'一句话给核心答案，再用通俗语言展开。' },
@@ -578,7 +589,16 @@ function renderMessages() {
     let body = '';
     if (m.skill) body += `<div class="skill-tag">${m.skill.icon} ${m.skill.name}</div>`;
     body += formatMsgText(m.text);
-    html += `<div class="msg ${cls}">${body}</div>`;
+    // Add refine actions for AI messages
+    let actions = '';
+    if (m.role === 'ai' && m.text) {
+      actions = `<div class="msg-actions">
+        <button onclick="refineCode('改得更完善一些')">&#x1F504; 完善</button>
+        <button onclick="refineCode('简化代码，去掉不必要的部分')">&#x1F4DD; 简化</button>
+        <button onclick="refineCode('修复潜在问题，加错误处理')">&#x1F6E0; 加固</button>
+      </div>`;
+    }
+    html += `<div class="msg ${cls}">${body}${actions}</div>`;
   });
   container.innerHTML = html;
   container.scrollTop = 99999;
@@ -733,8 +753,56 @@ async function compressFile(text, files) {
 async function aiTask(text, skill, files) { await runAI(text, skill, files); }
 
 async function codeTask(text, skill, files) {
-  // Enhanced code task: better prompt + code action buttons
   await runAI(text, skill, files);
+  // Auto-preview: if the last AI message contains an HTML code block, offer to run it
+  const msgs = getCurrentMessages();
+  const last = msgs[msgs.length - 1];
+  if (last && last.role === 'ai') {
+    const codeMatch = last.text.match(/```html\n([\s\S]*?)```/) || last.text.match(/```\n([\s\S]*?<!DOCTYPE[\s\S]*?)```/);
+    if (codeMatch) {
+      const code = codeMatch[1];
+      const sandboxId = 'sandbox_' + Date.now();
+      // Store for sandbox
+      window._sandboxCode = code;
+      // Add inline preview
+      last.text += '\n\n<div style="margin-top:8px"><button onclick="openSandboxPreview()" style="padding:8px 16px;background:var(--gradient);border:none;color:#fff;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit">&#x25B6; 打开预览</button> <span style="font-size:10px;color:var(--text3);margin-left:6px">点击按钮在新窗口运行</span></div>';
+      // Also auto-open
+      setTimeout(() => {
+        const w = window.open('', '_blank');
+        w.document.write(code);
+        w.document.close();
+      }, 500);
+      renderMessages();
+    }
+  }
+}
+function openSandboxPreview() {
+  if (window._sandboxCode) {
+    const w = window.open('', '_blank');
+    w.document.write(window._sandboxCode);
+    w.document.close();
+  }
+}
+
+function refineCode(hint) {
+  const msgs = getCurrentMessages();
+  const codeSkill = SKILLS.find(s => s.id === 'code');
+  // Gather the last AI-generated code as context
+  let context = hint;
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].role === 'ai' && msgs[i].text) {
+      const codeMatch = msgs[i].text.match(/```(?:\w*)\n([\s\S]*?)```/);
+      if (codeMatch) {
+        context = `以下是之前的代码:\n\`\`\`\n${codeMatch[1]}\n\`\`\`\n用户要求: ${hint}`;
+        break;
+      }
+    }
+  }
+  document.getElementById('input').value = hint;
+  activeSkill = 'code';
+  renderSkillList();
+  document.getElementById('input').focus();
+  toast('输入你的修改需求，然后发送', 'info');
 }
 
 async function runAI(text, skill, files) {

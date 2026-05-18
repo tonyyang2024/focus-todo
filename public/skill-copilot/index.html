@@ -209,13 +209,23 @@
   @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.4)} 50%{box-shadow:0 0 0 12px rgba(248,113,113,0)} }
 
   .toast {
-    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
-    background: rgba(37,39,64,0.95); backdrop-filter: blur(10px);
-    color: #fff; padding: 10px 22px; border-radius: 24px;
-    font-size: 13px; z-index: 99; opacity: 0; transition: opacity 0.3s;
-    pointer-events: none; border: 1px solid var(--border);
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: linear-gradient(135deg, rgba(37,39,64,0.98), rgba(33,35,57,0.98));
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    color: var(--text); padding: 12px 20px; border-radius: 16px;
+    font-size: 13px; z-index: 999; opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    pointer-events: none;
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(129,140,248,0.1) inset;
+    display: flex; align-items: center; gap: 8px;
+    white-space: nowrap;
   }
-  .toast.show { opacity: 1; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast .toast-icon { font-size: 16px; flex-shrink: 0; }
+  .toast.success { border-color: rgba(52,211,153,0.3); }
+  .toast.error { border-color: rgba(248,113,113,0.3); }
+  .toast.info { border-color: rgba(129,140,248,0.3); }
 
   .file-chip {
     display: inline-flex; align-items: center; gap: 4px;
@@ -346,14 +356,15 @@ function addMessageToSpace(role, text, skill) {
 }
 
 function createSpace() {
-  const name = prompt('Space 名称:', '新建空间');
-  if (!name) return;
-  const id = 'sp_' + Date.now();
-  spaces[id] = { name, messages: [], createdAt: Date.now() };
-  currentSpaceId = id;
-  saveSpaces();
-  renderAll();
-  toast('已创建: ' + name);
+  showModal('新建 Space', '输入 Space 名称', false, (name) => {
+    if (!name) return;
+    const id = 'sp_' + Date.now();
+    spaces[id] = { name, messages: [], createdAt: Date.now() };
+    currentSpaceId = id;
+    saveSpaces();
+    renderAll();
+    toast('已创建: ' + name, 'success');
+  });
 }
 
 function switchSpace(id) {
@@ -363,13 +374,13 @@ function switchSpace(id) {
 }
 
 function deleteSpace() {
-  if (currentSpaceId === 'default') { toast('不能删除默认空间'); return; }
+  if (currentSpaceId === 'default') { toast('不能删除默认空间', 'error'); return; }
   if (!confirm('删除 "' + spaces[currentSpaceId]?.name + '" 及其所有对话？')) return;
   delete spaces[currentSpaceId];
   currentSpaceId = 'default';
   saveSpaces();
   renderAll();
-  toast('已删除');
+  toast('已删除', 'info');
 }
 
 function clearCurrentSpace() {
@@ -395,8 +406,9 @@ function exportSpace() {
 (function init() {
   loadSpaces();
   if (!apiKey()) {
-    const k = prompt('输入 DeepSeek API Key (sk-...):\n仅存本地', '');
-    if (k) localStorage.setItem('sk_key', k.trim());
+    showModal('DeepSeek API Key', '输入 sk-... (仅存本地)', true, (val) => {
+      if (val) { localStorage.setItem('sk_key', val.trim()); toast('Key 已保存', 'success'); }
+    });
   }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
   renderAll();
@@ -660,7 +672,7 @@ function readFile(file) {
     else obj.data = new Uint8Array(reader.result);
     pendingFiles.push(obj);
     updateFileChips();
-    toast('已添加: ' + file.name + ` (${(file.size/1024).toFixed(1)}KB)`);
+    toast('已添加: ' + file.name + ` (${(file.size/1024).toFixed(1)}KB)`, 'info');
   };
   const isText = file.type.startsWith('text') || file.name.match(/\.(js|ts|py|html|css|json|md|txt|xml|yml|yaml|sh|bat|log|sql|csv)$/i);
   if (isText) reader.readAsText(file);
@@ -701,10 +713,50 @@ function stopVoice() {
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => { e.preventDefault(); for (const f of e.dataTransfer.files) readFile(f); });
 
-function toast(msg) {
+function toast(msg, type) {
   const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2000);
+  const icon = type === 'success' ? '&#x2705;' : type === 'error' ? '&#x274C;' : type === 'info' ? '&#x2139;' : '&#x1F4AC;';
+  el.className = 'toast ' + (type || '');
+  el.innerHTML = `<span class="toast-icon">${icon}</span>${msg}`;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// Replace browser prompts with friendly modals
+function showModal(title, placeholder, isPassword, callback) {
+  const existing = document.querySelector('.custom-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'custom-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;width:340px;max-width:90vw;box-shadow:0 16px 48px rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:14px;animation:modalIn 0.25s cubic-bezier(0.4,0,0.2,1);">
+      <style>@keyframes modalIn{from{opacity:0;transform:scale(0.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}</style>
+      <h3 style="font-size:15px;font-weight:600;margin:0">${title}</h3>
+      <input type="${isPassword?'password':'text'}" placeholder="${placeholder}" autofocus
+        style="width:100%;padding:12px 15px;background:var(--bg);border:2px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;outline:none;font-family:inherit;transition:border-color 0.2s"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="modal-cancel" style="padding:8px 18px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:13px;font-family:inherit">取消</button>
+        <button class="modal-ok" style="padding:8px 18px;border-radius:10px;border:none;background:var(--gradient);color:#fff;cursor:pointer;font-size:13px;font-family:inherit;font-weight:500">确认</button>
+      </div>
+    </div>`;
+
+  const input = overlay.querySelector('input');
+  overlay.querySelector('.modal-ok').onclick = () => {
+    const val = input.value.trim();
+    overlay.remove();
+    if (callback) callback(val);
+  };
+  overlay.querySelector('.modal-cancel').onclick = () => { overlay.remove(); if (callback) callback(null); };
+  overlay.addEventListener('click', e => { if (e.target === overlay) { overlay.remove(); if (callback) callback(null); } });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { overlay.querySelector('.modal-ok').click(); }
+    if (e.key === 'Escape') { overlay.querySelector('.modal-cancel').click(); }
+  });
+  document.body.appendChild(overlay);
+  setTimeout(() => input.focus(), 100);
 }
 function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 </script>

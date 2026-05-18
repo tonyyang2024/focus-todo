@@ -434,7 +434,11 @@ function switchThread(thId) {
 
 function deleteSpace() {
   if (currentSpaceId === 'default') { toast('不能删除默认空间', 'error'); return; }
-  if (!confirm('删除 "' + spaces[currentSpaceId]?.name + '" 及其所有对话？')) return;
+  showConfirm('删除 Space', '确定删除 "' + spaces[currentSpaceId]?.name + '" 及其所有对话？此操作不可恢复。', () => {
+    deleteSpaceConfirmed();
+  });
+}
+function deleteSpaceConfirmed() {
   delete spaces[currentSpaceId];
   currentSpaceId = 'default';
   currentThreadId = null;
@@ -459,7 +463,11 @@ function deleteThread(thId) {
 }
 
 function clearCurrentThread() {
-  if (!confirm('清空当前会话？')) return;
+  showConfirm('清空会话', '确定清空当前会话的所有消息？此操作不可恢复。', () => {
+    clearThreadConfirmed();
+  });
+}
+function clearThreadConfirmed() {
   const thread = getCurrentThread();
   thread.messages = [];
   thread.title = '';
@@ -853,6 +861,34 @@ function showModal(title, placeholder, isPassword, callback) {
   });
   document.body.appendChild(overlay);
   setTimeout(() => input.focus(), 100);
+}
+
+function showConfirm(title, message, onOk, onCancel) {
+  const overlay = document.createElement('div');
+  overlay.className = 'custom-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;width:340px;max-width:90vw;box-shadow:0 16px 48px rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:16px;animation:modalIn 0.25s cubic-bezier(0.4,0,0.2,1);">
+      <h3 style="font-size:15px;font-weight:600;margin:0">${title}</h3>
+      <p style="font-size:13px;color:var(--text2);line-height:1.5;margin:0">${message}</p>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="modal-cancel" style="padding:8px 18px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:13px;font-family:inherit">取消</button>
+        <button class="modal-ok" style="padding:8px 18px;border-radius:10px;border:none;background:linear-gradient(135deg,#f87171,#ef4444);color:#fff;cursor:pointer;font-size:13px;font-family:inherit;font-weight:500">确认</button>
+      </div>
+    </div>`;
+  const close = (result) => {
+    overlay.remove();
+    if (result && onOk) onOk();
+    if (!result && onCancel) onCancel();
+  };
+  overlay.querySelector('.modal-ok').onclick = () => close(true);
+  overlay.querySelector('.modal-cancel').onclick = () => close(false);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(false); });
+  overlay.addEventListener('keydown', e => {
+    if (e.key === 'Escape') close(false);
+  });
+  document.body.appendChild(overlay);
+  overlay.querySelector('.modal-cancel').focus();
 }
 function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 </script>

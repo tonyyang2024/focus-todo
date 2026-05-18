@@ -5,210 +5,269 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0f0f0f">
+<meta name="theme-color" content="#1a1b2e">
 <title>Skill Copilot</title>
 <link rel="manifest" href="manifest.json">
 <style>
   :root {
     --bg: #1a1b2e; --bg2: #212339; --surface: #252740;
-    --border: #2e3150; --border-light: #3a3d5c;
-    --text: #e4e5f0; --text2: #9496b0; --text3: #6b6d85;
+    --border: #2e3150; --text: #e4e5f0; --text2: #9496b0; --text3: #6b6d85;
     --accent: #818cf8; --accent2: #a78bfa; --accent3: #c084fc;
-    --warn: #f59e0b; --good: #34d399; --bad: #f87171;
+    --good: #34d399; --bad: #f87171; --warn: #f59e0b;
     --gradient: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c084fc 100%);
-    --shadow: 0 2px 8px rgba(0,0,0,0.15);
-    --radius: 16px; --radius-sm: 10px;
-    --safe: env(safe-area-inset-bottom, 12px);
+    --radius: 14px; --radius-sm: 10px;
+    --sidebar-w: 240px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
     background: var(--bg); color: var(--text);
-    height: 100dvh; display: flex; flex-direction: column;
-    overflow: hidden; -webkit-tap-highlight-color: transparent;
+    height: 100dvh; display: flex; overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
     background-image:
-      radial-gradient(ellipse at 50% 0%, rgba(129,140,248,0.06) 0%, transparent 60%),
-      radial-gradient(ellipse at 80% 100%, rgba(192,132,252,0.04) 0%, transparent 50%);
+      radial-gradient(ellipse at 0% 0%, rgba(129,140,248,0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at 100% 100%, rgba(192,132,252,0.04) 0%, transparent 50%);
   }
 
-  .header {
-    padding: 24px 20px 18px; text-align: center; flex-shrink: 0;
-    position: relative;
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    width: var(--sidebar-w); flex-shrink: 0;
+    background: var(--bg2); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+    z-index: 10;
   }
-  .header::after {
-    content: ''; position: absolute; bottom: 0; left: 20px; right: 20px;
-    height: 1px; background: linear-gradient(90deg, transparent, var(--border-light), transparent);
+  .sidebar-header {
+    padding: 20px 16px 12px; flex-shrink: 0;
   }
-  .header h1 {
-    font-size: 20px; font-weight: 700; letter-spacing: -0.3px;
+  .sidebar-header h2 {
+    font-size: 15px; font-weight: 700;
     background: var(--gradient); -webkit-background-clip: text;
     -webkit-text-fill-color: transparent; background-clip: text;
   }
-  .header .sub { font-size: 12px; color: var(--text2); margin-top: 4px; font-weight: 400; }
 
-  /* ===== Skill Grid ===== */
-  .skill-grid {
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 10px; padding: 16px; overflow-y: auto;
-    flex-shrink: 0; max-height: 48%;
+  /* Spaces */
+  .spaces-section { padding: 0 12px; flex-shrink: 0; }
+  .section-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--text3); padding: 8px 4px 6px; font-weight: 600;
   }
-  .skill-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 18px 14px; cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
-    position: relative; overflow: hidden;
-    display: flex; flex-direction: column; gap: 6px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  .space-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border-radius: 8px;
+    cursor: pointer; font-size: 12px; color: var(--text2);
+    transition: all 0.15s; margin-bottom: 2px;
   }
-  .skill-card::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-    background: var(--gradient); opacity: 0; transition: opacity 0.2s;
+  .space-item:hover { background: rgba(129,140,248,0.06); color: var(--text); }
+  .space-item.active { background: rgba(129,140,248,0.12); color: var(--accent); font-weight: 600; }
+  .space-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); flex-shrink: 0; }
+  .space-item .count { margin-left: auto; font-size: 10px; color: var(--text3); }
+  .new-space-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    font-size: 11px; color: var(--text3); transition: all 0.15s;
+    border: 1px dashed var(--border); background: none; width: 100%;
+    margin-top: 4px; font-family: inherit;
   }
-  .skill-card:active { transform: scale(0.97); }
-  .skill-card.active {
-    border-color: var(--accent);
-    background: linear-gradient(135deg, rgba(129,140,248,0.08) 0%, rgba(167,139,250,0.04) 100%);
-    box-shadow: 0 0 0 1px rgba(129,140,248,0.2), 0 4px 12px rgba(0,0,0,0.2);
-  }
-  .skill-card.active::before { opacity: 1; }
-  .skill-card .card-icon { font-size: 28px; line-height: 1; }
-  .skill-card .card-name { font-size: 13px; font-weight: 600; color: var(--text); }
-  .skill-card .card-desc { font-size: 10px; color: var(--text2); line-height: 1.4; }
-  .skill-card .card-badge {
-    position: absolute; top: 12px; right: 12px;
-    width: 6px; height: 6px; border-radius: 3px;
-  }
-  .skill-card .card-badge.local { background: var(--good); box-shadow: 0 0 6px rgba(52,211,153,0.4); }
-  .skill-card .card-badge.ai { background: var(--accent2); box-shadow: 0 0 6px rgba(167,139,250,0.4); }
+  .new-space-btn:hover { color: var(--accent2); border-color: var(--accent2); }
 
-  /* ===== Messages ===== */
+  /* Skills in sidebar */
+  .skills-section { padding: 0 12px; flex: 1; overflow-y: auto; }
+  .skill-mini {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border-radius: 8px;
+    cursor: pointer; font-size: 12px; color: var(--text2);
+    transition: all 0.15s; border: 1px solid transparent;
+  }
+  .skill-mini:hover { background: rgba(129,140,248,0.06); color: var(--text); }
+  .skill-mini.active {
+    background: rgba(129,140,248,0.12); color: var(--accent);
+    border-color: rgba(129,140,248,0.2); font-weight: 600;
+  }
+  .skill-mini .icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+
+  .sidebar-footer {
+    padding: 12px; border-top: 1px solid var(--border); flex-shrink: 0;
+    display: flex; gap: 6px;
+  }
+  .sidebar-footer button {
+    flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--text3); cursor: pointer;
+    font-size: 11px; transition: all 0.15s; font-family: inherit;
+  }
+  .sidebar-footer button:hover { color: var(--text); border-color: var(--border); }
+
+  /* ===== MAIN ===== */
+  .main {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+  }
+
+  /* Chat header */
+  .chat-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .chat-header .space-title { font-size: 14px; font-weight: 600; }
+  .chat-header .space-actions { display: flex; gap: 6px; }
+  .chat-header .space-actions button {
+    background: none; border: 1px solid var(--border); color: var(--text3);
+    padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 11px;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .chat-header .space-actions button:hover { color: var(--text); border-color: var(--border); }
+
+  /* Messages */
   .messages {
-    flex: 1; overflow-y: auto; padding: 12px 16px;
-    display: flex; flex-direction: column; gap: 8px;
-    -webkit-overflow-scrolling: touch; min-height: 0;
+    flex: 1; overflow-y: auto; padding: 16px 20px;
+    display: flex; flex-direction: column; gap: 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .msg-group { display: flex; flex-direction: column; gap: 4px; }
+  .msg-group-header {
+    font-size: 10px; color: var(--text3); text-align: center;
+    padding: 12px 0 4px; letter-spacing: 0.5px;
   }
   .msg {
-    max-width: 88%; padding: 11px 15px; border-radius: var(--radius-sm);
+    max-width: 75%; padding: 10px 15px; border-radius: var(--radius-sm);
     font-size: 13px; line-height: 1.55; word-break: break-word;
-    animation: in 0.25s cubic-bezier(0.4,0,0.2,1);
+    animation: in 0.2s cubic-bezier(0.4,0,0.2,1);
   }
-  @keyframes in { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } }
   .msg.user {
     align-self: flex-end;
     background: linear-gradient(135deg, #4c3f8a 0%, #3d3578 100%);
     border-bottom-right-radius: 3px;
-    color: #e8e6f5;
   }
   .msg.ai {
     align-self: flex-start;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--surface); border: 1px solid var(--border);
     border-bottom-left-radius: 3px;
   }
   .msg .skill-tag {
-    font-size: 9px; letter-spacing: 0.5px;
-    color: var(--accent2); margin-bottom: 4px; font-weight: 600;
+    font-size: 9px; letter-spacing: 0.3px;
+    color: var(--accent2); margin-bottom: 3px; font-weight: 600;
   }
   .msg .result {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
-    padding: 10px 12px; margin-top: 6px;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 10px; margin-top: 4px;
     font-family: 'SF Mono','Fira Code',Consolas,monospace;
     font-size: 11px; white-space: pre-wrap; overflow-x: auto;
     color: #c9d1d9;
   }
-  .msg .stat-row {
-    display: flex; gap: 14px; margin-top: 6px; font-size: 11px; color: var(--text2);
-  }
+  .msg .stat-row { display: flex; gap: 12px; margin-top: 4px; font-size: 11px; color: var(--text2); }
   .msg .stat-row .good { color: var(--good); font-weight: 600; }
   .msg .stat-row .bad { color: var(--warn); }
 
-  /* ===== Input ===== */
+  .empty-chat {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    text-align: center; color: var(--text3); font-size: 14px; line-height: 1.8;
+  }
+
+  /* Input */
   .input-area {
-    padding: 10px 16px calc(10px + var(--safe));
-    background: var(--surface); flex-shrink: 0;
-    border-top: 1px solid var(--border);
-    box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+    padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 8px));
+    border-top: 1px solid var(--border); flex-shrink: 0;
+    background: var(--bg2);
   }
   .input-row { display: flex; gap: 8px; align-items: center; }
   .input-row input {
-    flex: 1; background: var(--bg2); border: 2px solid var(--border);
-    color: var(--text); padding: 12px 18px; border-radius: 28px;
-    font-size: 14px; outline: none; font-family: inherit;
+    flex: 1; background: var(--bg); border: 2px solid var(--border);
+    color: var(--text); padding: 11px 16px; border-radius: 24px;
+    font-size: 13px; outline: none; font-family: inherit;
     transition: all 0.2s;
   }
-  .input-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(129,140,248,0.12); }
+  .input-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(129,140,248,0.1); }
   .input-row input::placeholder { color: var(--text3); }
   .circle-btn {
-    width: 46px; height: 46px; border-radius: 50%;
-    border: 2px solid var(--border); background: var(--bg2);
-    color: var(--text2); font-size: 18px; cursor: pointer;
+    width: 42px; height: 42px; border-radius: 50%;
+    border: 2px solid var(--border); background: var(--bg);
+    color: var(--text2); font-size: 17px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     transition: all 0.2s; flex-shrink: 0;
   }
   .circle-btn:active { transform: scale(0.92); }
-  .circle-btn.send {
-    background: var(--gradient); border: none; color: #fff;
-    box-shadow: 0 2px 8px rgba(129,140,248,0.3);
-  }
-  .circle-btn.recording {
-    background: var(--bad); border-color: var(--bad);
-    animation: pulse 1.2s infinite;
-  }
-  @keyframes pulse {
-    0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.4)}
-    50%{box-shadow:0 0 0 14px rgba(248,113,113,0)}
-  }
+  .circle-btn.send { background: var(--gradient); border: none; color: #fff; box-shadow: 0 2px 8px rgba(129,140,248,0.25); }
+  .circle-btn.recording { background: var(--bad); border-color: var(--bad); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.4)} 50%{box-shadow:0 0 0 12px rgba(248,113,113,0)} }
 
   .toast {
-    position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
     background: rgba(37,39,64,0.95); backdrop-filter: blur(10px);
     color: #fff; padding: 10px 22px; border-radius: 24px;
     font-size: 13px; z-index: 99; opacity: 0; transition: opacity 0.3s;
-    pointer-events: none; border: 1px solid var(--border-light);
+    pointer-events: none; border: 1px solid var(--border);
   }
   .toast.show { opacity: 1; }
 
   .file-chip {
     display: inline-flex; align-items: center; gap: 4px;
     background: rgba(129,140,248,0.1); border: 1px solid rgba(129,140,248,0.2);
-    border-radius: 14px; padding: 5px 12px; font-size: 11px; color: var(--accent2);
+    border-radius: 12px; padding: 4px 10px; font-size: 11px; color: var(--accent2);
   }
-  .file-chip .x { cursor: pointer; color: var(--text3); margin-left: 2px; }
+  .file-chip .x { cursor: pointer; color: var(--text3); }
   .file-chip .x:hover { color: var(--bad); }
   input[type="file"] { display: none; }
-  #fileArea { padding: 0 16px 4px; display: flex; flex-wrap: wrap; gap: 4px; min-height: 0; }
-  .empty-chat {
-    text-align: center; color: var(--text3); padding: 40px 16px;
-    font-size: 14px; line-height: 1.8;
+  #fileArea { padding: 0 20px 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+
+  .inline-code {
+    background: var(--bg2); padding: 1px 5px; border-radius: 3px;
+    font-size: 12px; border: 1px solid var(--border);
   }
-  .empty-chat small { color: var(--text3); }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>&#x1F916; Skill Copilot</h1>
-  <div class="sub" id="statusText">点击技能卡片 或 语音说出你想做的事</div>
-</div>
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h2>&#x1F916; Skill Copilot</h2>
+  </div>
 
-<div class="skill-grid" id="skillGrid"></div>
+  <div class="spaces-section">
+    <div class="section-label">Spaces</div>
+    <div id="spaceList"></div>
+    <button class="new-space-btn" onclick="createSpace()">+ 新建 Space</button>
+  </div>
 
-<div class="messages" id="messages">
-  <div class="empty-chat">
-    <div style="font-size:40px;margin-bottom:12px;">&#x1F447;</div>
-    选一个技能，或直接说你想做什么<br>
-    <small style="color:#555">比如："帮我写一个 Python 爬虫"</small>
+  <div class="skills-section">
+    <div class="section-label">Skills</div>
+    <div id="skillList"></div>
+  </div>
+
+  <div class="sidebar-footer">
+    <button onclick="exportSpace()">&#x1F4E4; 导出</button>
+    <button onclick="deleteSpace()">&#x1F5D1; 删除</button>
   </div>
 </div>
 
-<div id="fileArea"></div>
+<!-- MAIN -->
+<div class="main">
+  <div class="chat-header">
+    <div class="space-title" id="spaceTitle">默认空间</div>
+    <div class="space-actions">
+      <button onclick="clearCurrentSpace()">清空对话</button>
+    </div>
+  </div>
 
-<div class="input-area">
-  <div class="input-row">
-    <button class="circle-btn" id="micBtn" onclick="toggleVoice()">&#x1F3A4;</button>
-    <input type="text" id="input" placeholder="输入指令或说出需求..." onkeydown="if(event.key==='Enter')send()">
-    <button class="circle-btn" onclick="document.getElementById('fileInput').click()">&#x1F4CE;</button>
-    <button class="circle-btn send" id="sendBtn" onclick="send()">&#x27A4;</button>
+  <div class="messages" id="messages">
+    <div class="empty-chat">
+      <div>
+        <div style="font-size:40px;margin-bottom:12px;">&#x1F4AC;</div>
+        选择左侧技能 或 直接说出你的需求<br>
+        <small style="color:var(--text3)">对话按 Space 自动保存</small>
+      </div>
+    </div>
+  </div>
+
+  <div id="fileArea"></div>
+
+  <div class="input-area">
+    <div class="input-row">
+      <button class="circle-btn" id="micBtn" onclick="toggleVoice()">&#x1F3A4;</button>
+      <input type="text" id="input" placeholder="输入指令..." onkeydown="if(event.key==='Enter')send()">
+      <button class="circle-btn" onclick="document.getElementById('fileInput').click()">&#x1F4CE;</button>
+      <button class="circle-btn send" id="sendBtn" onclick="send()">&#x27A4;</button>
+    </div>
   </div>
 </div>
 
@@ -218,74 +277,177 @@
 <script>
 // ============ SKILL REGISTRY ============
 const SKILLS = [
-  { id:'compress', icon:'&#x1F5DC;', name:'文件压缩', desc:'压缩文件/文件夹，支持 zip、gzip，大幅减小体积',
-    keywords:['压缩','解压','tar','zip','gzip','打包','解包','extract'], handler:'compressFile', type:'local' },
-  { id:'code', icon:'&#x1F4BB;', name:'写代码', desc:'根据需求生成代码、脚本、网页',
-    keywords:['写','生成','代码','脚本','编程','创建','做一个','帮我做'], handler:'aiTask', type:'ai',
-    prompt:'你是编程专家。直接给出可运行代码，附带简要说明。' },
-  { id:'debug', icon:'&#x1F50D;', name:'调试修复', desc:'分析报错、找 Bug、给出修复方案',
-    keywords:['调试','bug','报错','错误','修复','fix','不工作'], handler:'aiTask', type:'ai',
-    prompt:'你是调试专家。分析错误根因，给出具体修复步骤。' },
-  { id:'review', icon:'&#x270D;', name:'代码审查', desc:'审查代码质量、安全性、性能',
-    keywords:['审查','review','检查','优化','重构','refactor'], handler:'aiTask', type:'ai',
-    prompt:'你是代码审查专家。检查质量、安全、性能，给出具体改进建议。' },
-  { id:'explain', icon:'&#x1F4D6;', name:'解释概念', desc:'用通俗语言解释技术概念',
-    keywords:['解释','说明','是什么','什么意思','讲解','介绍','原理'], handler:'aiTask', type:'ai',
-    prompt:'用一句话给出核心答案，再用通俗语言展开。' },
-  { id:'plan', icon:'&#x1F4CB;', name:'方案规划', desc:'制定技术方案、实施计划',
-    keywords:['规划','计划','方案','设计','架构','怎么做','如何实现'], handler:'aiTask', type:'ai',
-    prompt:'你是技术架构师。给出分步骤的可执行方案。' },
-  { id:'translate', icon:'&#x1F310;', name:'翻译', desc:'中英互译，保持专业术语准确',
-    keywords:['翻译','translate','英文','中文'], handler:'aiTask', type:'ai',
-    prompt:'你是专业翻译。准确翻译，保留技术术语。中英互译。' },
-  { id:'summarize', icon:'&#x1F4DD;', name:'总结摘要', desc:'提取长文核心要点',
-    keywords:['总结','摘要','概括','归纳','总结一下'], handler:'aiTask', type:'ai',
-    prompt:'你是信息整理专家。提取核心要点，结构化呈现。' },
+  { id:'compress', icon:'&#x1F5DC;', name:'文件压缩', desc:'压缩为 zip/gzip,减小体积', keywords:['压缩','解压','tar','zip','gzip','打包'], handler:'compressFile', type:'local' },
+  { id:'code', icon:'&#x1F4BB;', name:'写代码', desc:'生成代码、脚本、网页', keywords:['写','生成','代码','脚本','编程','创建','做一个'], handler:'aiTask', type:'ai', prompt:'你是编程专家。直接给出可运行代码，附带简要说明。' },
+  { id:'debug', icon:'&#x1F50D;', name:'调试修复', desc:'分析报错,找Bug,给方案', keywords:['调试','bug','报错','错误','修复','fix'], handler:'aiTask', type:'ai', prompt:'你是调试专家。分析错误根因，给出修复步骤。' },
+  { id:'review', icon:'&#x270D;', name:'代码审查', desc:'审查代码质量与安全', keywords:['审查','review','检查','优化','重构'], handler:'aiTask', type:'ai', prompt:'你是代码审查专家。检查质量、安全、性能，给改进建议。' },
+  { id:'explain', icon:'&#x1F4D6;', name:'解释概念', desc:'通俗讲解技术概念', keywords:['解释','说明','是什么','什么意思','讲解','原理'], handler:'aiTask', type:'ai', prompt:'一句话给核心答案，再用通俗语言展开。' },
+  { id:'plan', icon:'&#x1F4CB;', name:'方案规划', desc:'制定技术方案与计划', keywords:['规划','计划','方案','设计','架构','怎么做'], handler:'aiTask', type:'ai', prompt:'你是技术架构师。给出分步骤的可执行方案。' },
+  { id:'translate', icon:'&#x1F310;', name:'翻译', desc:'中英互译,术语准确', keywords:['翻译','translate','英文','中文'], handler:'aiTask', type:'ai', prompt:'你是专业翻译。准确翻译，保留技术术语。' },
+  { id:'summarize', icon:'&#x1F4DD;', name:'总结摘要', desc:'提取长文核心要点', keywords:['总结','摘要','概括','归纳'], handler:'aiTask', type:'ai', prompt:'你是信息整理专家。提取核心要点，结构化呈现。' },
 ];
 
 // ============ STATE ============
+const STORAGE_KEY = 'sc_spaces';
+let spaces = {};
+let currentSpaceId = 'default';
 let activeSkill = null;
 let pendingFiles = [];
-let isListening = false;
-let recognition = null;
+let isListening = false; let recognition = null;
 const apiKey = () => localStorage.getItem('sk_key') || '';
+
+// ============ SPACES ENGINE ============
+function loadSpaces() {
+  try { spaces = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { spaces = {}; }
+  if (!spaces['default']) spaces['default'] = { name: '默认空间', messages: [], createdAt: Date.now() };
+  if (!spaces[currentSpaceId]) currentSpaceId = 'default';
+}
+
+function saveSpaces() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(spaces));
+}
+
+function getCurrentMessages() {
+  return spaces[currentSpaceId]?.messages || [];
+}
+
+function addMessageToSpace(role, text, skill) {
+  const msgs = getCurrentMessages();
+  msgs.push({
+    role, text,
+    skill: skill ? { id: skill.id, name: skill.name, icon: skill.icon } : null,
+    time: Date.now()
+  });
+  saveSpaces();
+}
+
+function createSpace() {
+  const name = prompt('Space 名称:', '新建空间');
+  if (!name) return;
+  const id = 'sp_' + Date.now();
+  spaces[id] = { name, messages: [], createdAt: Date.now() };
+  currentSpaceId = id;
+  saveSpaces();
+  renderAll();
+  toast('已创建: ' + name);
+}
+
+function switchSpace(id) {
+  currentSpaceId = id;
+  activeSkill = null;
+  renderAll();
+}
+
+function deleteSpace() {
+  if (currentSpaceId === 'default') { toast('不能删除默认空间'); return; }
+  if (!confirm('删除 "' + spaces[currentSpaceId]?.name + '" 及其所有对话？')) return;
+  delete spaces[currentSpaceId];
+  currentSpaceId = 'default';
+  saveSpaces();
+  renderAll();
+  toast('已删除');
+}
+
+function clearCurrentSpace() {
+  if (!confirm('清空当前空间所有对话？')) return;
+  spaces[currentSpaceId].messages = [];
+  saveSpaces();
+  renderMessages();
+}
+
+function exportSpace() {
+  const msgs = getCurrentMessages();
+  let text = '# ' + spaces[currentSpaceId].name + '\n\n';
+  msgs.forEach(m => {
+    text += `**${m.role === 'user' ? 'You' : 'AI'}** ${m.skill ? '(' + m.skill.name + ')' : ''} - ${new Date(m.time).toLocaleString('zh-CN')}\n${m.text}\n\n---\n\n`;
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/markdown' }));
+  a.download = spaces[currentSpaceId].name + '.md';
+  a.click();
+}
 
 // ============ INIT ============
 (function init() {
-  renderSkillGrid();
+  loadSpaces();
   if (!apiKey()) {
     const k = prompt('输入 DeepSeek API Key (sk-...):\n仅存本地', '');
     if (k) localStorage.setItem('sk_key', k.trim());
   }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+  renderAll();
 })();
 
-function renderSkillGrid() {
-  const grid = document.getElementById('skillGrid');
-  grid.innerHTML = SKILLS.map(s => `
-    <div class="skill-card" data-skill="${s.id}" onclick="toggleSkill('${s.id}')">
-      <div class="card-badge ${s.type}"></div>
-      <div class="card-icon">${s.icon}</div>
-      <div class="card-name">${s.name}</div>
-      <div class="card-desc">${s.desc}</div>
-    </div>
-  `).join('');
+function renderAll() {
+  renderSpaceList();
+  renderSkillList();
+  renderMessages();
+  document.getElementById('spaceTitle').textContent = spaces[currentSpaceId]?.name || '默认空间';
+  document.getElementById('statusText')?.remove?.();
+}
+
+function renderSpaceList() {
+  const el = document.getElementById('spaceList');
+  el.innerHTML = Object.entries(spaces).map(([id, sp]) =>
+    `<div class="space-item ${id === currentSpaceId ? 'active' : ''}" onclick="switchSpace('${id}')">
+      <span class="dot"></span> ${escHtml(sp.name)}
+      <span class="count">${sp.messages.length}</span>
+    </div>`
+  ).join('');
+}
+
+function renderSkillList() {
+  document.getElementById('skillList').innerHTML = SKILLS.map(s =>
+    `<div class="skill-mini ${activeSkill === s.id ? 'active' : ''}" onclick="toggleSkill('${s.id}')">
+      <span class="icon">${s.icon}</span> ${s.name}
+    </div>`
+  ).join('');
 }
 
 function toggleSkill(id) {
-  const was = activeSkill === id;
-  activeSkill = was ? null : id;
-  document.querySelectorAll('.skill-card').forEach(c => c.classList.remove('active'));
-  if (!was) document.querySelector(`[data-skill="${id}"]`).classList.add('active');
-  const s = SKILLS.find(s => s.id === id);
-  document.getElementById('statusText').textContent = was ? '点击技能卡片 或 语音说出你想做的事' : `已选: ${s.name} — ${s.desc}`;
-  if (!was) document.getElementById('input').focus();
+  activeSkill = activeSkill === id ? null : id;
+  renderSkillList();
+  document.getElementById('input').focus();
 }
 
 function matchSkill(text) {
   const l = text.toLowerCase();
   if (activeSkill) return SKILLS.find(s => s.id === activeSkill);
   return SKILLS.find(s => s.keywords.some(k => l.includes(k)));
+}
+
+// ============ RENDER MESSAGES ============
+function renderMessages() {
+  const container = document.getElementById('messages');
+  const msgs = getCurrentMessages();
+  if (!msgs.length) {
+    container.innerHTML = `<div class="empty-chat"><div><div style="font-size:40px;margin-bottom:12px;">&#x1F4AC;</div>选择左侧技能 或 直接说出你的需求<br><small style="color:var(--text3)">对话按 Space 自动保存</small></div></div>`;
+    return;
+  }
+
+  // Group by day
+  let html = '';
+  let lastDate = '';
+  msgs.forEach(m => {
+    const d = new Date(m.time).toLocaleDateString('zh-CN', { month:'short', day:'numeric', weekday:'short' });
+    if (d !== lastDate) {
+      html += `<div class="msg-group-header">${d}</div>`;
+      lastDate = d;
+    }
+    const cls = m.role === 'user' ? 'user' : 'ai';
+    let body = '';
+    if (m.skill) body += `<div class="skill-tag">${m.skill.icon} ${m.skill.name}</div>`;
+    body += formatMsgText(m.text);
+    html += `<div class="msg ${cls}">${body}</div>`;
+  });
+  container.innerHTML = html;
+  container.scrollTop = 99999;
+}
+
+function formatMsgText(text) {
+  return text
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<div class="result">$2</div>')
+    .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
 }
 
 // ============ SEND ============
@@ -297,30 +459,31 @@ async function send() {
 
   const skill = matchSkill(text);
   const handler = skill?.handler || 'aiTask';
-  addMsg('user', text || (pendingFiles.length ? '处理文件' : ''), skill);
+  const displayText = text || (pendingFiles.length ? '处理文件' : '');
+
+  addMessageToSpace('user', displayText, skill);
+  renderMessages();
   document.getElementById('sendBtn').disabled = true;
-  document.getElementById('statusText').textContent = '处理中...';
 
   try {
     if (handler === 'compressFile') await compressFile(text, pendingFiles);
     else await aiTask(text, skill, pendingFiles);
   } catch (e) {
-    addMsg('ai', '出错: ' + e.message);
+    addMessageToSpace('ai', '出错: ' + e.message, null);
+    renderMessages();
   }
   pendingFiles = [];
   updateFileChips();
   document.getElementById('sendBtn').disabled = false;
-  document.getElementById('statusText').textContent = '就绪';
 }
 
 // ============ COMPRESSION ============
 async function compressFile(text, files) {
   if (!files.length) {
-    addMsg('ai', '请先添加要压缩的文件（点 &#x1F4CE; 或拖放）。支持:\n• .zip (Deflate 最大压缩)\n• .gz (gzip 单文件)\n• 自动选最佳格式');
-    return;
+    addMessageToSpace('ai', '请先添加文件（点 &#x1F4CE; 或拖放）。支持 .zip (Deflate 最大压缩) 和 .gz (gzip)', null);
+    renderMessages(); return;
   }
 
-  // Load JSZip + pako
   if (typeof JSZip === 'undefined') {
     await new Promise((res, rej) => {
       const s = document.createElement('script');
@@ -344,67 +507,52 @@ async function compressFile(text, files) {
     fileData.push({ name: f.name, bytes });
   }
 
-  addMsg('ai', `正在压缩 ${files.length} 个文件 (原始 ${(totalOriginal/1024).toFixed(1)} KB)...`);
-
-  // For single file: use gzip (pako) for best compression
-  // For multiple: use zip with max deflate
   let outBlob, outName, compressedSize;
-
   if (files.length === 1) {
-    // gzip with pako (level 9)
     const compressed = pako.gzip(fileData[0].bytes, { level: 9 });
     compressedSize = compressed.length;
     outBlob = new Blob([compressed], { type: 'application/gzip' });
     outName = fileData[0].name + '.gz';
   } else {
-    // zip with JSZip, DEFLATE level 9
     const zip = new JSZip();
-    for (const f of fileData) {
-      zip.file(f.name, f.bytes, { compression: 'DEFLATE', compressionOptions: { level: 9 } });
-    }
-    outBlob = await zip.generateAsync({
-      type: 'blob',
-      compression: 'DEFLATE',
-      compressionOptions: { level: 9 }
-    });
+    for (const f of fileData) zip.file(f.name, f.bytes, { compression: 'DEFLATE', compressionOptions: { level: 9 } });
+    outBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 9 } });
     compressedSize = outBlob.size;
     outName = 'archive.zip';
   }
 
   const ratio = ((1 - compressedSize / totalOriginal) * 100).toFixed(1);
-  const msgHtml =
-    `<b>压缩完成!</b>
-    <div class="stat-row"><span>原始: ${(totalOriginal/1024).toFixed(1)} KB</span> <span>&rarr;</span> <span class="good">压缩后: ${(compressedSize/1024).toFixed(1)} KB</span></div>
-    <div class="stat-row"><span class="good">减小 ${ratio}%</span> <span>格式: ${outName.split('.').pop().toUpperCase()}</span></div>`;
+  const msg = `压缩完成!\n原始: ${(totalOriginal/1024).toFixed(1)} KB → 压缩后: ${(compressedSize/1024).toFixed(1)} KB (减小 ${ratio}%)\n格式: ${outName.split('.').pop().toUpperCase()}`;
 
-  addMsg('ai', msgHtml);
+  addMessageToSpace('ai', msg, SKILLS.find(s => s.id === 'compress'));
+  renderMessages();
+
   const a = document.createElement('a');
   a.href = URL.createObjectURL(outBlob);
   a.download = outName;
   a.click();
 
-  if (ratio < 0) {
-    addMsg('ai', '提示: 文件已经高度压缩(如图片/视频)，无法进一步减小。\n对于这类文件，建议转为更高效的格式(如 PNG→WebP)。');
+  if (parseFloat(ratio) < 0) {
+    addMessageToSpace('ai', '提示: 文件已高度压缩(如图片/视频)，无法进一步减小。建议转换格式(如 PNG→WebP)。', null);
+    renderMessages();
   }
 }
 
 // ============ AI TASK ============
 async function aiTask(text, skill, files) {
   const key = apiKey();
-  if (!key) { addMsg('ai', '请先设置 DeepSeek API Key。刷新页面重新输入。'); return; }
+  if (!key) { addMessageToSpace('ai', '请先设置 DeepSeek API Key。刷新页面重新输入。', null); renderMessages(); return; }
 
   let content = text || '';
   if (files.length) {
     content = '附带了以下文件:\n' + files.map(f =>
-      `--- ${f.name} (${(f.size/1024).toFixed(1)}KB) ---\n${(f.text||'[二进制]').slice(0,4000)}`
+      `--- ${f.name} (${(f.size/1024).toFixed(1)}KB) ---\n${(f.text||'[二进制]').slice(0, 4000)}`
     ).join('\n') + '\n\n用户指令: ' + content;
   }
 
   const messages = [];
   if (skill?.prompt) messages.push({ role: 'system', content: skill.prompt });
   messages.push({ role: 'user', content });
-
-  addMsg('ai', '<i>AI 思考中...</i>');
 
   const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
@@ -415,98 +563,68 @@ async function aiTask(text, skill, files) {
   const reply = data.choices?.[0]?.message?.content
     || 'API 错误: ' + (data.error?.message || JSON.stringify(data).slice(0, 200));
 
-  // Remove "thinking..." and show real reply
-  const msgs = document.getElementById('messages');
-  msgs.lastChild.remove();
-  addMsg('ai', reply);
+  addMessageToSpace('ai', reply, skill);
+  renderMessages();
 }
 
-// ============ UI HELPERS ============
-function addMsg(role, text, skill) {
-  const msgs = document.getElementById('messages');
-  // Remove empty state
-  const empty = msgs.querySelector('.empty-chat');
-  if (empty) empty.remove();
-
-  const div = document.createElement('div');
-  div.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
-  let html = '';
-  if (skill) html += `<div class="skill-tag">${skill.icon} ${skill.name}</div>`;
-  html += text
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<div class="result">$2</div>')
-    .replace(/`([^`]+)`/g, '<code style="background:#111;padding:1px 5px;border-radius:3px;font-size:12px;border:1px solid var(--border)">$1</code>');
-  div.innerHTML = html;
-  msgs.appendChild(div);
-  msgs.scrollTop = 99999;
-}
-
-function updateFileChips() {
-  const el = document.getElementById('fileArea');
-  if (!pendingFiles.length) { el.innerHTML = ''; return; }
-  el.innerHTML = pendingFiles.map((f, i) =>
-    `<span class="file-chip">&#x1F4C4; ${f.name.slice(0,22)} <span class="x" onclick="removeFile(${i})">&times;</span></span>`
-  ).join('');
-}
-function removeFile(i) { pendingFiles.splice(i, 1); updateFileChips(); }
-
+// ============ FILE HANDLING ============
 function handleFiles(input) { for (const f of input.files) readFile(f); input.value = ''; }
-
 function readFile(file) {
   const reader = new FileReader();
   reader.onload = () => {
+    const isText = file.type.startsWith('text') || file.name.match(/\.(js|ts|py|html|css|json|md|txt|xml|yml|yaml|sh|bat|log|sql|csv)$/i);
     const obj = { name: file.name, size: file.size };
-    const isText = file.type.startsWith('text') ||
-      file.name.match(/\.(js|ts|py|html|css|json|md|txt|xml|yml|yaml|sh|bat|log|sql|csv)$/i);
     if (isText) obj.text = reader.result;
     else obj.data = new Uint8Array(reader.result);
     pendingFiles.push(obj);
     updateFileChips();
     toast('已添加: ' + file.name + ` (${(file.size/1024).toFixed(1)}KB)`);
   };
-  const isText = file.type.startsWith('text') ||
-    file.name.match(/\.(js|ts|py|html|css|json|md|txt|xml|yml|yaml|sh|bat|log|sql|csv)$/i);
+  const isText = file.type.startsWith('text') || file.name.match(/\.(js|ts|py|html|css|json|md|txt|xml|yml|yaml|sh|bat|log|sql|csv)$/i);
   if (isText) reader.readAsText(file);
   else reader.readAsArrayBuffer(file);
 }
+
+function updateFileChips() {
+  const el = document.getElementById('fileArea');
+  if (!pendingFiles.length) { el.innerHTML = ''; return; }
+  el.innerHTML = pendingFiles.map((f, i) =>
+    `<span class="file-chip">&#x1F4C4; ${f.name.slice(0,18)} <span class="x" onclick="removeFile(${i})">&times;</span></span>`
+  ).join('');
+}
+function removeFile(i) { pendingFiles.splice(i, 1); updateFileChips(); }
 
 // ============ VOICE ============
 function toggleVoice() { isListening ? stopVoice() : startVoice(); }
 function startVoice() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { toast('浏览器不支持语音'); return; }
-  recognition = new SR();
-  recognition.continuous = false; recognition.lang = 'zh-CN';
+  recognition = new SR(); recognition.continuous = false; recognition.lang = 'zh-CN';
   recognition.onresult = e => {
-    const text = e.results[0][0].transcript;
-    document.getElementById('input').value = text;
+    document.getElementById('input').value = e.results[0][0].transcript;
     stopVoice(); send();
   };
   recognition.onerror = e => { stopVoice(); if (e.error !== 'aborted') toast('语音失败: ' + e.error); };
   recognition.onend = () => stopVoice();
-  recognition.start();
-  isListening = true;
+  recognition.start(); isListening = true;
   document.getElementById('micBtn').classList.add('recording');
-  document.getElementById('statusText').textContent = '正在听...';
 }
 function stopVoice() {
   if (recognition) { try { recognition.stop(); } catch(e){}; recognition = null; }
   isListening = false;
   document.getElementById('micBtn').classList.remove('recording');
-  document.getElementById('statusText').textContent = '就绪';
 }
 
-// Drag & drop
+// ============ UTILS ============
 document.addEventListener('dragover', e => e.preventDefault());
-document.addEventListener('drop', e => {
-  e.preventDefault();
-  for (const f of e.dataTransfer.files) readFile(f);
-});
+document.addEventListener('drop', e => { e.preventDefault(); for (const f of e.dataTransfer.files) readFile(f); });
 
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 2000);
 }
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 </script>
 </body>
 </html>

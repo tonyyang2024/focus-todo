@@ -148,11 +148,29 @@
     color: var(--accent2); margin-bottom: 3px; font-weight: 600;
   }
   .msg .result {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
-    padding: 8px 10px; margin-top: 4px;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+    margin-top: 4px; overflow: hidden;
+  }
+  .msg .result .code-actions {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px 10px; background: rgba(0,0,0,0.2);
+    border-bottom: 1px solid var(--border);
+  }
+  .msg .result .code-lang {
+    font-size: 10px; color: var(--accent2); text-transform: uppercase;
+    letter-spacing: 0.5px; font-weight: 600; margin-right: auto;
+  }
+  .msg .result .code-actions button {
+    background: none; border: 1px solid var(--border); color: var(--text2);
+    padding: 2px 8px; border-radius: 4px; cursor: pointer;
+    font-size: 12px; transition: all 0.15s; font-family: inherit;
+  }
+  .msg .result .code-actions button:hover { color: var(--text); border-color: var(--accent); }
+  .msg .result pre {
+    padding: 10px 12px; margin: 0;
     font-family: 'SF Mono','Fira Code',Consolas,monospace;
     font-size: 11px; white-space: pre-wrap; overflow-x: auto;
-    color: #c9d1d9;
+    color: #c9d1d9; max-height: 300px; overflow-y: auto;
   }
   .msg .stat-row { display: flex; gap: 12px; margin-top: 4px; font-size: 11px; color: var(--text2); }
   .msg .stat-row .good { color: var(--good); font-weight: 600; }
@@ -278,7 +296,13 @@
 // ============ SKILL REGISTRY ============
 const SKILLS = [
   { id:'compress', icon:'&#x1F5DC;', name:'文件压缩', desc:'压缩为 zip/gzip,减小体积', keywords:['压缩','解压','tar','zip','gzip','打包'], handler:'compressFile', type:'local' },
-  { id:'code', icon:'&#x1F4BB;', name:'写代码', desc:'生成代码、脚本、网页', keywords:['写','生成','代码','脚本','编程','创建','做一个'], handler:'aiTask', type:'ai', prompt:'你是编程专家。直接给出可运行代码，附带简要说明。' },
+  { id:'code', icon:'&#x1F4BB;', name:'写代码', desc:'生成可执行代码，在线预览运行', keywords:['写','生成','代码','脚本','编程','创建','做一个','帮我写','帮我做'], handler:'codeTask', type:'ai',
+    prompt:`你是编程专家。生成的代码必须可执行。要求:
+1. 先判断用户需求最适合的语言(Web→HTML/CSS/JS, 脚本→Python/Node.js, 工具→Bash)
+2. HTML/CSS/JS 输出完整单文件(内嵌style+script),可直接在浏览器运行
+3. 其他语言标注运行方式(如 node script.js / python main.py)
+4. 代码要有错误处理和注释
+5. 输出格式: 用 \`\`\`语言名 包裹代码块, 之后用一段话说明运行方法` },
   { id:'debug', icon:'&#x1F50D;', name:'调试修复', desc:'分析报错,找Bug,给方案', keywords:['调试','bug','报错','错误','修复','fix'], handler:'aiTask', type:'ai', prompt:'你是调试专家。分析错误根因，给出修复步骤。' },
   { id:'review', icon:'&#x270D;', name:'代码审查', desc:'审查代码质量与安全', keywords:['审查','review','检查','优化','重构'], handler:'aiTask', type:'ai', prompt:'你是代码审查专家。检查质量、安全、性能，给改进建议。' },
   { id:'explain', icon:'&#x1F4D6;', name:'解释概念', desc:'通俗讲解技术概念', keywords:['解释','说明','是什么','什么意思','讲解','原理'], handler:'aiTask', type:'ai', prompt:'一句话给核心答案，再用通俗语言展开。' },
@@ -445,10 +469,61 @@ function renderMessages() {
 }
 
 function formatMsgText(text) {
+  let idx = 0;
+  const blocks = {};
   return text
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<div class="result">$2</div>')
+    .replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+      const id = 'cb' + (idx++);
+      const l = (lang || 'text').toLowerCase();
+      const isHTML = l === 'html' || code.includes('<!DOCTYPE') || code.includes('<html');
+      const isWeb = isHTML || l === 'css' || l === 'javascript' || l === 'js';
+      blocks[id] = { code: code.trim(), lang: l, isHTML, isWeb };
+      return `<div class="result"><div class="code-actions">
+        <span class="code-lang">${l}</span>
+        <button onclick="copyCode('${id}')" title="复制">&#x1F4CB;</button>
+        <button onclick="downloadCode('${id}')" title="下载">&#x1F4E5;</button>
+        ${isHTML ? '<button onclick="runSandbox(\'' + id + '\')" title="运行预览" style="color:var(--good)">&#x25B6;</button>' : ''}
+      </div><pre id="${id}">${escHtml(code)}</pre></div>`;
+    })
     .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
 }
+
+// ============ CODE ACTIONS ============
+window._codeBlocks = {};
+function copyCode(id) {
+  const code = document.getElementById(id)?.textContent || '';
+  navigator.clipboard.writeText(code).then(() => toast('已复制'))
+    .catch(() => toast('复制失败,请手动选择'));
+}
+function downloadCode(id) {
+  const code = document.getElementById(id)?.textContent || '';
+  const blob = new Blob([code], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  // Guess extension
+  const langEl = document.getElementById(id)?.parentElement?.querySelector('.code-lang');
+  const lang = langEl?.textContent || 'txt';
+  const ext = { javascript:'js', js:'js', python:'py', html:'html', css:'css', bash:'sh', sh:'sh', typescript:'ts', ts:'ts', json:'json', sql:'sql', xml:'xml', yaml:'yml', markdown:'md' }[lang] || 'txt';
+  a.download = 'code.' + ext;
+  a.click();
+}
+function runSandbox(id) {
+  const code = document.getElementById(id)?.textContent || '';
+  const w = window.open('', '_blank');
+  w.document.write(code);
+  w.document.close();
+}
+
+// Store code blocks during render
+const origRenderMsg = renderMessages;
+renderMessages = function() {
+  origRenderMsg();
+  // Re-bind code blocks after render
+  document.querySelectorAll('.result pre').forEach(pre => {
+    if (!pre.id) return;
+    window._codeBlocks[pre.id] = pre.textContent;
+  });
+};
 
 // ============ SEND ============
 async function send() {
@@ -539,7 +614,14 @@ async function compressFile(text, files) {
 }
 
 // ============ AI TASK ============
-async function aiTask(text, skill, files) {
+async function aiTask(text, skill, files) { await runAI(text, skill, files); }
+
+async function codeTask(text, skill, files) {
+  // Enhanced code task: better prompt + code action buttons
+  await runAI(text, skill, files);
+}
+
+async function runAI(text, skill, files) {
   const key = apiKey();
   if (!key) { addMessageToSpace('ai', '请先设置 DeepSeek API Key。刷新页面重新输入。', null); renderMessages(); return; }
 

@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const compression = require('compression');
 const SftpClient = require('ssh2-sftp-client');
 const db = require('./db');
 
@@ -14,8 +15,19 @@ const JWT_SECRET = process.env.JWT_SECRET || 'focus-todo-secret-change-in-produc
 const JWT_EXPIRY = '7d';
 
 const app = express();
+app.use(compression());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Cache static assets (1 hour for HTML, 1 week for others)
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    } else if (filePath.match(/\.(js|css|png|jpg|svg|ico|json)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=604800');
+    }
+  }
+}));
 
 // --- Auth middleware ---
 function authRequired(req, res, next) {

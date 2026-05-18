@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>附件批量上传 - 台账管理</title>
+<title>Attachment Manager - Batch Upload & Ledger</title>
 <style>
   :root {
     --sapBrand: #0070f2; --sapHover: #0057b8; --sapBg: #f5f6f7;
@@ -18,7 +18,6 @@
     background: var(--sapBg); color: var(--sapText); min-height: 100vh;
   }
 
-  /* Shell Bar */
   .shell-bar {
     background: #354a5f; color: #fff; padding: 0 24px;
     height: 48px; display: flex; align-items: center; gap: 16px;
@@ -28,10 +27,8 @@
   .shell-bar .separator { flex: 1; }
   .shell-bar .counter { font-size: 13px; opacity: 0.85; }
 
-  /* Content */
   .content { max-width: 1200px; margin: 0 auto; padding: 24px; }
 
-  /* Page Header */
   .page-header {
     background: var(--sapWhite); border-radius: var(--radius);
     padding: 20px 24px; margin-bottom: 16px;
@@ -40,7 +37,6 @@
   .page-header h1 { font-size: 20px; font-weight: 700; }
   .page-header .subtitle { font-size: 13px; color: var(--sapText2); margin-top: 2px; }
 
-  /* Upload Card */
   .card {
     background: var(--sapWhite); border-radius: var(--radius);
     box-shadow: var(--shadow); margin-bottom: 16px; overflow: hidden;
@@ -51,7 +47,6 @@
   }
   .card-body { padding: 20px 24px; }
 
-  /* Drop Zone */
   .drop-zone {
     border: 2px dashed var(--sapBorder); border-radius: var(--radius);
     padding: 40px 20px; text-align: center; cursor: pointer;
@@ -64,7 +59,6 @@
   .drop-zone .text { font-size: 14px; color: var(--sapText2); }
   .drop-zone .text b { color: var(--sapBrand); cursor: pointer; }
 
-  /* Upload Queue */
   .upload-queue { margin-top: 16px; }
   .queue-item {
     display: flex; align-items: center; gap: 12px;
@@ -89,7 +83,6 @@
   .queue-item .status.error { color: var(--sapBad); }
   .upload-actions { display: flex; gap: 8px; margin-top: 12px; }
 
-  /* Buttons */
   .btn {
     padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer;
     font-size: 13px; font-weight: 500; font-family: inherit; transition: all 0.15s;
@@ -106,7 +99,6 @@
   .btn-danger:hover { background: #fef0f0; }
   .btn-sm { padding: 4px 10px; font-size: 11px; }
 
-  /* Ledger Table */
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th {
@@ -115,10 +107,7 @@
     color: var(--sapText2); font-size: 12px; text-transform: uppercase;
     letter-spacing: 0.5px; white-space: nowrap;
   }
-  td {
-    padding: 10px 14px; border-bottom: 1px solid var(--sapBorder);
-    vertical-align: middle;
-  }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--sapBorder); vertical-align: middle; }
   tr:hover td { background: #f6f8fa; }
   .file-row .fname { font-weight: 500; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .file-row .ftype {
@@ -126,12 +115,9 @@
     font-size: 10px; font-weight: 600; background: #e8f2ff; color: var(--sapBrand);
   }
   .actions-cell { display: flex; gap: 4px; }
-  .empty-ledger {
-    text-align: center; padding: 60px 20px; color: var(--sapText2);
-  }
+  .empty-ledger { text-align: center; padding: 60px 20px; color: var(--sapText2); }
   .empty-ledger .big { font-size: 48px; margin-bottom: 12px; }
 
-  /* Toolbar */
   .toolbar {
     display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
     padding: 12px 24px;
@@ -147,7 +133,6 @@
   }
   .stats { margin-left: auto; font-size: 12px; color: var(--sapText2); }
 
-  /* Toast */
   .toast {
     position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(20px);
     background: #1d2d3e; color: #fff; padding: 10px 24px; border-radius: 20px;
@@ -156,7 +141,6 @@
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  /* Modal */
   .modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100;
     display: flex; align-items: center; justify-content: center;
@@ -197,85 +181,81 @@
   }
   @media (max-width: 480px) {
     .page-header h1 { font-size: 16px; }
-    th:nth-child(3), td:nth-child(3) { display: none; } /* hide type column */
-    th:nth-child(4), td:nth-child(4) { display: none; } /* hide size column */
+    th:nth-child(3), td:nth-child(3) { display: none; }
+    th:nth-child(4), td:nth-child(4) { display: none; }
     .file-row .fname { max-width: 100px; }
   }
 </style>
 </head>
 <body>
 
-<!-- Shell Bar -->
 <div class="shell-bar">
-  <span class="logo">&#x1F4E6; 附件管理</span>
+  <span class="logo">&#x1F4E6; Attachment Manager</span>
   <span class="separator"></span>
-  <span class="counter" id="fileCount">0 个文件</span>
+  <span class="counter" id="fileCount">0 files</span>
 </div>
 
 <div class="content">
 
-  <!-- Page Header -->
   <div class="page-header">
     <div>
-      <h1>附件台账</h1>
-      <div class="subtitle">批量上传、预览、下载、管理所有附件</div>
+      <h1>Attachment Ledger</h1>
+      <div class="subtitle">Batch upload, preview, download, and manage all attachments</div>
     </div>
     <div style="margin-left:auto;display:flex;gap:8px">
-      <button class="btn btn-ghost" onclick="openSftpSettings()">&#x2699; SFTP 设置</button>
-      <button class="btn btn-secondary" onclick="exportLedger()">&#x1F4E4; 导出清单</button>
-      <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">&#x1F4C1; 上传附件</button>
+      <button class="btn btn-ghost" onclick="openSftpSettings()">&#x2699; SFTP Settings</button>
+      <button class="btn btn-secondary" onclick="exportLedger()">&#x1F4E4; Export CSV</button>
+      <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">&#x1F4C1; Upload Files</button>
     </div>
   </div>
 
-  <!-- Upload Card -->
   <div class="card" id="uploadCard" style="display:none">
-    <div class="card-header">&#x1F4E4; 上传队列</div>
+    <div class="card-header">&#x1F4E4; Upload Queue</div>
     <div class="card-body">
       <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
         <div class="icon">&#x1F4C2;</div>
-        <div class="text">拖放文件到此处 或 <b>点击浏览</b></div>
-        <div style="font-size:11px;color:var(--sapText2);margin-top:4px">支持批量选择，单文件最大 50MB</div>
+        <div class="text">Drop files here or <b>browse</b></div>
+        <div style="font-size:11px;color:var(--sapText2);margin-top:4px">Batch upload supported, max 50MB per file</div>
       </div>
       <div class="upload-queue" id="uploadQueue"></div>
       <div class="upload-actions" id="uploadActions" style="display:none">
-        <button class="btn btn-primary" id="btnUploadAll" onclick="uploadAll()">&#x1F680; 全部上传</button>
-        <button class="btn btn-secondary" onclick="clearQueue()">清空队列</button>
+        <button class="btn btn-primary" id="btnUploadAll" onclick="uploadAll()">&#x1F680; Upload All</button>
+        <button class="btn btn-secondary" onclick="clearQueue()">Clear Queue</button>
       </div>
     </div>
   </div>
 
-  <!-- Ledger Card -->
   <div class="card">
-    <div class="card-header">&#x1F4CA; 附件台账</div>
+    <div class="card-header">&#x1F4CA; Attachment Ledger</div>
     <div class="toolbar">
-      <input type="search" id="searchInput" placeholder="搜索文件名..." oninput="renderLedger()">
+      <input type="search" id="searchInput" placeholder="Search by filename..." oninput="renderLedger()">
       <select id="filterType" onchange="renderLedger()">
-        <option value="all">全部类型</option>
-        <option value="image">图片</option>
-        <option value="document">文档</option>
-        <option value="archive">压缩包</option>
-        <option value="code">代码</option>
-        <option value="other">其他</option>
+        <option value="all">All Types</option>
+        <option value="image">Images</option>
+        <option value="document">Documents</option>
+        <option value="archive">Archives</option>
+        <option value="code">Code</option>
+        <option value="other">Other</option>
       </select>
       <select id="sortBy" onchange="renderLedger()">
-        <option value="time">按时间排序</option>
-        <option value="name">按名称排序</option>
-        <option value="size">按大小排序</option>
+        <option value="time">By Date</option>
+        <option value="name">By Name</option>
+        <option value="size">By Size</option>
       </select>
       <span class="stats" id="ledgerStats"></span>
-      <button class="btn btn-danger btn-sm" style="margin-left:8px" onclick="clearAllLedger()">清空台账</button>
+      <button class="btn btn-danger btn-sm" style="margin-left:8px" onclick="clearAllLedger()">Clear Ledger</button>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
             <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
-            <th>文件名</th>
-            <th>类型</th>
-            <th>大小</th>
-            <th>上传时间</th>
-            <th>状态</th>
-            <th>操作</th>
+            <th>Filename</th>
+            <th>Type</th>
+            <th>Size</th>
+            <th>Upload Date</th>
+            <th>Status</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody id="ledgerBody"></tbody>
@@ -283,56 +263,51 @@
     </div>
     <div class="empty-ledger" id="emptyLedger">
       <div class="big">&#x1F4C4;</div>
-      <div>暂无附件记录</div>
-      <div style="font-size:12px;margin-top:4px">上传文件后自动生成台账</div>
+      <div>No attachment records</div>
+      <div style="font-size:12px;margin-top:4px">Upload files to generate the ledger</div>
     </div>
   </div>
 </div>
 
-<!-- Preview Modal -->
 <div class="modal-overlay" id="previewModal" onclick="if(event.target===this)closePreview()">
   <div class="modal" id="previewContent"></div>
 </div>
 
-<!-- SFTP Settings Modal -->
 <div class="modal-overlay" id="sftpModal" onclick="if(event.target===this)closeSftpSettings()">
   <div class="modal">
-    <h3>&#x2699; SFTP 服务器配置</h3>
+    <h3>&#x2699; SFTP Server Configuration</h3>
     <div style="display:flex;flex-direction:column;gap:12px">
-      <label style="font-size:12px;color:var(--sapText2)">主机地址
-        <input type="text" id="sftpHost" placeholder="192.168.1.100 或 sftp.example.com" style="width:100%;padding:10px 12px;border:1px solid var(--sapBorder);border-radius:6px;font-size:13px;font-family:inherit;outline:none;margin-top:4px">
+      <label style="font-size:12px;color:var(--sapText2)">Host Address
+        <input type="text" id="sftpHost" placeholder="e.g. sftp.example.com or 192.168.1.100" style="width:100%;padding:10px 12px;border:1px solid var(--sapBorder);border-radius:6px;font-size:13px;font-family:inherit;outline:none;margin-top:4px">
       </label>
       <div style="display:flex;gap:12px">
-        <label style="flex:1;font-size:12px;color:var(--sapText2)">端口
+        <label style="flex:1;font-size:12px;color:var(--sapText2)">Port
           <input type="number" id="sftpPort" value="22" style="width:100%;padding:10px 12px;border:1px solid var(--sapBorder);border-radius:6px;font-size:13px;font-family:inherit;outline:none;margin-top:4px">
         </label>
-        <label style="flex:1;font-size:12px;color:var(--sapText2)">用户名
-          <input type="text" id="sftpUser" placeholder="用户名" style="width:100%;padding:10px 12px;border:1px solid var(--sapBorder);border-radius:6px;font-size:13px;font-family:inherit;outline:none;margin-top:4px">
+        <label style="flex:1;font-size:12px;color:var(--sapText2)">Username
+          <input type="text" id="sftpUser" placeholder="Username" style="width:100%;padding:10px 12px;border:1px solid var(--sapBorder);border-radius:6px;font-size:13px;font-family:inherit;outline:none;margin-top:4px">
         </label>
       </div>
-      <label style="font-size:12px;color:var(--sapText2)">密码
-        <input type="password" id="sftpPass" placeholder="SFTP 密码" style="width:100%;padding:10px 12px;border:1px solid var(--sapBorder);border-radius:6px;font-size:13px;font-family:inherit;outline:none;margin-top:4px">
+      <label style="font-size:12px;color:var(--sapText2)">Password
+        <input type="password" id="sftpPass" placeholder="SFTP Password" style="width:100%;padding:10px 12px;border:1px solid var(--sapBorder);border-radius:6px;font-size:13px;font-family:inherit;outline:none;margin-top:4px">
       </label>
-      <label style="font-size:12px;color:var(--sapText2)">远程路径
+      <label style="font-size:12px;color:var(--sapText2)">Remote Path
         <input type="text" id="sftpPath" placeholder="/uploads" value="/uploads" style="width:100%;padding:10px 12px;border:1px solid var(--sapBorder);border-radius:6px;font-size:13px;font-family:inherit;outline:none;margin-top:4px">
       </label>
     </div>
     <div id="sftpStatus" style="font-size:12px;margin-top:8px;min-height:20px"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-      <button class="btn btn-secondary" onclick="testSftp()">&#x1F50D; 测试连接</button>
-      <button class="btn btn-secondary" onclick="closeSftpSettings()">取消</button>
-      <button class="btn btn-primary" onclick="saveSftpSettings()">保存配置</button>
+      <button class="btn btn-secondary" onclick="testSftp()">&#x1F50D; Test Connection</button>
+      <button class="btn btn-secondary" onclick="closeSftpSettings()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSftpSettings()">Save Config</button>
     </div>
   </div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
-
 <input type="file" id="fileInput" multiple onchange="handleFileSelect(this)">
 
 <script>
-// ============ DATA ============
 const STORAGE_KEY = 'fiori_ledger';
 let ledger = [];
 let queue = [];
@@ -342,12 +317,10 @@ function loadLedger() {
 }
 function saveLedger() { localStorage.setItem(STORAGE_KEY, JSON.stringify(ledger)); }
 
-// ============ INIT ============
 loadLedger();
 renderLedger();
 updateFileCount();
 
-// Drop zone events
 const dropZone = document.getElementById('dropZone');
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
@@ -356,7 +329,6 @@ dropZone.addEventListener('drop', e => {
   addToQueue(Array.from(e.dataTransfer.files));
 });
 
-// ============ FILE SELECT ============
 function handleFileSelect(input) {
   const files = Array.from(input.files);
   if (files.length) addToQueue(files);
@@ -365,7 +337,7 @@ function handleFileSelect(input) {
 
 function addToQueue(files) {
   for (const f of files) {
-    if (f.size > 50 * 1024 * 1024) { toast(f.name + ' 超过 50MB 限制，已跳过'); continue; }
+    if (f.size > 50 * 1024 * 1024) { toast(f.name + ' exceeds 50MB limit, skipped'); continue; }
     queue.push({
       id: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
       file: f, name: f.name, size: f.size,
@@ -383,7 +355,6 @@ function addToQueue(files) {
 
 function getFileCategory(file) {
   const ext = file.name.split('.').pop().toLowerCase();
-  const name = file.name.toLowerCase();
   if (/jpg|jpeg|png|gif|webp|svg|bmp|ico/.test(ext)) return 'image';
   if (/pdf|doc|docx|xls|xlsx|ppt|pptx|txt|md|csv/.test(ext)) return 'document';
   if (/zip|rar|7z|tar|gz|bz2/.test(ext)) return 'archive';
@@ -397,7 +368,6 @@ function formatSize(bytes) {
   return (bytes/(1024*1024)).toFixed(1) + ' MB';
 }
 
-// ============ QUEUE UI ============
 function renderQueue() {
   const el = document.getElementById('uploadQueue');
   el.innerHTML = queue.map(q => `
@@ -408,7 +378,7 @@ function renderQueue() {
         <div class="file-meta">${formatSize(q.size)}</div>
         <div class="progress-bar"><div class="progress-fill" style="width:${q.progress}%"></div></div>
       </div>
-      <span class="status ${q.status}">${statusLabel(q.status)}</span>
+      <span class="status ${q.status}">${q.status}</span>
       <button class="btn btn-sm btn-ghost" onclick="removeFromQueue('${q.id}')" style="flex-shrink:0">&times;</button>
     </div>
   `).join('');
@@ -416,9 +386,7 @@ function renderQueue() {
 
 function removeFromQueue(id) {
   queue = queue.filter(q => q.id !== id);
-  if (!queue.length) {
-    document.getElementById('uploadCard').style.display = 'none';
-  }
+  if (!queue.length) document.getElementById('uploadCard').style.display = 'none';
   renderQueue();
 }
 
@@ -431,11 +399,7 @@ function clearQueue() {
 function getIcon(type) {
   return { image: '&#x1F5BC;', document: '&#x1F4C4;', archive: '&#x1F4E6;', code: '&#x1F4BB;' }[type] || '&#x1F4CE;';
 }
-function statusLabel(s) {
-  return { pending: '等待中', uploading: '上传中...', done: '已完成', error: '失败' }[s] || s;
-}
 
-// ============ UPLOAD ============
 async function uploadAll() {
   const pending = queue.filter(q => q.status === 'pending');
   if (!pending.length) return;
@@ -443,7 +407,7 @@ async function uploadAll() {
 
   const cfg = getSftpConfigLocal();
   if (!cfg.host || !cfg.username) {
-    toast('请先配置 SFTP 服务器'); openSftpSettings(); document.getElementById('btnUploadAll').disabled = false; return;
+    toast('Please configure SFTP server first'); openSftpSettings(); document.getElementById('btnUploadAll').disabled = false; return;
   }
 
   const formData = new FormData();
@@ -453,7 +417,6 @@ async function uploadAll() {
   }
   renderQueue();
 
-  // Add SFTP config to form
   formData.append('host', cfg.host);
   formData.append('port', cfg.port);
   formData.append('username', cfg.username);
@@ -462,7 +425,6 @@ async function uploadAll() {
   formData.append('prefix', new Date().toISOString().slice(0,10).replace(/-/g,'') + '_');
 
   try {
-    // Use XHR for progress tracking
     const xhr = new XMLHttpRequest();
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
@@ -487,27 +449,23 @@ async function uploadAll() {
                   id: 'f_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
                   name: r.name, size: r.size, type: q.type,
                   uploadTime: new Date().toISOString(),
-                  sftpPath: filePath,
-                  sftpHost: cfg.host,
+                  sftpPath: filePath, sftpHost: cfg.host,
                   selected: false
                 });
               }
             }
           });
-          saveLedger();
-          resolve();
-        } else {
-          reject(new Error('Upload failed'));
-        }
+          saveLedger(); resolve();
+        } else reject(new Error('Upload failed'));
       };
       xhr.onerror = () => reject(new Error('Network error'));
       xhr.send(formData);
     });
-    toast('上传完成！');
+    toast('Upload complete!');
   } catch (e) {
     pending.forEach(q => { if (q.status === 'uploading') q.status = 'error'; });
     renderQueue();
-    toast('上传失败: ' + e.message);
+    toast('Upload failed: ' + e.message);
   }
 
   document.getElementById('btnUploadAll').disabled = false;
@@ -516,7 +474,6 @@ async function uploadAll() {
   updateFileCount();
 }
 
-// ============ SFTP CONFIG ============
 function getSftpConfigLocal() {
   return {
     host: document.getElementById('sftpHost')?.value || localStorage.getItem('sftp_host') || '',
@@ -535,7 +492,6 @@ function openSftpSettings() {
   document.getElementById('sftpPath').value = localStorage.getItem('sftp_path') || '/uploads';
   document.getElementById('sftpStatus').textContent = '';
   document.getElementById('sftpModal').classList.add('open');
-  // Also load from server
   fetch('/api/sftp/config').then(r => r.json()).then(cfg => {
     if (cfg.host && !localStorage.getItem('sftp_host')) {
       document.getElementById('sftpHost').value = cfg.host || '';
@@ -546,9 +502,7 @@ function openSftpSettings() {
   }).catch(() => {});
 }
 
-function closeSftpSettings() {
-  document.getElementById('sftpModal').classList.remove('open');
-}
+function closeSftpSettings() { document.getElementById('sftpModal').classList.remove('open'); }
 
 function saveSftpSettings() {
   const cfg = getSftpConfigLocal();
@@ -557,57 +511,39 @@ function saveSftpSettings() {
   localStorage.setItem('sftp_user', cfg.username);
   localStorage.setItem('sftp_pass', cfg.password);
   localStorage.setItem('sftp_path', cfg.remotePath);
-  // Also save to server
-  fetch('/api/sftp/config', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(cfg)
-  }).catch(() => {});
+  fetch('/api/sftp/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) }).catch(() => {});
   closeSftpSettings();
-  toast('SFTP 配置已保存');
+  toast('SFTP configuration saved');
 }
 
 async function testSftp() {
   const cfg = getSftpConfigLocal();
-  if (!cfg.host) { document.getElementById('sftpStatus').innerHTML = '<span style="color:var(--sapBad)">请输入主机地址</span>'; return; }
-  document.getElementById('sftpStatus').textContent = '测试中...';
+  if (!cfg.host) { document.getElementById('sftpStatus').innerHTML = '<span style="color:var(--sapBad)">Please enter host address</span>'; return; }
+  document.getElementById('sftpStatus').textContent = 'Testing...';
   try {
-    const res = await fetch('/api/sftp/test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cfg)
-    });
+    const res = await fetch('/api/sftp/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cfg) });
     const data = await res.json();
     document.getElementById('sftpStatus').innerHTML = data.ok
       ? '<span style="color:var(--sapGood)">&#x2713; ' + data.message + '</span>'
       : '<span style="color:var(--sapBad)">&#x2717; ' + data.message + '</span>';
   } catch (e) {
-    document.getElementById('sftpStatus').innerHTML = '<span style="color:var(--sapBad)">连接失败: ' + e.message + '</span>';
+    document.getElementById('sftpStatus').innerHTML = '<span style="color:var(--sapBad)">Connection failed: ' + e.message + '</span>';
   }
 }
 
-// ============ LEDGER ============
 function renderLedger() {
   const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
   const filter = document.getElementById('filterType')?.value || 'all';
   const sortBy = document.getElementById('sortBy')?.value || 'time';
-
   let items = [...ledger];
-
-  // Search
   if (search) items = items.filter(f => f.name.toLowerCase().includes(search));
-
-  // Filter
   if (filter !== 'all') items = items.filter(f => f.type === filter);
-
-  // Sort
   if (sortBy === 'name') items.sort((a,b) => a.name.localeCompare(b.name));
   else if (sortBy === 'size') items.sort((a,b) => b.size - a.size);
   else items.sort((a,b) => new Date(b.uploadTime) - new Date(a.uploadTime));
 
   const tbody = document.getElementById('ledgerBody');
   const empty = document.getElementById('emptyLedger');
-
   if (!items.length) {
     tbody.innerHTML = '';
     empty.style.display = '';
@@ -622,27 +558,18 @@ function renderLedger() {
         <td style="font-size:12px;color:var(--sapText2)">${formatDate(f.uploadTime)}</td>
         <td><span style="color:var(--sapGood);font-size:12px">&#x2713; ${f.sftpHost||'SFTP'}</span></td>
         <td class="actions-cell">
-          <button class="btn btn-ghost btn-sm" onclick="copySftpPath('${f.id}')" title="复制SFTP路径">&#x1F4CB;</button>
+          <button class="btn btn-ghost btn-sm" onclick="copySftpPath('${f.id}')" title="Copy SFTP path">&#x1F4CB;</button>
           <button class="btn btn-danger btn-sm" onclick="deleteFile('${f.id}')">&#x1F5D1;</button>
         </td>
       </tr>
     `).join('');
   }
-
-  document.getElementById('ledgerStats').textContent = `共 ${ledger.length} 条记录`;
+  document.getElementById('ledgerStats').textContent = ledger.length + ' records';
   updateFileCount();
 }
 
-function toggleSelectAll(cb) {
-  ledger.forEach(f => f.selected = cb.checked);
-  saveLedger();
-  renderLedger();
-}
-
-function toggleSelect(id, val) {
-  const f = ledger.find(f => f.id === id);
-  if (f) { f.selected = val; saveLedger(); }
-}
+function toggleSelectAll(cb) { ledger.forEach(f => f.selected = cb.checked); saveLedger(); renderLedger(); }
+function toggleSelect(id, val) { const f = ledger.find(f => f.id === id); if (f) { f.selected = val; saveLedger(); } }
 
 function previewFile(id) {
   const f = ledger.find(f => f.id === id);
@@ -650,67 +577,53 @@ function previewFile(id) {
   const modal = document.getElementById('previewModal');
   const content = document.getElementById('previewContent');
   if (f.sftpPath) {
-    content.innerHTML = `<h3>${esc(f.name)}</h3><p style="color:var(--sapText2);font-size:13px">文件已上传至 SFTP 服务器</p><p style="background:#f5f6f7;padding:10px;border-radius:6px;font-family:monospace;font-size:12px">${esc(f.sftpHost)}:${esc(f.sftpPath)}</p><button class="btn btn-primary" onclick="copySftpPath('${id}');closePreview()">&#x1F4CB; 复制路径</button>`;
+    content.innerHTML = `<h3>${esc(f.name)}</h3><p style="color:var(--sapText2);font-size:13px">File uploaded to SFTP server</p><p style="background:#f5f6f7;padding:10px;border-radius:6px;font-family:monospace;font-size:12px">${esc(f.sftpHost)}:${esc(f.sftpPath)}</p><button class="btn btn-primary" onclick="copySftpPath('${id}');closePreview()">&#x1F4CB; Copy Path</button>`;
   } else {
-    content.innerHTML = `<h3>${esc(f.name)}</h3><p>文件信息不可用</p>`;
+    content.innerHTML = `<h3>${esc(f.name)}</h3><p>File info unavailable</p>`;
   }
   modal.classList.add('open');
 }
-
 function closePreview() { document.getElementById('previewModal').classList.remove('open'); }
 
 function copySftpPath(id) {
   const f = ledger.find(f => f.id === id);
-  if (!f?.sftpPath) { toast('路径不可用'); return; }
-  navigator.clipboard.writeText(f.sftpPath).then(() => toast('SFTP 路径已复制')).catch(() => toast('复制失败'));
+  if (!f?.sftpPath) { toast('Path unavailable'); return; }
+  navigator.clipboard.writeText(f.sftpPath).then(() => toast('SFTP path copied')).catch(() => toast('Copy failed'));
 }
 
-function downloadFile(id) {
-  // SFTP files need server-side download - for now copy path
-  copySftpPath(id);
-  toast('请通过 SFTP 客户端下载');
-}
+function downloadFile(id) { copySftpPath(id); toast('Use an SFTP client to download'); }
 
 function deleteFile(id) {
-  if (!confirm('确定删除 "' + (ledger.find(f => f.id === id)?.name || '') + '"？')) return;
+  const name = ledger.find(f => f.id === id)?.name || '';
+  if (!confirm('Delete "' + name + '" from ledger?')) return;
   ledger = ledger.filter(f => f.id !== id);
-  saveLedger();
-  renderLedger();
-  updateFileCount();
-  toast('已删除');
+  saveLedger(); renderLedger(); updateFileCount();
+  toast('Deleted');
 }
 
 function clearAllLedger() {
   if (!ledger.length) return;
-  if (!confirm('确定清空所有 ' + ledger.length + ' 条台账记录？此操作不可恢复。')) return;
-  ledger = [];
-  saveLedger();
-  renderLedger();
-  updateFileCount();
-  toast('台账已清空');
+  if (!confirm('Clear all ' + ledger.length + ' ledger records? This cannot be undone.')) return;
+  ledger = []; saveLedger(); renderLedger(); updateFileCount();
+  toast('Ledger cleared');
 }
 
 function exportLedger() {
-  let csv = '文件名,类型,大小,上传时间\n';
-  ledger.forEach(f => {
-    csv += `"${f.name}",${f.type},${formatSize(f.size)},${formatDate(f.uploadTime)}\n`;
-  });
+  let csv = 'Filename,Type,Size,Upload Date\n';
+  ledger.forEach(f => { csv += `"${f.name}",${f.type},${formatSize(f.size)},${formatDate(f.uploadTime)}\n`; });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
-  a.download = '附件台账_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.download = 'attachment_ledger_' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
 }
 
-function updateFileCount() {
-  document.getElementById('fileCount').textContent = ledger.length + ' 个文件';
-}
+function updateFileCount() { document.getElementById('fileCount').textContent = ledger.length + ' files'; }
 
-// ============ UTILS ============
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function formatDate(iso) {
   const d = new Date(iso);
-  return d.toLocaleDateString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit' }) + ' ' +
-         d.toLocaleTimeString('zh-CN', { hour:'2-digit', minute:'2-digit' });
+  return d.toLocaleDateString('en-US', { year:'numeric', month:'2-digit', day:'2-digit' }) + ' ' +
+         d.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12: false });
 }
 function toast(msg) {
   const el = document.getElementById('toast');

@@ -4,7 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 const PORT = parseInt(process.env.SFTP_PORT) || 2222;
-const ROOT = path.resolve(process.env.SFTP_ROOT || path.join(__dirname, 'sftp-storage'));
+const ROOT = path.resolve(process.env.SFTP_ROOT || 'H:\\sftp-storage');
 const USERS_FILE = path.join(__dirname, 'data', 'sftp-users.json');
 
 if (!fs.existsSync(ROOT)) fs.mkdirSync(ROOT, { recursive: true });

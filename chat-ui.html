@@ -130,7 +130,7 @@ input[type=file]{display:none}
     <span class="key-dot off" id="keyDot"></span>
     <span id="keyLabel" style="font-size:10px;color:var(--t3)">No Key</span>
     <a href="/settings.html">Config</a>
-    <button onclick="document.querySelector('.panel').classList.toggle('show')">&#x2699; Tools</button>
+    <button onclick="toggleTools()">&#x2699; Tools</button>
   </div>
 
   <div class="progress-panel" id="progress"><div style="display:flex;justify-content:space-between"><span style="font-weight:600;color:var(--ac)">Build Progress</span><span onclick="$('progress').classList.remove('show')" style="cursor:pointer">&times;</span></div><div id="progressLog"></div></div>
@@ -253,7 +253,8 @@ async function deployBTP(fid){
   if(d.ok){prog(d.cfDeploy?.ok?'Live: '+d.cfDeploy.url:'Package: '+d.packageUrl,'good');addMsg('ai','## BTP Ready\n\n'+d.instructions)}else prog('Failed: '+d.error,'bad')
 }
 function refine(p){$('input').value=p+': ';$('input').focus()}
-function showPreview(url){const p=$('previewPanel');p.innerHTML=`<div class="pp-bar"><span>Preview</span><a href="${url}" target="_blank">Open in tab</a><button onclick="p.classList.remove('show')">Close</button></div><iframe src="${url}"></iframe>`;p.classList.add('show')}
+function toggleTools(){const p=$('toolsPanel');if(p)p.classList.toggle('show')}
+function showPreview(url){const p=$('previewPanel');p.innerHTML=`<div class="pp-bar"><span>Preview</span><a href="${url}" target="_blank">Open in tab</a><button onclick="this.closest('.preview-panel').classList.remove('show')">Close</button></div><iframe src="${url}"></iframe>`;p.classList.add('show')}
 function previewFile(url){showPreview(url)}
 
 // ====== SEND ======

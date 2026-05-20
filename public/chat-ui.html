@@ -1,648 +1,334 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1a1b2e">
+<meta name="theme-color" content="#f5f5f5">
 <title>Workbench</title>
 <style>
-:root{--bg:#f5f6f7;--bg2:#f0f1f2;--srf:#fff;--bdr:#e0e3e8;--bdr2:#d5dadd;--txt:#1d2d3e;--t2:#556b82;--t3:#8b95a5;--ac:#0070f2;--a2:#0057b8;--gr:linear-gradient(135deg,#0070f2,#0057b8);--bad:#d20a0a;--good:#188918;--r:8px}
+:root{--bg:#f5f5f7;--card:#fff;--bdr:#e5e5e7;--txt:#111;--t2:#666;--t3:#999;--ac:#0066ff;--ac2:#0050cc;--bad:#d00;--good:#188918;--warn:#e78c07;--r:6px;--r2:12px;--safe:env(safe-area-inset-bottom,8px)}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--txt);height:100dvh;display:flex;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--txt);height:100dvh;display:flex;overflow:hidden;-webkit-font-smoothing:antialiased}
 
-/* SIDEBAR */
-.sidebar{width:260px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden}
-.side-hd{padding:16px;border-bottom:1px solid var(--bdr);font-weight:700;font-size:14px;background:var(--gr);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;flex-shrink:0}
-.side-section{padding:8px 12px;flex-shrink:0}
-.side-label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);padding:8px 4px 4px;font-weight:600}
-.side-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--t2);transition:all 0.15s}
-.side-item:hover{background:rgba(129,140,248,0.06);color:var(--txt)}
-.side-item.active{background:rgba(129,140,248,0.12);color:var(--ac)}
-.side-item .icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
-.side-item .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.side-item .del{opacity:0;font-size:14px;color:var(--t3);cursor:pointer;flex-shrink:0}
-.side-item:hover .del{opacity:1}
-.side-item .del:hover{color:var(--bad)}
-.side-files{flex:1;overflow-y:auto;padding:0 12px}
-.side-ft{padding:8px 12px;border-top:1px solid var(--bdr);flex-shrink:0;display:flex;gap:4px}
-.side-ft button{flex:1;padding:6px;border-radius:6px;border:1px solid var(--bdr);background:transparent;color:var(--t3);cursor:pointer;font-size:10px;font-family:inherit;transition:all 0.15s}
-.side-ft button:hover{color:var(--txt)}
+/* LEFT SIDEBAR */
+.sidebar{width:220px;flex-shrink:0;background:var(--card);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden}
+.side-hd{padding:14px 16px;font-weight:700;font-size:15px;letter-spacing:-0.2px;color:var(--txt);flex-shrink:0;border-bottom:1px solid var(--bdr)}
+.side-convs{flex:1;overflow-y:auto;padding:4px 8px}
+.conv-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r);cursor:pointer;font-size:12px;color:var(--t2);transition:all 0.12s;margin-bottom:1px}
+.conv-item:hover{background:#f0f0f5;color:var(--txt)}
+.conv-item.active{background:#e8edff;color:var(--ac);font-weight:500}
+.conv-item .c-icon{font-size:14px;flex-shrink:0;opacity:0.6}
+.conv-item .c-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conv-item .c-del{opacity:0;font-size:13px;color:var(--t3);cursor:pointer;flex-shrink:0;padding:0 2px}
+.conv-item:hover .c-del{opacity:1}.conv-item .c-del:hover{color:var(--bad)}
+.side-ft{padding:8px;border-top:1px solid var(--bdr);flex-shrink:0;display:flex;flex-direction:column;gap:4px}
+.side-ft button,.side-ft a{display:block;width:100%;padding:6px 10px;border-radius:var(--r);border:1px solid var(--bdr);background:var(--card);color:var(--t2);cursor:pointer;font-size:11px;font-family:inherit;text-align:center;text-decoration:none;transition:all 0.12s}
+.side-ft button:hover,.side-ft a:hover{border-color:var(--ac);color:var(--ac)}
+.side-ft .new-chat{background:var(--ac);color:#fff;border:none;font-weight:500}
+.side-ft .new-chat:hover{background:var(--ac2);color:#fff}
 
 /* MAIN */
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{padding:6px 14px;background:var(--card);border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.topbar select{background:var(--bg);border:1px solid var(--bdr);color:var(--txt);padding:3px 8px;border-radius:4px;font-size:11px;outline:none;font-family:inherit}
+.topbar .sep{flex:1}
+.topbar .key-dot{width:6px;height:6px;border-radius:50%}.key-dot.on{background:var(--good)}.key-dot.off{background:var(--bad)}
+.topbar span{font-size:10px;color:var(--t3)}
+.topbar a{font-size:10px;color:var(--t3);text-decoration:none}
+.topbar button{background:none;border:none;color:var(--t2);cursor:pointer;font-size:11px;font-family:inherit;padding:3px 8px;border-radius:4px}
+.topbar button:hover{color:var(--ac);background:#f0f0f5}
 
-/* Top bar */
-.topbar{padding:8px 14px;background:var(--srf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:8px;flex-shrink:0}
-.topbar h1{font-size:13px;font-weight:700;background:var(--gr);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-right:auto}
-.topbar input,.topbar select{background:var(--bg);border:1px solid var(--bdr);color:var(--txt);padding:4px 8px;border-radius:5px;font-size:11px;outline:none;font-family:inherit}
-.topbar input{width:180px}
-.topbar input:focus,.topbar select:focus{border-color:var(--ac)}
-.topbar button{background:transparent;border:1px solid var(--bdr);color:var(--t2);padding:4px 10px;border-radius:5px;cursor:pointer;font-size:11px;font-family:inherit;transition:all 0.15s}
-.topbar button:hover{color:var(--txt);border-color:var(--ac)}
-.topbar button.primary{background:var(--gr);color:#fff;border:none}
-
-/* Chat */
-.messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
-.msg{display:flex;gap:8px;max-width:88%;animation:in 0.2s}
+/* CHAT */
+.chat-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.messages{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:12px}
+.msg{display:flex;gap:8px;max-width:82%;animation:in 0.15s}
 .msg.user{align-self:flex-end;flex-direction:row-reverse}
-@keyframes in{from{opacity:0;transform:translateY(6px)}}
+@keyframes in{from{opacity:0;transform:translateY(4px)}}
 .msg .av{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
-.msg.user .av{background:linear-gradient(135deg,#818cf8,#a78bfa)}
-.msg.ai .av{background:var(--bdr)}
-.msg .bubble{padding:10px 14px;border-radius:var(--r);line-height:1.55;font-size:13px;word-break:break-word;white-space:pre-wrap}
-.msg.user .bubble{background:#e5f0ff;border-bottom-right-radius:3px}
-.msg.ai .bubble{background:var(--srf);border:1px solid var(--bdr);border-bottom-left-radius:3px}
-.msg.ai .bubble code{background:var(--bg);padding:1px 4px;border-radius:3px;font-size:11px}
-.msg.ai .bubble pre{background:#f0f1f2;border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;margin:6px 0;overflow-x:auto;font-family:'SF Mono',Consolas,monospace;font-size:11px}
-.pre-btns{display:flex;gap:4px;margin-bottom:6px}
-.pre-btns button{padding:2px 8px;border-radius:4px;border:1px solid var(--bdr);background:var(--bg);color:var(--t2);cursor:pointer;font-size:10px;font-family:inherit}
-.pre-btns button:hover{color:var(--txt);border-color:var(--ac)}
-.pre-btns .deploy{color:var(--good);border-color:var(--good)}
-.pre-btns .deploy:hover{background:rgba(52,211,153,0.08)}
+.msg.user .av{background:#e8edff;color:var(--ac)}
+.msg.ai .av{background:#f0f0f0}
+.msg .bubble{padding:10px 14px;border-radius:var(--r2);line-height:1.5;font-size:13px;word-break:break-word;white-space:pre-wrap}
+.msg.user .bubble{background:#e8edff;border:1px solid rgba(0,102,255,0.1);border-bottom-right-radius:4px}
+.msg.ai .bubble{background:var(--card);border:1px solid var(--bdr);border-bottom-left-radius:4px}
+.msg.ai .bubble code{background:var(--bg);padding:2px 5px;border-radius:3px;font-size:11px}
+.msg.ai .bubble pre{background:#f5f5f7;border:1px solid var(--bdr);border-radius:8px;padding:10px 12px;margin:6px 0;overflow-x:auto;font-family:'SF Mono',Consolas,monospace;font-size:11px}
 .code-block{margin:6px 0}
-.code-pre code[contenteditable="true"]{display:block;padding:8px;border-radius:4px;min-height:60px}
-.refine-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
-.refine-chips span{font-size:9px;color:var(--t3);padding:2px 4px}
-.refine-chips button{padding:3px 10px;border-radius:12px;border:1px solid var(--bdr);background:var(--bg);color:var(--t2);cursor:pointer;font-size:10px;font-family:inherit;transition:all 0.15s}
-.refine-chips button:hover{border-color:var(--ac);color:var(--ac)}
+.pre-btns{display:flex;gap:4px;margin-bottom:6px}
+.pre-btns button,.pre-btns a{padding:3px 8px;border-radius:4px;border:1px solid var(--bdr);background:var(--card);color:var(--t2);cursor:pointer;font-size:10px;font-family:inherit;transition:all 0.1s;text-decoration:none}
+.pre-btns button:hover{border-color:var(--ac);color:var(--ac)}
+.pre-btns .deploy{color:var(--good);border-color:var(--good)}
+.pre-btns .btp{color:var(--ac);border-color:var(--ac)}
+.refine-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.refine-row button{padding:3px 10px;border-radius:12px;border:1px solid var(--bdr);background:var(--card);color:var(--t2);cursor:pointer;font-size:10px;font-family:inherit}
+.refine-row button:hover{border-color:var(--ac);color:var(--ac)}
+.empty-chat{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--t2);font-size:14px;line-height:1.8}
 
-/* Input */
-.input-area{padding:10px 14px 14px;background:var(--srf);border-top:1px solid var(--bdr);flex-shrink:0}
+/* INPUT */
+.input-area{padding:12px 20px 16px;background:var(--card);border-top:1px solid var(--bdr);flex-shrink:0}
 .input-row{display:flex;gap:6px;align-items:flex-end}
-.input-row textarea{flex:1;background:var(--bg);border:2px solid var(--bdr);color:var(--txt);padding:10px 14px;border-radius:12px;font-size:13px;font-family:inherit;resize:none;outline:none;min-height:38px;max-height:100px;line-height:1.4;transition:border-color 0.15s}
-.input-row textarea:focus{border-color:var(--ac)}
+.input-row textarea{flex:1;background:var(--bg);border:1px solid var(--bdr);color:var(--txt);padding:10px 14px;border-radius:16px;font-size:13px;font-family:inherit;resize:none;outline:none;min-height:40px;max-height:100px;line-height:1.3;transition:all 0.15s}
+.input-row textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(0,102,255,0.06)}
 .input-row textarea::placeholder{color:var(--t3)}
-.btn{width:38px;height:38px;border-radius:50%;border:2px solid var(--bdr);background:var(--bg);color:var(--t2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0}
-.btn:hover{border-color:var(--ac);color:var(--txt)}
-.btn.send{background:var(--gr);border:none;color:#fff}
-.btn.send:disabled{opacity:0.4}
-.btn.rec{background:var(--bad);border-color:var(--bad);color:#fff;animation:pulse 1.2s infinite}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.4)}50%{box-shadow:0 0 0 10px rgba(248,113,113,0)}}
-.hint{font-size:9px;color:var(--t3);padding:4px 0 0 12px}
-.attach-bar{padding:0 14px 2px;display:flex;flex-wrap:wrap;gap:3px}
-.atch{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:rgba(129,140,248,0.08);border:1px solid rgba(129,140,248,0.15);border-radius:8px;font-size:10px;color:var(--a2)}
-.atch .x{cursor:pointer;color:var(--t3);font-size:11px}.atch .x:hover{color:var(--bad)}
+.btn{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;transition:all 0.12s}
+.btn-ghost{background:var(--card);border:1px solid var(--bdr);color:var(--t2)}
+.btn-ghost:hover{border-color:var(--ac);color:var(--ac)}
+.btn-accent{background:var(--ac);color:#fff}.btn-accent:disabled{opacity:0.4}
+.btn-rec{background:var(--bad);color:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(210,0,0,.4)}50%{box-shadow:0 0 0 10px rgba(210,0,0,0)}}
+.hint{font-size:9px;color:var(--t3);padding:5px 0 0 12px}
+.files-bar{padding:0 20px 4px;display:flex;flex-wrap:wrap;gap:3px}
+.file-chip{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:var(--card);border:1px solid var(--bdr);border-radius:8px;font-size:10px;color:var(--t2)}
+.file-chip .x{cursor:pointer;color:var(--t3);font-size:11px}.file-chip .x:hover{color:var(--bad)}
 
-.drop{display:none;position:fixed;inset:0;z-index:99;background:rgba(129,140,248,0.06);border:3px dashed var(--ac);align-items:center;justify-content:center;font-size:18px;color:var(--ac);pointer-events:none}
-.drop.on{display:flex}
+/* RIGHT PANEL */
+.panel-toggle{position:fixed;right:12px;top:12px;z-index:20;width:32px;height:32px;border-radius:50%;background:var(--card);border:1px solid var(--bdr);color:var(--t2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.panel{display:none;position:fixed;right:0;top:0;bottom:0;width:280px;z-index:15;background:var(--card);border-left:1px solid var(--bdr);overflow-y:auto;padding:16px 14px;gap:14px;flex-direction:column}
+.panel.show{display:flex}
+.panel h3{font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--t3);font-weight:600}
+.panel input,.panel select{width:100%;padding:6px 8px;border:1px solid var(--bdr);border-radius:var(--r);font-size:10px;outline:none;font-family:inherit;background:var(--bg);margin:3px 0}
+.panel input:focus,.panel select:focus{border-color:var(--ac)}
+.panel button{width:100%;padding:5px;border-radius:var(--r);border:1px solid var(--bdr);background:var(--card);color:var(--t2);cursor:pointer;font-size:10px;font-family:inherit;margin:2px 0}
+.panel button:hover{border-color:var(--ac);color:var(--ac)}
+.panel button.primary{background:var(--ac);color:#fff;border:none}
 
-.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(37,39,64,0.95);border:1px solid var(--bdr);color:#fff;padding:8px 16px;border-radius:14px;font-size:11px;z-index:999;opacity:0;transition:all 0.3s;pointer-events:none}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.preview-panel{display:none;position:fixed;bottom:0;left:0;right:0;height:70vh;z-index:50;background:var(--srf);border-top:2px solid var(--ac);flex-direction:column}
+/* PROGRESS */
+.progress-panel{display:none;margin:0 20px 4px;padding:8px 12px;background:var(--card);border:1px solid var(--bdr);border-radius:8px;font-family:'SF Mono',Consolas,monospace;font-size:10px;max-height:120px;overflow-y:auto}
+.progress-panel.show{display:block}
+
+/* PREVIEW */
+.preview-panel{display:none;position:fixed;bottom:0;left:0;right:0;height:65vh;z-index:30;background:var(--card);border-top:2px solid var(--ac);flex-direction:column}
 .preview-panel.show{display:flex}
-.preview-panel .pp-bar{padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--bdr);flex-shrink:0}
-.preview-panel .pp-bar span{font-size:12px;font-weight:600;flex:1}
-.preview-panel .pp-bar button,.preview-panel .pp-bar a{font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--bdr);background:transparent;color:var(--ac);cursor:pointer;text-decoration:none;font-family:inherit}
+.pp-bar{padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--bdr)}
+.pp-bar span{font-size:12px;font-weight:600;flex:1}
+.pp-bar a,.pp-bar button{font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--bdr);background:var(--card);color:var(--ac);cursor:pointer;text-decoration:none;font-family:inherit}
 .preview-panel iframe{flex:1;border:none;width:100%}
-input[type=file]{display:none}
 
-@media(max-width:768px){
-.sidebar{position:fixed;left:-280px;top:0;bottom:0;z-index:10;width:280px;transition:left 0.2s}
-.sidebar.open{left:0;box-shadow:4px 0 24px rgba(0,0,0,0.4)}
-.main{width:100%}
-.topbar h1{display:none}
-.topbar input{width:120px}
-.msg{max-width:94%}
-.menu-btn{display:flex!important}
-}
-.menu-btn{display:none;position:fixed;top:10px;left:10px;z-index:11;width:34px;height:34px;border-radius:50%;background:var(--srf);border:1px solid var(--bdr);color:var(--txt);font-size:16px;cursor:pointer;align-items:center;justify-content:center}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:8px 16px;border-radius:14px;font-size:11px;z-index:99;opacity:0;pointer-events:none;transition:all 0.25s}
+.toast.show{opacity:1}
+
+input[type=file]{display:none}
+@media(max-width:768px){.sidebar{display:none}.panel-toggle{right:8px;top:8px}.messages{padding:12px 14px}.input-area{padding:8px 12px}.msg{max-width:92%}}
 </style>
 </head>
 <body>
 
-<div class="menu-btn" id="menuBtn" onclick="toggleSidebar()">&#x2630;</div>
-
-<!-- SIDEBAR -->
-<div class="sidebar" id="sidebar">
+<div class="sidebar">
   <div class="side-hd">&#x26A1; Workbench</div>
-  <div class="side-section">
-    <div class="side-label">Conversations</div>
-    <div id="convList"></div>
-    <div style="padding:4px 0"><button style="width:100%;padding:5px;border-radius:6px;border:1px dashed var(--bdr);background:transparent;color:var(--t3);cursor:pointer;font-size:11px;font-family:inherit" onclick="newChat()">+ New Conversation</button></div>
-  </div>
-  <div class="side-label" style="padding-left:16px">Built Files</div>
-  <div class="side-section">
-    <div class="side-label">&#x1F3AF; Project Context</div>
-    <select id="projTarget" onchange="saveProjCtx()" style="width:100%;padding:6px;margin:2px 0;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
-      <option value="">-- Target Platform --</option>
-      <option value="SAP S/4HANA Public Cloud">SAP S/4HANA Public Cloud</option>
-      <option value="SAP BTP (Cloud Foundry)">SAP BTP (Cloud Foundry)</option>
-      <option value="Web App">Web Application</option>
-      <option value="Mobile PWA">Mobile PWA</option>
-      <option value="Desktop App">Desktop App</option>
-      <option value="CLI Tool">CLI / Script</option>
-    </select>
-    <select id="projLang" onchange="saveProjCtx()" style="width:100%;padding:6px;margin:2px 0;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
-      <option value="">-- Language --</option>
-      <option value="ABAP">ABAP (SAP)</option>
-      <option value="Java">Java</option>
-      <option value="Node.js">Node.js</option>
-      <option value="Python">Python</option>
-      <option value="HTML/CSS/JS">HTML5 / Fiori</option>
-      <option value="CDS/ODATA">CDS View / OData</option>
-    </select>
-    <input type="text" id="projEnv" placeholder="API endpoint / OData URL..." onchange="saveProjCtx()" style="width:100%;padding:6px;margin:2px 0;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
-    <div style="display:flex;gap:4px;margin:2px 0">
-      <input type="text" id="projOrg" placeholder="CF Org" onchange="saveProjCtx()" style="flex:1;padding:6px;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
-      <input type="text" id="projSpace" placeholder="CF Space" onchange="saveProjCtx()" style="flex:1;padding:6px;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
-    </div>
-    <div style="display:flex;gap:4px;margin:2px 0">
-      <input type="text" id="projUser" placeholder="Username" onchange="saveProjCtx()" style="flex:1;padding:6px;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
-      <input type="password" id="projPass" placeholder="Password" onchange="saveProjCtx()" style="flex:1;padding:6px;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
-    </div>
-  </div>
-  <div class="side-section" style="border-top:1px solid var(--bdr);padding-top:8px">
-    <div class="side-label">&#x1F4E6; Joule Sales Order</div>
-    <input type="text" id="jouleOrderNo" placeholder="Order number..." style="width:100%;padding:5px;margin:2px 0;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit" onkeydown="if(event.key==='Enter')queryJoule()">
-    <div style="display:flex;gap:4px;margin:4px 0">
-      <button onclick="queryJoule()" style="flex:1;padding:4px;border-radius:4px;border:1px solid var(--bdr);background:var(--bg);color:var(--ac);cursor:pointer;font-size:9px;font-family:inherit">&#x1F50D; Query</button>
-      <button onclick="listJouleOrders()" style="flex:1;padding:4px;border-radius:4px;border:1px solid var(--bdr);background:var(--bg);color:var(--t2);cursor:pointer;font-size:9px;font-family:inherit">List Recent</button>
-      <button onclick="checkJouleStatus()" style="flex:1;padding:4px;border-radius:4px;border:1px solid var(--bdr);background:var(--bg);color:var(--t2);cursor:pointer;font-size:9px;font-family:inherit">Test</button>
-    </div>
-  </div>
-  <div class="side-files" id="fileList"><div style="color:var(--t3);font-size:10px;padding:8px;text-align:center">No files yet</div></div>
+  <div class="side-convs" id="convList"></div>
   <div class="side-ft">
-    <button onclick="selfReflect()" style="color:var(--ac)">&#x1F4A1; Reflect</button>
-    <button onclick="exportAll()">Export All</button>
-    <button onclick="clearFiles()">Clear</button>
+    <button class="new-chat" onclick="newChat()">+ New Chat</button>
+    <button onclick="selfReflect()">&#x1F4A1; Self-Reflect</button>
+    <a href="/settings.html">Settings</a>
   </div>
 </div>
 
-<!-- MAIN -->
 <div class="main">
   <div class="topbar">
-    <h1>Workbench</h1>
-    <select id="model" onchange="saveCfg()"><option value="deepseek-chat">DeepSeek V3</option><option value="deepseek-reasoner">DeepSeek R1</option></select>
-    <a href="/settings.html" id="keyStatus" style="font-size:10px;color:var(--t3);text-decoration:none;padding:3px 8px;border:1px solid var(--bdr);border-radius:5px">Settings</a>
-    <button onclick="newChat()" class="primary">+ New</button>
+    <select id="model"><option value="deepseek-chat">DeepSeek V3</option><option value="deepseek-reasoner">DeepSeek R1</option></select>
+    <span class="sep"></span>
+    <span class="key-dot off" id="keyDot"></span>
+    <span id="keyLabel" style="font-size:10px;color:var(--t3)">No Key</span>
+    <a href="/settings.html">Config</a>
+    <button onclick="document.querySelector('.panel').classList.toggle('show')">&#x2699; Tools</button>
   </div>
 
-  <!-- Progress Panel -->
-  <div id="progress" style="display:none;margin:0 14px 4px;padding:10px 14px;background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;font-family:'SF Mono',Consolas,monospace;font-size:11px;max-height:160px;overflow-y:auto">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-      <span style="color:var(--ac);font-weight:600">&#x2699; Build Progress</span>
-      <button onclick="this.parentElement.parentElement.style.display='none'" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px">&times;</button>
-    </div>
-    <div id="progressLog"></div>
-  </div>
+  <div class="progress-panel" id="progress"><div style="display:flex;justify-content:space-between"><span style="font-weight:600;color:var(--ac)">Build Progress</span><span onclick="$('progress').classList.remove('show')" style="cursor:pointer">&times;</span></div><div id="progressLog"></div></div>
 
-  <div class="messages" id="msgs"></div>
-  <div class="attach-bar" id="attachBar"></div>
-
-  <div class="input-area">
-    <div class="input-row">
-      <button class="btn" onclick="addFiles()">&#x1F4CE;</button>
-      <button class="btn" id="micBtn" onclick="toggleMic()">&#x1F3A4;</button>
-      <textarea id="input" rows="1" placeholder="描述你想要什么..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
-      <button class="btn send" id="sendBtn" onclick="send()">&#x27A4;</button>
+  <div class="chat-area">
+    <div class="messages" id="msgs"><div class="empty-chat"><div><span style="font-size:36px">&#x26A1;</span><br>Describe what you want to build</div></div></div>
+    <div class="files-bar" id="attachBar"></div>
+    <div class="input-area">
+      <div class="input-row">
+        <button class="btn btn-ghost" onclick="addFiles()">&#x1F4CE;</button>
+        <button class="btn btn-ghost" id="micBtn" onclick="toggleMic()">&#x1F3A4;</button>
+        <textarea id="input" rows="1" placeholder="Tell me what to build..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+        <button class="btn btn-accent" id="sendBtn" onclick="send()">&#x27A4;</button>
+      </div>
+      <div class="hint">Enter to send · Shift+Enter newline · Drop files or paste images · Voice input</div>
     </div>
-    <div class="hint">Enter 发送 · 拖文件/粘贴截图 · 语音输入 · AI 自动生成代码并部署预览</div>
   </div>
 </div>
 
-<div class="drop" id="dropOverlay">&#x1F4C1; Drop files</div>
+<!-- RIGHT TOOLS PANEL -->
+<div class="panel" id="toolsPanel">
+  <h3>&#x1F3AF; Project Context</h3>
+  <select id="projTarget" onchange="saveProjCtx()"><option value="">Target Platform</option><option value="SAP S/4HANA Public Cloud">S/4HANA Public Cloud</option><option value="SAP BTP (Cloud Foundry)">SAP BTP CF</option><option value="Web App">Web App</option><option value="Mobile PWA">Mobile PWA</option><option value="Desktop App">Desktop</option><option value="CLI Tool">CLI Script</option></select>
+  <select id="projLang" onchange="saveProjCtx()"><option value="">Language</option><option value="ABAP">ABAP</option><option value="Java">Java</option><option value="Node.js">Node.js</option><option value="Python">Python</option><option value="HTML5/Fiori">HTML5 / Fiori</option><option value="CDS/ODATA">CDS / OData</option></select>
+  <input type="text" id="projEnv" placeholder="API / OData endpoint URL..." onchange="saveProjCtx()">
+  <div style="display:flex;gap:4px"><input type="text" id="projOrg" placeholder="CF Org" onchange="saveProjCtx()" style="flex:1"><input type="text" id="projSpace" placeholder="CF Space" onchange="saveProjCtx()" style="flex:1"></div>
+  <div style="display:flex;gap:4px"><input type="text" id="projUser" placeholder="User" onchange="saveProjCtx()" style="flex:1"><input type="password" id="projPass" placeholder="Password" onchange="saveProjCtx()" style="flex:1"></div>
+
+  <h3 style="margin-top:12px">&#x1F4E6; Joule Sales Order</h3>
+  <input type="text" id="jouleOrderNo" placeholder="Order number..." onkeydown="if(event.key==='Enter')queryJoule()">
+  <div style="display:flex;gap:4px">
+    <button onclick="queryJoule()" class="primary">&#x1F50D; Query</button>
+    <button onclick="listJouleOrders()">List Recent</button>
+    <button onclick="checkJouleStatus()">Test SAP</button>
+  </div>
+
+  <h3 style="margin-top:12px">&#x1F4C1; Built Files</h3>
+  <div id="fileList" style="font-size:10px;color:var(--t3);max-height:150px;overflow-y:auto"></div>
+</div>
+
+<div class="preview-panel" id="previewPanel"></div>
 <div class="toast" id="toast"></div>
 <input type="file" id="fileInput" multiple onchange="onFiles(this)">
-<div class="preview-panel" id="previewPanel"></div>
 
 <script>
 const $=id=>document.getElementById(id);
 let conversations=JSON.parse(localStorage.getItem('wb_convs')||'{}');
 let activeConv=localStorage.getItem('wb_active')||'default';
-let pendingFiles=[],sending=false,micOn=false,recognition=null;
+let pendingFiles=[],sending=false,micOn=false,recognition=null,micRetries=0;
 let builtFiles=JSON.parse(localStorage.getItem('wb_files')||'[]');
-
-function getProvider(){
-  const providers=JSON.parse(localStorage.getItem('ccw_providers')||'[]');
-  const defaultId=localStorage.getItem('ccw_default_provider')||'ds';
-  const p=providers.find(p=>p.active&&p.id===defaultId)||providers.find(p=>p.active);
-  return p||{type:'deepseek',key:localStorage.getItem('ccw_key')||'',model:localStorage.getItem('ccw_model')||'deepseek-chat'};
-}
-function getProviderURL(p){
-  const urls={deepseek:'https://api.deepseek.com/v1/chat/completions',openai:'https://api.openai.com/v1/chat/completions',anthropic:'https://api.anthropic.com/v1/messages'};
-  return urls[p.type]||'https://api.deepseek.com/v1/chat/completions';
-}
-
+const bf={};
 if(!conversations[activeConv]) conversations[activeConv]={name:'New Chat',messages:[],created:Date.now()};
 
-function saveCfg(){} // Key managed in Settings
-function saveConvs(){localStorage.setItem('wb_convs',JSON.stringify(conversations));localStorage.setItem('wb_active',activeConv)}
-function saveFiles(){localStorage.setItem('wb_files',JSON.stringify(builtFiles))}
+function getProvider(){const p=JSON.parse(localStorage.getItem('ccw_providers')||'[]');const d=localStorage.getItem('ccw_default_provider')||'ds';return p.find(x=>x.active&&x.id===d)||p.find(x=>x.active)||{type:'deepseek',key:localStorage.getItem('ccw_key')||'',model:'deepseek-chat'};}
 
-function loadCfg(){
+// ====== INIT ======
+(function(){
   const p=getProvider();
-  const s=$('keyStatus');
-  if(p.key){s.textContent='Key: '+p.type+' ✓';s.style.color='var(--good)';s.style.borderColor='var(--good)'}
-  else{s.textContent='Set API Key';s.style.color='var(--bad)';s.style.borderColor='var(--bad)'}
-  const modelMap={deepseek:['deepseek-chat','deepseek-reasoner'],openai:['gpt-4o','gpt-4o-mini','gpt-4-turbo'],anthropic:['claude-sonnet-4-6','claude-opus-4-7','claude-haiku-4-5']};
-  const models=modelMap[p.type]||[p.model||'deepseek-chat'];
-  $('model').innerHTML=models.map(m=>`<option value="${m}"${m===p.model?' selected':''}>${m}</option>`).join('');
-}
+  $('keyDot').className='key-dot'+(p.key?' on':' off');
+  $('keyLabel').textContent=p.key?p.type+' configured':'No API Key';
+  $('model').value=p.model||'deepseek-chat';
+  loadProjCtx();renderSidebar();renderMessages();
+})();
 
 // ====== SIDEBAR ======
 function renderSidebar(){
-  const cl=$('convList'),fl=$('fileList');
-  // Sort by most recent first
   const sorted=Object.entries(conversations).sort((a,b)=>b[1].created-a[1].created);
-  cl.innerHTML=sorted.map(([id,c])=>{
-    const name=c.name==='New Chat'?'Untitled ('+new Date(c.created).toLocaleDateString()+')':(c.name||'Chat');
-    const lastMsg=c.messages?.length?c.messages[c.messages.length-1].text?.slice(0,40)||'':'No messages';
-    return `<div class="side-item${id===activeConv?' active':''}" onclick="switchConv('${id}')">
-      <span class="icon">&#x1F4AC;</span>
-      <div style="flex:1;min-width:0">
-        <div class="name">${esc(name)}</div>
-        <div style="font-size:9px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lastMsg)}</div>
-      </div>
-      <span class="del" onclick="event.stopPropagation();deleteConv('${id}')">&times;</span>
-    </div>`;
-  }).join('');
-  fl.innerHTML=builtFiles.length?builtFiles.map((f,i)=>`
-    <div class="side-item" onclick="previewFile('${f.url}')">
-      <span class="icon">${f.url.endsWith('.html')?'&#x1F310;':'&#x1F4C4;'}</span><span class="name">${esc(f.name)}</span>
-      <span class="del" onclick="event.stopPropagation();removeFile(${i})">&times;</span>
-    </div>`).join(''):'<div style="color:var(--t3);font-size:10px;padding:8px;text-align:center">No files yet</div>';
+  $('convList').innerHTML=sorted.map(([id,c])=>`<div class="conv-item${id===activeConv?' active':''}" onclick="switchConv('${id}')"><span class="c-icon">&#x1F4AC;</span><span class="c-name">${esc((c.name==='New Chat'?new Date(c.created).toLocaleDateString():c.name)||'Chat')}</span><span class="c-del" onclick="event.stopPropagation();delConv('${id}')">&times;</span></div>`).join('');
+  $('fileList').innerHTML=builtFiles.length?builtFiles.map((f,i)=>`<div style="padding:3px 0;cursor:pointer" onclick="previewFile('${f.url}')">&#x1F4C4; ${esc(f.name)}</div>`).join(''):'No files yet';
 }
+function switchConv(id){activeConv=id;if(!conversations[id])conversations[id]={name:'New Chat',messages:[],created:Date.now()};saveConvs();renderSidebar();renderMessages()}
+function delConv(id){if(Object.keys(conversations).length<=1)return;delete conversations[id];if(activeConv===id)activeConv=Object.keys(conversations)[0];saveConvs();renderSidebar();renderMessages()}
+function saveConvs(){localStorage.setItem('wb_convs',JSON.stringify(conversations));localStorage.setItem('wb_active',activeConv)}
+function saveFiles(){localStorage.setItem('wb_files',JSON.stringify(builtFiles))}
 
-function switchConv(id){activeConv=id;if(!conversations[id]) conversations[id]={name:'New Chat',messages:[],created:Date.now()};saveConvs();renderMessages();renderSidebar()}
-function deleteConv(id){if(Object.keys(conversations).length<=1)return;delete conversations[id];if(activeConv===id) activeConv=Object.keys(conversations)[0];saveConvs();renderSidebar();renderMessages()}
-function toggleSidebar(){$('sidebar').classList.toggle('open')}
-
-function previewFile(url){showPreview(url)}
-function showPreview(url){
-  const panel=document.getElementById('previewPanel');
-  panel.innerHTML=`<div class="pp-bar"><span>Preview</span><a href="${url}" target="_blank">Open in new tab</a><button onclick="this.parentElement.parentElement.classList.remove('show')">Close</button></div><iframe src="${url}"></iframe>`;
-  panel.classList.add('show');
-}
-function removeFile(i){builtFiles.splice(i,1);saveFiles();renderSidebar()}
-function clearFiles(){builtFiles=[];saveFiles();renderSidebar()}
+// ====== PROJECT CONTEXT ======
+function saveProjCtx(){const c={target:$('projTarget').value,lang:$('projLang').value,env:$('projEnv').value,org:$('projOrg').value,space:$('projSpace').value,user:$('projUser').value,pass:$('projPass').value};localStorage.setItem('wb_proj_ctx',JSON.stringify(c))}
+function loadProjCtx(){try{const c=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');if(c.target)$('projTarget').value=c.target;if(c.lang)$('projLang').value=c.lang;if(c.env)$('projEnv').value=c.env;if(c.org)$('projOrg').value=c.org;if(c.space)$('projSpace').value=c.space;if(c.user)$('projUser').value=c.user;if(c.pass)$('projPass').value=c.pass}catch{}}
 
 // ====== MESSAGES ======
 function renderMessages(){
   const msgs=conversations[activeConv]?.messages||[];
-  $('msgs').innerHTML=msgs.length?msgs.map(m=>renderMsg(m.role,m.text,m.files)).join(''):
-    `<div class="msg ai"><div class="av">&#x1F916;</div><div class="bubble" style="text-align:center;padding:30px;color:var(--t2)">
-      <div style="font-size:36px;margin-bottom:8px">&#x26A1;</div>Describe what you want to build<br>
-      <span style="font-size:11px;color:var(--t3)">AI generates code → one-click deploy → instant preview</span></div></div>`;
+  $('msgs').innerHTML=msgs.length?msgs.map(m=>renderMsg(m.role,m.text,m.files)).join(''):`<div class="empty-chat"><div><span style="font-size:36px">&#x26A1;</span><br>Describe what you want to build</div></div>`;
   $('msgs').scrollTop=$('msgs').scrollHeight;
 }
-
 function renderMsg(role,text,files){
-  let h='<div class="msg '+(role==='user'?'user':'ai')+'"><div class="av">'+(role==='user'?'&#x1F464;':'&#x1F916;')+'</div>';
-  if(files?.length) h+='<div class="attachments">'+files.map(f=>f.isImage?`<img src="${f.content}" style="max-width:140px;max-height:80px;border-radius:6px;cursor:pointer" onclick="window.open('${f.content}')">`:`<span class="atch">&#x1F4C4; ${esc(f.name.slice(0,18))}</span>`).join('')+'</div>';
-  h+='<div class="bubble">'+(role==='ai'?fmtAI(text):esc(text||''))+'</div>';
-  // Add refine chips for AI messages with code
-  if(role==='ai'&&text&&text.includes('```')){
-    h+=`<div class="refine-chips"><span>Refine: </span>
-      <button onclick="refineCode('Optimize this code for performance and readability')">&#x26A1; Optimize</button>
-      <button onclick="refineCode('Add error handling and input validation')">&#x1F6E0; Error handling</button>
-      <button onclick="refineCode('Add detailed comments and documentation')">&#x1F4DD; Comments</button>
-      <button onclick="refineCode('Fix potential bugs and edge cases')">&#x1F41B; Fix bugs</button>
-    </div>`;
-  }
-  h+='</div>';
-  return h;
+  let h=`<div class="msg ${role==='user'?'user':'ai'}"><div class="av">${role==='user'?'&#x1F464;':'&#x1F916;'}</div>`;
+  if(files?.length)h+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">'+files.map(f=>f.isImage?`<img src="${f.content}" style="max-width:120px;max-height:80px;border-radius:6px;cursor:pointer" onclick="window.open('${f.content}')">`:`<span class="file-chip">&#x1F4C4; ${esc(f.name.slice(0,15))}</span>`).join('')+'</div>';
+  h+=`<div class="bubble">${role==='ai'?fmtAI(text):esc(text||'')}</div>`;
+  if(role==='ai'&&text?.includes('```'))h+=`<div class="refine-row"><button onclick="refine('Optimize')">&#x26A1; Optimize</button><button onclick="refine('Error handling')">&#x1F6E0; Error handling</button><button onclick="refine('Comments')">&#x1F4DD; Comments</button><button onclick="refine('Fix bugs')">&#x1F41B; Fix bugs</button></div>`;
+  return h+'</div>';
 }
-
 function addMsg(role,text,files){
   conversations[activeConv].messages.push({role,text,files,time:Date.now()});
-  if(!conversations[activeConv].name||conversations[activeConv].name==='New Chat'){
-    if(role==='user'&&text) conversations[activeConv].name=text.slice(0,30)+(text.length>30?'...':'');
-  }
+  if(conversations[activeConv].name==='New Chat'&&role==='user'&&text)conversations[activeConv].name=text.slice(0,30)+(text.length>30?'...':'');
   saveConvs();renderMessages();renderSidebar();
 }
 
-const bf={};
-function fmtAI(t){
-  return esc(t||'')
-    .replace(/```(\w*)\n([\s\S]*?)```/g,(_,lang,code)=>{
-      const c=esc(code.trim()),l=lang||'code',ext=l==='html'?'html':l==='javascript'?'js':l==='python'?'py':l||'txt';
-      const isHTML=l==='html'||code.includes('<!DOCTYPE');
-      const fid='f'+Date.now()+Math.random().toString(36).slice(2,6);
-      bf[fid]={code:code.trim(),ext,lang:l};
-      let btpBtn='';
-      try{const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');if(ctx.target?.includes('BTP')&&isHTML)btpBtn=`<button class="deploy" onclick="deployToBTP('${fid}')" style="color:var(--ac)">&#x1F310; BTP</button>`}catch{}
-      const btns=`<button onclick="copyBlock(this)">Copy</button>
-        <button onclick="editBlock(this,'${fid}')">Edit</button>
-        ${isHTML?`<button class="deploy" onclick="deployBlock('${fid}')">&#x25B6; Preview</button>`:`<button class="deploy" onclick="deployBlock('${fid}')">&#x1F4C1; Deploy</button>`}
-        ${btpBtn}
-        <button onclick="downloadBlock(this,'${ext}')">Save</button>`;
-      return `<div class="code-block"><div class="pre-btns">${btns}</div><pre class="code-pre"><code class="language-${l}" contenteditable="false" id="${fid}">${c}</code></pre></div>`;
-    }).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
-}
+// ====== FORMAT AI ======
+function fmtAI(t){return esc(t||'').replace(/```(\w*)\n([\s\S]*?)```/g,(_,l,c)=>{const code=c.trim(),ext=l==='html'?'html':l==='javascript'?'js':l==='python'?'py':l||'txt';const isHTML=l==='html'||code.includes('<!DOCTYPE');const fid='f'+Date.now()+Math.random().toString(36).slice(2,6);bf[fid]={code,ext,lang:l};let btp='';try{if(JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}').target?.includes('BTP')&&isHTML)btp=`<button class="btp" onclick="deployBTP('${fid}')">&#x1F310; BTP</button>`}catch{}return`<div class="code-block"><div class="pre-btns"><button onclick="copyBlock(this)">Copy</button><button onclick="editBlock(this,'${fid}')">Edit</button>${isHTML?`<button class="deploy" onclick="deployBlock('${fid}')">&#x25B6; Preview</button>`:`<button class="deploy" onclick="deployBlock('${fid}')">&#x1F4C1; Deploy</button>`}${btp}<button onclick="downloadBlock(this,'${ext}')">Save</button></div><pre><code contenteditable="false" id="${fid}">${esc(code)}</code></pre></div>`}).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')}
 
-// Inline code editing
-function editBlock(btn,fid){
-  const pre=btn.closest('.code-block').querySelector('code');
-  if(pre.contentEditable==='true'){
-    pre.contentEditable='false';
-    pre.style.outline='none';
-    pre.style.background='';
-    btn.textContent='Edit';
-    bf[fid].code=pre.textContent;
-  } else {
-    pre.contentEditable='true';
-    pre.style.outline='2px solid var(--ac)';
-    pre.style.background='rgba(0,112,242,0.02)';
-    btn.textContent='Done';
-    pre.focus();
-  }
+// ====== CODE ACTIONS ======
+function copyBlock(b){navigator.clipboard.writeText(b.closest('.code-block').querySelector('code').textContent);toast('Copied')}
+function editBlock(b,fid){const c=b.closest('.code-block').querySelector('code');if(c.contentEditable==='true'){c.contentEditable='false';c.style.outline='';b.textContent='Edit';bf[fid].code=c.textContent}else{c.contentEditable='true';c.style.outline='2px solid var(--ac)';b.textContent='Done';c.focus()}}
+function downloadBlock(b,ext){const c=b.closest('.code-block').querySelector('code').textContent;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c]));a.download='code.'+ext;a.click();toast('Saved')}
+async function deployBlock(fid){await deployCode(bf[fid]?.code,'build_'+Date.now()+'.'+(bf[fid]?.ext||'html'))}
+async function deployCode(code,fn){
+  try{
+    const r=await fetch('/api/workbench/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,filename:fn})});
+    const d=await r.json();
+    if(d.ok){builtFiles.unshift({name:fn,url:d.url,time:Date.now()});saveFiles();renderSidebar();showPreview(d.url);toast('Deployed')}else toast('Failed: '+d.error)
+  }catch(e){toast('Error')}
 }
-function downloadBlock(btn,ext){
-  const code=btn.closest('.code-block').querySelector('code').textContent;
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([code]));
-  a.download='code.'+ext;a.click();
-  toast('Downloaded');
+async function deployBTP(fid){
+  const code=bf[fid]?.code;if(!code)return;
+  const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
+  prog('Deploying to BTP...','ac');
+  const r=await fetch('/api/btp/deploy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,appName:'fiori-app',config:{api:ctx.env||'',org:ctx.org||'',space:ctx.space||'',user:ctx.user||'',pass:ctx.pass||''}})});
+  const d=await r.json();
+  if(d.ok){prog(d.cfDeploy?.ok?'Live: '+d.cfDeploy.url:'Package: '+d.packageUrl,'good');addMsg('ai','## BTP Ready\n\n'+d.instructions)}else prog('Failed: '+d.error,'bad')
 }
+function refine(p){$('input').value=p+': ';$('input').focus()}
+function showPreview(url){const p=$('previewPanel');p.innerHTML=`<div class="pp-bar"><span>Preview</span><a href="${url}" target="_blank">Open in tab</a><button onclick="p.classList.remove('show')">Close</button></div><iframe src="${url}"></iframe>`;p.classList.add('show')}
+function previewFile(url){showPreview(url)}
 
 // ====== SEND ======
-// ====== PROGRESS ======
-function prog(msg,cls){const p=$('progress'),l=$('progressLog');p.style.display='';l.innerHTML+=`<div style="color:var(--${cls||'t2'});padding:1px 0">${msg}</div>`;l.parentElement.scrollTop=999}
-
+function prog(m,c){const p=$('progress');p.classList.add('show');$('progressLog').innerHTML+=`<div style="color:var(--${c||'t2'});padding:1px 0">${m}</div>`}
 async function send(){
-  const provider=getProvider();
-  const text=$('input').value.trim(),key=provider.key;
-  if((!text&&!pendingFiles.length)||sending)return;
-  if(!key){toast('Set API Key in Settings first');return}
+  const t=$('input').value.trim(),provider=getProvider();
+  if((!t&&!pendingFiles.length)||sending)return;
+  if(!provider.key){toast('Set API Key in Settings');return}
   sending=true;$('sendBtn').disabled=true;
-  const files=[...pendingFiles];pendingFiles=[];updateAttach();
+  const files=[...pendingFiles];pendingFiles=[];updateFiles();
 
-  // Show progress
-  $('progressLog').innerHTML=''; prog('Starting build...','ac');
-  if(files.length) prog('Files attached: '+files.length,'t2');
+  $('progressLog').innerHTML='';prog('Building...','ac');
+  let c='';
+  for(const f of files){if(!f.isImage)c+=`[File: ${f.name}]\n\`\`\`\n${f.text?.slice(0,4000)||'[Binary]'}\n\`\`\`\n`}
+  if(t)c+=t;
+  const preview=t||(files.length?'Sent '+files.length+' file(s)':'');
+  addMsg('user',preview,files);$('input').value='';$('input').style.height='auto';
 
-  let content='';
-  const fileNames=[];
-  for(const f of files){
-    fileNames.push(f.name);
-    if(!f.isImage) content+=`[File: ${f.name}]\n\`\`\`\n${f.text?.slice(0,4000)||'[Binary]'}\n\`\`\`\n`;
-  }
-  if(fileNames.length&&!content) content='[Attached: '+fileNames.join(', ')+']\n';
-  if(text)content+=text;
-  addMsg('user',text||(fileNames.length?'Sent: '+fileNames.join(', '):''),files);
-  $('input').value='';$('input').style.height='auto';
-
-  // Inject project context
+  // Context
   let projCtx='';
-  try{const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
-    if(ctx.target)projCtx=`\nCURRENT PROJECT:\n- Platform: ${ctx.target}\n- Language: ${ctx.lang||'auto'}\n- Endpoint: ${ctx.env||'not set'}\n- Auth: ${ctx.user?'Basic Auth with username '+ctx.user:'not configured'}\nGenerate production-ready code for ${ctx.target}. Use ${ctx.lang||'the most appropriate language'}. Include proper authentication handling.\n`;
-  }catch{}
-
-  const sys={role:'system',content:`You are a full-stack developer AI. CRITICAL RULES:${projCtx}
-1. NEVER output pseudo-code. ALWAYS output COMPLETE, runnable code files.
-2. First describe what you're building (1 line), then output ALL code in separate \`\`\`language blocks.
-3. Language support:
-   - HTML/CSS/JS: Complete single file, inline everything, mobile viewport
-   - Node.js: index.js + package.json with deps listed
-   - Java: Main.java + Maven pom.xml, javac compilable
-   - ABAP: Complete REPORT with all declarations, SAP-ready
-   - Python: Full script with imports + shebang, note PyInstaller for .exe
-   - C/C++: Complete source with gcc/cl compile command
-   - Electron: main.js + renderer HTML for desktop .exe
-   - React/Vue: Single HTML with CDN imports (no build tools needed)
-   - H5 mobile: Single HTML with touch events, PWA manifest inline
-4. For .exe requests: generate Electron project OR Python+PyInstaller project
-5. Each code block label = filename (e.g., \`\`\`javascript index.js)
-6. Use CDN for web libs; list npm/pip packages clearly for backend
-7. End with "## Run Instructions" section (1-3 concrete steps)`};
+  try{const x=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');if(x.target)projCtx=`\nPROJECT: ${x.target} | ${x.lang||'auto'} | Endpoint: ${x.env||'none'} | Auth: ${x.user?'configured':'none'}`}catch{}
+  const sys={role:'system',content:`You are a full-stack developer AI.${projCtx}\nALWAYS output COMPLETE runnable code. For web: single HTML file. For backend: all files with deps. Each file in \`\`\` blocks with filename.`};
   const apiMsgs=[sys];
-  for(const m of conversations[activeConv].messages){
-    const role=m.role==='ai'?'assistant':m.role;
-    let txt=m.text||'';
-    if(m.files?.length){const names=m.files.map(f=>f.name).join(', ');txt='[Attached: '+names+']\n'+txt}
-    apiMsgs.push({role,content:txt});
-  }
+  for(const m of conversations[activeConv].messages){apiMsgs.push({role:m.role==='ai'?'assistant':m.role,content:m.text||''})}
 
-  prog('Asking AI to generate code...','ac');
+  prog('Calling AI...','ac');
   try{
-    const apiURL=getProviderURL(provider);
-    const providerModel=provider.model||$('model').value||'deepseek-chat';
-    const maxTok=parseInt(localStorage.getItem('ccw_max_tokens')||'8192');
-    const res=await fetch(apiURL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:providerModel,messages:apiMsgs,max_tokens:maxTok})});
-    prog('AI response received','good');
-    const data=await res.json();
-    const reply=data.choices?.[0]?.message?.content||'Error: '+(data.error?.message||'');
-    addMsg('ai',reply);
-
-    // Count code blocks
-    const blocks=reply.match(/```/g);
-    const codeCount=blocks?Math.floor(blocks.length/2):0;
-    if(codeCount) prog('Generated '+codeCount+' code block(s)','good');
-    else prog('No code blocks in response','t3');
-
-    // Auto-deploy first HTML block
+    const r=await fetch('https://api.deepseek.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+provider.key},body:JSON.stringify({model:provider.model||'deepseek-chat',messages:apiMsgs,max_tokens:8192})});
+    const d=await r.json();
+    const reply=d.choices?.[0]?.message?.content||'Error';
+    prog('Response received','good');addMsg('ai',reply);
     const m=reply.match(/```(?:html)?\n([\s\S]*?)```/);
-    if(m&&(m[1].includes('<!DOCTYPE')||m[1].includes('<html'))){
-      prog('Deploying HTML app...','ac');
-      setTimeout(async()=>{
-        try{
-          const r=await fetch('/api/workbench/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:m[1],filename:'app_'+Date.now()+'.html'})});
-          const d=await r.json();
-          if(d.ok){builtFiles.unshift({name:d.url.split('/').pop(),url:d.url,time:Date.now()});saveFiles();renderSidebar();window.open(d.url,'_blank');prog('Deployed & preview opened: '+d.url,'good')}
-          else prog('Deploy failed: '+d.error,'bad');
-        }catch(e){prog('Deploy error: '+e.message,'bad')}
-      },300);
-    }
-  }catch(e){addMsg('ai','Error: '+e.message);prog('Failed: '+e.message,'bad')}
-  prog('Done','good');
+    if(m&&(m[1].includes('<!DOCTYPE')||m[1].includes('<html'))){setTimeout(()=>deployCode(m[1],'app_'+Date.now()+'.html'),300)}
+  }catch(e){addMsg('ai','Error: '+e.message);prog('Failed','bad')}
   sending=false;$('sendBtn').disabled=false;
 }
 
-// ====== DEPLOY ======
-async function deployBlock(fid){const b=bf[fid];if(b)await deployCode(b.code,'build_'+Date.now()+'.'+b.ext)}
-async function deployToBTP(fid){
-  const b=bf[fid];
-  if(!b)return;
-  const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
-  if(!ctx.env){toast('Set BTP CF API in Project Context first');return}
-  prog('Packaging for BTP...','ac');
-  try{
-    const res=await fetch('/api/btp/deploy',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({code:b.code,appName:ctx.appName||'fiori-app',config:{api:ctx.env,org:ctx.org||'',space:ctx.space||'',user:ctx.user||'',pass:ctx.pass||''}})});
-    const d=await res.json();
-    if(d.ok){
-      if(d.cfDeploy?.ok){prog('Deployed to BTP: '+d.cfDeploy.url,'good');addMsg('ai','## BTP Deploy Success\n\nApp deployed to: '+d.cfDeploy.url);}
-      else{prog('BTP package ready. Download & deploy manually.','good');
-        addMsg('ai','## BTP Package Ready\n\nDownload: <a href="'+d.packageUrl+'" style="color:var(--ac)">'+d.packageUrl+'</a>\n\n'+d.instructions);
-      }
-      saveConvs();renderMessages();
-    }else prog('BTP deploy failed: '+d.error,'bad');
-  }catch(e){prog('Error: '+e.message,'bad')}
-}
-async function deployCode(code,filename){
-  try{
-    const res=await fetch('/api/workbench/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,filename})});
-    const d=await res.json();
-    if(d.ok){builtFiles.unshift({name:filename,url:d.url,time:Date.now()});saveFiles();renderSidebar();showPreview(d.url);toast('Deployed: '+d.url);
-      // Auto-learn: save successful deployment pattern to knowledge base
-      try{
-        fetch('/api/memory/save',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({key:'pattern_'+Date.now(),value:{filename,url:d.url,timestamp:new Date().toISOString()},tags:['deploy','success','auto']})
-        }).catch(()=>{});
-      }catch{}}
-    else toast('Failed: '+d.error);
-  }catch(e){toast('Server error')}
-}
-function copyBlock(btn){navigator.clipboard.writeText(btn.closest('.code-block').querySelector('code').textContent);toast('Copied')}
-function refineCode(prompt){$('input').value=prompt;$('input').focus();$('input').style.height='auto';$('input').style.height=Math.min($('input').scrollHeight,100)+'px'}
-function saveBlock(btn,ext){const c=btn.closest('pre').querySelector('code').textContent;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c]));a.download='code.'+ext;a.click()}
-
 // ====== FILES ======
 function addFiles(){$('fileInput').click()}
-function onFiles(inp){for(const f of inp.files)readFile(f);inp.value=''}
-function readFile(file){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:file.name,content:r.result,isImage:file.type.startsWith('image/'),text:file.type.startsWith('image/')?null:r.result});updateAttach()};file.type.startsWith('image/')?r.readAsDataURL(file):r.readAsText(file)}
-function updateAttach(){$('attachBar').innerHTML=pendingFiles.map((f,i)=>`<span class="atch">${f.isImage?'&#x1F5BC;':'&#x1F4C4;'} ${esc(f.name.slice(0,15))} <span class="x" onclick="pendingFiles.splice(${i},1);updateAttach()">x</span></span>`).join('')}
+function onFiles(i){for(const f of i.files){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:f.name,content:r.result,isImage:f.type.startsWith('image/'),text:f.type.startsWith('image/')?null:r.result});updateFiles()};f.type.startsWith('image/')?r.readAsDataURL(f):r.readAsText(f)}i.value=''}
+function updateFiles(){$('attachBar').innerHTML=pendingFiles.map((f,i)=>`<span class="file-chip">${f.isImage?'&#x1F5BC;':'&#x1F4C4;'} ${esc(f.name.slice(0,15))} <span class="x" onclick="pendingFiles.splice(${i},1);updateFiles()">x</span></span>`).join('')}
 
 // ====== VOICE ======
-let micRetries=0;
 function toggleMic(){micOn?stopMic():startMic()}
-function startMic(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){toast('Voice not supported');return}
-  recognition=new SR();recognition.continuous=false;recognition.lang='zh-CN';recognition.interimResults=true;
-  recognition.onresult=e=>{const t=e.results[0][0].transcript.trim();if(t){$('input').value=($('input').value+' '+t).trim();stopMic();$('input').focus();micRetries=0}}
-  recognition.onerror=e=>{
-    if(e.error==='no-speech'){if(micRetries<2){micRetries++;stopMic();setTimeout(startMic,500);return}toast('No speech detected')}
-    else if(e.error==='not-allowed')toast('Microphone denied - enable in browser settings')
-    else if(e.error==='network'){
-      toast('Voice needs internet access. Use Chrome or type instead.');
-      // Network error means Web Speech API can't reach Google speech servers
-      // Common in restricted network environments
-    }
-    else if(e.error!=='aborted')toast('Voice error: '+e.error);
-    stopMic();micRetries=0;
-  };
-  recognition.onend=()=>{if(micOn)stopMic()};
-  recognition.start();micOn=true;$('micBtn').classList.add('rec');toast('Speak now...');
-}
-function stopMic(){if(recognition){try{recognition.stop()}catch{};recognition=null}micOn=false;$('micBtn').classList.remove('rec')}
+function startMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast('Voice not supported');return}recognition=new SR();recognition.continuous=false;recognition.lang='zh-CN';recognition.interimResults=true;recognition.onresult=e=>{const t=e.results[0][0].transcript.trim();if(t){$('input').value=($('input').value+' '+t).trim();stopMic();$('input').focus();micRetries=0}};recognition.onerror=e=>{if(e.error==='no-speech'){if(micRetries<2){micRetries++;stopMic();setTimeout(startMic,500);return}toast('No speech')}else if(e.error==='not-allowed')toast('Microphone denied')else if(e.error!=='aborted'&&e.error!=='network')toast('Voice: '+e.error);stopMic();micRetries=0};recognition.onend=()=>{if(micOn)stopMic()};recognition.start();micOn=true;$('micBtn').classList.add('btn-rec')}
+function stopMic(){if(recognition){try{recognition.stop()}catch{};recognition=null}micOn=false;$('micBtn').classList.remove('btn-rec')}
 
-// ====== DRAG/PASTE ======
-document.addEventListener('dragover',e=>{e.preventDefault();$('dropOverlay').classList.add('on')});
-document.addEventListener('dragleave',e=>{e.preventDefault();$('dropOverlay').classList.remove('on')});
-document.addEventListener('drop',e=>{e.preventDefault();$('dropOverlay').classList.remove('on');for(const f of e.dataTransfer.files)readFile(f)});
-document.addEventListener('paste',e=>{for(const it of e.clipboardData?.items||[]){if(it.type.startsWith('image/')){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:'paste-'+Date.now()+'.png',content:r.result,isImage:true});updateAttach();toast('Screenshot pasted')};r.readAsDataURL(it.getAsFile())}}});
+// ====== JOULE ======
+async function queryJoule(){const n=$('jouleOrderNo').value.trim();if(!n){toast('Enter order number');return}const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');prog('Querying order '+n+'...','ac');try{const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_sales_order_get',params:{orderNo:n,config:{baseURL:ctx.env,username:ctx.user,password:ctx.pass}}})});const d=await r.json();addMsg('ai',d.ok?'## Sales Order: '+n+'\n```json\n'+JSON.stringify(d.data,null,2).slice(0,3000)+'\n```':'Order not found');prog(d.ok?'OK':'Failed','good');saveConvs();renderMessages()}catch(e){prog('Error','bad')}}
+async function listJouleOrders(){const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');prog('Listing orders...','ac');try{const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_sales_order_list',params:{top:10,config:{baseURL:ctx.env,username:ctx.user,password:ctx.pass}}})});const d=await r.json();if(d.ok&&d.data?.length){addMsg('ai','## Recent Orders\n'+d.data.map(o=>`- ${o.SalesOrder||o.SalesDocument}: ${o.SoldToParty||''} ${o.TotalNetAmount||''} ${o.TransactionCurrency||''}`).join('\n'))}else addMsg('ai','No orders found');prog('OK','good');saveConvs();renderMessages()}catch(e){prog('Error','bad')}}
+async function checkJouleStatus(){const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');prog('Testing SAP...','ac');try{const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_sap_status',params:{config:{baseURL:ctx.env,username:ctx.user,password:ctx.pass}}})});const d=await r.json();addMsg('ai',d.connected?'## Connected to SAP S/4HANA';'## SAP Connection Failed\n'+d.message);prog(d.connected?'Connected':'Failed','good');saveConvs();renderMessages()}catch(e){prog('Error','bad')}}
 
-function saveProjCtx(){
-  const ctx={target:$('projTarget').value,lang:$('projLang').value,env:$('projEnv').value,org:$('projOrg').value,space:$('projSpace').value,user:$('projUser').value,pass:$('projPass').value};
-  localStorage.setItem('wb_proj_ctx',JSON.stringify(ctx));
-}
-function loadProjCtx(){
+// ====== SELF-REFLECT ======
+async function selfReflect(){
+  const p=getProvider();if(!p.key){toast('Set API Key first');return}
+  prog('Analyzing conversations...','ac');
+  const all=Object.values(conversations).flatMap(c=>c.messages||[]).slice(-20);
+  const summary=all.map(m=>`[${m.role}]: ${(m.text||'').slice(0,150)}`).join('\n');
+  if(!summary){prog('Nothing to analyze','t3');return}
   try{
-    const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
-    if(ctx.target)$('projTarget').value=ctx.target;
-    if(ctx.lang)$('projLang').value=ctx.lang;
-    if(ctx.env)$('projEnv').value=ctx.env;
-    if(ctx.org)$('projOrg').value=ctx.org;
-    if(ctx.space)$('projSpace').value=ctx.space;
-    if(ctx.user)$('projUser').value=ctx.user;
-    if(ctx.pass)$('projPass').value=ctx.pass;
-  }catch{}
-}
-
-// ====== Joule Sales Order ======
-function getJouleConfig(){
-  try{return JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}')}catch{return{}}
-}
-async function queryJoule(){
-  const orderNo=$('jouleOrderNo').value.trim();
-  if(!orderNo){toast('Enter order number');return}
-  const ctx=getJouleConfig();
-  if(!ctx.env){toast('Set SAP endpoint in Project Context');return}
-  prog('Querying order '+orderNo+'...','ac');
-  try{
-    const res=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({tool:'joule_sales_order_get',params:{orderNo,config:{baseURL:ctx.env,username:ctx.user||'',password:ctx.pass||''}}})});
-    const d=await res.json();
-    if(d.ok){
-      const order=d.data;
-      addMsg('ai','## Sales Order: '+orderNo+'\n\n```json\n'+JSON.stringify(order,null,2).slice(0,3000)+'\n```');
-      prog('Order found','good');
-    }else{
-      addMsg('ai','Order '+orderNo+' not found or SAP connection failed.\n\nError: '+(d.error||'Unknown'));
-      prog('Query failed','bad');
-    }
-    saveConvs();renderMessages();
-  }catch(e){prog('Error: '+e.message,'bad')}
-}
-async function listJouleOrders(){
-  const ctx=getJouleConfig();
-  if(!ctx.env){toast('Set SAP endpoint in Project Context');return}
-  prog('Listing recent orders...','ac');
-  try{
-    const res=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({tool:'joule_sales_order_list',params:{top:10,config:{baseURL:ctx.env,username:ctx.user||'',password:ctx.pass||''}}})});
-    const d=await res.json();
-    if(d.ok&&d.data?.length){
-      const summary=d.data.map(o=>`- **${o.SalesOrder||o.SalesDocument}**: ${o.SoldToParty||''} | ${o.TotalNetAmount||''} ${o.TransactionCurrency||''} | ${o.SalesOrderType||''}`).join('\n');
-      addMsg('ai','## Recent Sales Orders\n\n'+summary+'\n\nUse the query box above to see details.');
-      prog(d.data.length+' orders found','good');
-    }else{
-      addMsg('ai','No sales orders found or SAP connection not available.');
-      prog('No results','t3');
-    }
-    saveConvs();renderMessages();
-  }catch(e){prog('Error: '+e.message,'bad')}
-}
-async function checkJouleStatus(){
-  const ctx=getJouleConfig();
-  if(!ctx.env){toast('Set SAP endpoint in Project Context');return}
-  prog('Testing SAP connection...','ac');
-  try{
-    const res=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({tool:'joule_sap_status',params:{config:{baseURL:ctx.env,username:ctx.user||'',password:ctx.pass||''}}})});
-    const d=await res.json();
-    addMsg('ai',d.connected?'## SAP Connection: OK\n\nConnected to '+d.endpoint:'## SAP Connection: FAILED\n\n'+d.message);
-    prog(d.connected?'Connected':'Failed','good');
-    saveConvs();renderMessages();
-  }catch(e){prog('Error: '+e.message,'bad')}
+    const r=await fetch('https://api.deepseek.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+p.key},body:JSON.stringify({model:p.model||'deepseek-chat',messages:[{role:'system',content:'Analyze these conversations. Suggest 1 concrete code improvement for the Workbench app. Output the improved HTML code block.'},{role:'user',content:summary}],max_tokens:4096})});
+    const d=await r.json();
+    addMsg('ai','## Self-Reflection\n\n'+d.choices?.[0]?.message?.content);
+    prog('Analysis complete','good');saveConvs();renderMessages();
+  }catch(e){prog('Failed','bad')}
 }
 
 function newChat(){const id='c_'+Date.now();conversations[id]={name:'New Chat',messages:[],created:Date.now()};activeConv=id;saveConvs();renderSidebar();renderMessages()}
-
-async function selfReflect(){
-  const provider=getProvider();
-  if(!provider.key){toast('Set API Key in Settings first');return}
-  prog('Self-reflecting on conversations...','ac');
-
-  // Gather recent conversations for context
-  const allConvs=Object.values(conversations);
-  const recentMsgs=allConvs.flatMap(c=>c.messages||[]).slice(-20);
-  const summary=recentMsgs.map(m=>`[${m.role}]: ${(m.text||'').slice(0,200)}`).join('\n');
-
-  if(!summary){prog('No conversations to reflect on','t3');return}
-
-  const analysisPrompt={role:'system',content:`You are a self-improving AI. Analyze these recent conversations and suggest concrete improvements to the Workbench application:
-
-1. What patterns do you see in user requests?
-2. What features would make the Workbench more useful?
-3. Generate actual code changes for the most impactful improvement (modify chat-ui.html).
-4. Output the improved code section wrapped in \`\`\`html.
-
-Be specific and actionable. Focus on ONE improvement at a time.`};
-
-  prog('Analyzing conversation patterns...','ac');
-  try{
-    const res=await fetch('https://api.deepseek.com/v1/chat/completions',{
-      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+provider.key},
-      body:JSON.stringify({model:provider.model||'deepseek-chat',messages:[analysisPrompt,{role:'user',content:'Recent conversations:\n'+summary}],max_tokens:4096})
-    });
-    const data=await res.json();
-    const reply=data.choices?.[0]?.message?.content||'Error';
-    addMsg('ai','## Self-Reflection Analysis\n\n'+reply);
-    conversations[activeConv].messages.push({role:'ai',text:'## Self-Reflection Analysis\n\n'+reply,time:Date.now()});
-    saveConvs();renderMessages();
-    prog('Reflection complete. Review suggested improvements.','good');
-  }catch(e){prog('Reflection failed: '+e.message,'bad')}
-}
-function exportAll(){let t='';for(const f of builtFiles)t+=f.name+' '+f.url+'\n';const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t]));a.download='files.txt';a.click()}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
 
-loadCfg();loadProjCtx();renderSidebar();renderMessages();
+document.addEventListener('dragover',e=>{e.preventDefault()});
+document.addEventListener('drop',e=>{e.preventDefault();for(const f of e.dataTransfer.files){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:f.name,content:r.result,isImage:f.type.startsWith('image/'),text:f.type.startsWith('image/')?null:r.result});updateFiles()};f.type.startsWith('image/')?r.readAsDataURL(f):r.readAsText(f)}});
+document.addEventListener('paste',e=>{for(const it of e.clipboardData?.items||[]){if(it.type.startsWith('image/')){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:'paste-'+Date.now()+'.png',content:r.result,isImage:true});updateFiles()};r.readAsDataURL(it.getAsFile())}}});
 $('input').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'});
-document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='o'){e.preventDefault();addFiles()}});
 </script>
 </body>
 </html>

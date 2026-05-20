@@ -127,6 +127,15 @@ input[type=file]{display:none}
     <button onclick="newChat()" class="primary">+ New</button>
   </div>
 
+  <!-- Progress Panel -->
+  <div id="progress" style="display:none;margin:0 14px 4px;padding:10px 14px;background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;font-family:'SF Mono',Consolas,monospace;font-size:11px;max-height:160px;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <span style="color:var(--ac);font-weight:600">&#x2699; Build Progress</span>
+      <button onclick="this.parentElement.parentElement.style.display='none'" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px">&times;</button>
+    </div>
+    <div id="progressLog"></div>
+  </div>
+
   <div class="messages" id="msgs"></div>
   <div class="attach-bar" id="attachBar"></div>
 
@@ -224,12 +233,19 @@ function fmtAI(t){
 }
 
 // ====== SEND ======
+// ====== PROGRESS ======
+function prog(msg,cls){const p=$('progress'),l=$('progressLog');p.style.display='';l.innerHTML+=`<div style="color:var(--${cls||'t2'});padding:1px 0">${msg}</div>`;l.parentElement.scrollTop=999}
+
 async function send(){
   const text=$('input').value.trim(),key=$('apikey').value.trim();
   if((!text&&!pendingFiles.length)||sending)return;
   if(!key){toast('Enter API Key first');return}
   sending=true;$('sendBtn').disabled=true;
   const files=[...pendingFiles];pendingFiles=[];updateAttach();
+
+  // Show progress
+  $('progressLog').innerHTML=''; prog('Starting build...','ac');
+  if(files.length) prog('Files attached: '+files.length,'t2');
 
   let content='';
   const fileNames=[];
@@ -242,7 +258,16 @@ async function send(){
   addMsg('user',text||(fileNames.length?'Sent: '+fileNames.join(', '):''),files);
   $('input').value='';$('input').style.height='auto';
 
-  const sys={role:'system',content:`You are a full-stack developer AI. CRITICAL: NEVER output pseudo-code or descriptions. ALWAYS output complete, runnable code files. For ANY application request, output a COMPLETE single HTML file with CSS+JS inline. Use CDN for libraries. First code block must be the runnable application.`};
+  const sys={role:'system',content:`You are a full-stack developer AI. CRITICAL RULES:
+- NEVER output pseudo-code or "you could..." descriptions. ALWAYS output complete, runnable code.
+- For web apps: output a COMPLETE single HTML file with all CSS+JS inline. Include mobile viewport meta tag for phone use.
+- For PWA/mobile apps: output installable HTML with manifest + service worker inline.
+- For Android/iOS: generate the source code (Kotlin/Swift/React Native) with complete project structure.
+- For Python/Node.js scripts: output complete runnable code with #! shebang or node instructions.
+- For GUI desktop apps: use Python tkinter or web-based Electron-style HTML.
+- Use CDN (jsdelivr/cdnjs) for external libraries. Never assume npm/pip install.
+- First code block MUST be the main runnable application.
+- After code, briefly state platform and run instructions (1 sentence).`};
   const apiMsgs=[sys];
   for(const m of conversations[activeConv].messages){
     const role=m.role==='ai'?'assistant':m.role;
@@ -251,15 +276,35 @@ async function send(){
     apiMsgs.push({role,content:txt});
   }
 
+  prog('Asking AI to generate code...','ac');
   try{
     const res=await fetch('https://api.deepseek.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:$('model').value,messages:apiMsgs,max_tokens:8192})});
+    prog('AI response received','good');
     const data=await res.json();
     const reply=data.choices?.[0]?.message?.content||'Error: '+(data.error?.message||'');
     addMsg('ai',reply);
+
+    // Count code blocks
+    const blocks=reply.match(/```/g);
+    const codeCount=blocks?Math.floor(blocks.length/2):0;
+    if(codeCount) prog('Generated '+codeCount+' code block(s)','good');
+    else prog('No code blocks in response','t3');
+
     // Auto-deploy first HTML block
     const m=reply.match(/```(?:html)?\n([\s\S]*?)```/);
-    if(m&&(m[1].includes('<!DOCTYPE')||m[1].includes('<html'))){setTimeout(()=>deployCode(m[1],'app_'+Date.now()+'.html'),300)}
-  }catch(e){addMsg('ai','Error: '+e.message)}
+    if(m&&(m[1].includes('<!DOCTYPE')||m[1].includes('<html'))){
+      prog('Deploying HTML app...','ac');
+      setTimeout(async()=>{
+        try{
+          const r=await fetch('/api/workbench/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:m[1],filename:'app_'+Date.now()+'.html'})});
+          const d=await r.json();
+          if(d.ok){builtFiles.unshift({name:d.url.split('/').pop(),url:d.url,time:Date.now()});saveFiles();renderSidebar();window.open(d.url,'_blank');prog('Deployed & preview opened: '+d.url,'good')}
+          else prog('Deploy failed: '+d.error,'bad');
+        }catch(e){prog('Deploy error: '+e.message,'bad')}
+      },300);
+    }
+  }catch(e){addMsg('ai','Error: '+e.message);prog('Failed: '+e.message,'bad')}
+  prog('Done','good');
   sending=false;$('sendBtn').disabled=false;
 }
 

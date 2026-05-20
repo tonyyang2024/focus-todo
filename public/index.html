@@ -51,6 +51,11 @@ main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px}
 .chat-row button.mic{background:var(--card);color:var(--t2);border:1px solid var(--bdr)}
 .chat-row button.mic:hover{color:var(--ac);border-color:var(--ac)}
 .chat-row button.rec{background:var(--bad);color:#fff;animation:pulse 1.2s infinite}
+.skills-chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.skills-chips button{padding:4px 10px;border-radius:14px;border:1px solid var(--bdr);background:var(--card);color:var(--t2);cursor:pointer;font-size:10px;font-family:inherit;transition:all 0.15s}
+.skills-chips button:hover{border-color:var(--ac);color:var(--ac);background:#f8faff}
+.chat-file{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:var(--card);border:1px solid var(--bdr);border-radius:10px;font-size:10px;color:var(--t2)}
+.chat-file .x{cursor:pointer;color:var(--t3)}.chat-file .x:hover{color:var(--bad)}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(210,10,10,.4)}50%{box-shadow:0 0 0 10px rgba(210,10,10,0)}}
 
 /* History */
@@ -106,12 +111,25 @@ nav.tabs button .ti{font-size:17px}
   </div>
 
   <div class="page" id="page-chat">
-    <div class="chat-msgs" id="chatMsgs"><div class="empty"><span style="font-size:24px">&#x1F4AC;</span><br>Ask anything</div></div>
+    <!-- Skills chips -->
+    <div class="skills-chips" id="skillChips">
+      <button onclick="useSkill('code')">&#x1F4BB; Code</button>
+      <button onclick="useSkill('debug')">&#x1F50D; Debug</button>
+      <button onclick="useSkill('explain')">&#x1F4D6; Explain</button>
+      <button onclick="useSkill('compress')">&#x1F5DC; Compress</button>
+      <button onclick="useSkill('translate')">&#x1F310; Translate</button>
+      <button onclick="useSkill('plan')">&#x1F4CB; Plan</button>
+      <button onclick="useSkill('data')">&#x1F4CA; Data</button>
+    </div>
+    <div class="chat-msgs" id="chatMsgs"><div class="empty"><span style="font-size:24px">&#x1F4AC;</span><br>Ask anything or pick a skill above</div></div>
+    <div id="chatFiles" style="padding:0 4px 4px;display:flex;flex-wrap:wrap;gap:4px"></div>
     <div class="chat-row">
       <button class="mic" id="micBtn" onclick="toggleVoice()">&#x1F3A4;</button>
+      <button class="mic" onclick="document.getElementById('chatFileInput').click()" title="Add file">&#x1F4CE;</button>
       <textarea id="chatInput" rows="1" placeholder="Describe your request..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend()}"></textarea>
       <button id="sendBtn" onclick="chatSend()">&#x27A4;</button>
     </div>
+    <input type="file" id="chatFileInput" multiple onchange="onChatFiles(this)" style="display:none">
   </div>
 
   <div class="page" id="page-history">
@@ -184,6 +202,41 @@ function sSave(){
 // Chat
 let msgs=JSON.parse(localStorage.getItem('hub_current')||'[]');
 let hist=JSON.parse(localStorage.getItem('hub_hist')||'[]');
+let chatFiles=[];
+
+const skillPrompts={
+  code:'Write complete, runnable code. Output full files with clear instructions.',
+  debug:'Analyze the error/bug and provide a step-by-step fix with code.',
+  explain:'Explain this concept clearly with examples. Keep it concise.',
+  compress:'Help compress/optimize files or data. Show size comparison.',
+  translate:'Translate accurately between Chinese and English. Preserve technical terms.',
+  plan:'Create a step-by-step implementation plan. Break into phases.',
+  data:'Analyze this data. Find patterns, trends, anomalies. Give recommendations.'
+};
+
+function useSkill(skill){
+  const prompt=skillPrompts[skill]||'';
+  $('chatInput').value=prompt;$('chatInput').focus();
+  toast('Skill: '+skill);
+}
+
+function onChatFiles(input){
+  for(const f of input.files){
+    const r=new FileReader();
+    r.onload=()=>{
+      chatFiles.push({name:f.name,text:r.result,size:f.size,type:f.type});
+      renderChatFiles();
+      if(f.size<50000) toast('File added: '+f.name);
+      else toast('Large file. Content will be truncated.');
+    };
+    if(f.type.startsWith('text')||f.name.match(/\.(js|ts|py|html|css|json|md|txt|xml|yml|sh|bat|sql|csv)$/i))r.readAsText(f);
+    else r.readAsText(f); // Read as text for AI processing
+  }
+  input.value='';
+}
+function renderChatFiles(){
+  $('chatFiles').innerHTML=chatFiles.map((f,i)=>`<span class="chat-file">&#x1F4C4; ${esc(f.name.slice(0,18))} <span class="x" onclick="chatFiles.splice(${i},1);renderChatFiles()">x</span></span>`).join('');
+}
 
 // Restore last session on load
 if(msgs.length){$('chatMsgs').innerHTML=msgs.map(m=>`<div class="msg ${m.role}">${esc(m.content)}</div>`).join('');const e=$('chatMsgs').querySelector('.empty');if(e)e.remove()}
@@ -194,8 +247,14 @@ async function chatSend(){
   const k=getKey().key;
   if(!k){toast('Set API Key in Settings tab');return}
   $('sendBtn').disabled=true;
-  msgs.push({role:'user',content:t});
-  addMsg('user',t);$('chatInput').value='';
+  // Include file content in message
+  let fullText=t;
+  if(chatFiles.length){
+    const fileContent=chatFiles.map(f=>`[File: ${f.name}]\n\`\`\`\n${f.text?.slice(0,4000)||''}\n\`\`\``).join('\n');
+    fullText=fileContent+'\n\n'+t;
+  }
+  msgs.push({role:'user',content:fullText});
+  addMsg('user',t||'Analyzing files...');$('chatInput').value='';
   try{
     const r=await fetch('https://api.deepseek.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+k},body:JSON.stringify({model:getKey().model||'deepseek-chat',messages:msgs,max_tokens:4096})});
     const d=await r.json();

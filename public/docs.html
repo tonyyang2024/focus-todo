@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knowledge Base</title>
+<style>
+:root{--bg:#1a1b2e;--bg2:#212339;--srf:#252740;--bdr:#2e3150;--txt:#e4e5f0;--t2:#9496b0;--t3:#6b6d85;--ac:#818cf8;--a2:#a78bfa;--gr:linear-gradient(135deg,#818cf8,#a78bfa,#c084fc);--bad:#f87171;--good:#34d399;--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--txt);height:100dvh;display:flex;overflow:hidden}
+.sidebar{width:220px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bdr);display:flex;flex-direction:column}
+.side-hd{padding:16px;border-bottom:1px solid var(--bdr);font-weight:700;font-size:14px;background:var(--gr);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.side-section{flex:1;overflow-y:auto;padding:8px}
+.doc-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--t2);transition:all 0.15s}
+.doc-item:hover{background:rgba(129,140,248,0.06);color:var(--txt)}
+.doc-item.active{background:rgba(129,140,248,0.12);color:var(--ac);font-weight:600}
+.doc-item .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-item .del{opacity:0;color:var(--t3);cursor:pointer;font-size:13px}
+.doc-item:hover .del{opacity:1}.doc-item .del:hover{color:var(--bad)}
+.side-ft{padding:10px;border-top:1px solid var(--bdr)}
+.side-ft button{width:100%;padding:8px;border-radius:6px;border:1px dashed var(--bdr);background:transparent;color:var(--t3);cursor:pointer;font-size:12px;font-family:inherit;transition:all 0.15s}
+.side-ft button:hover{color:var(--ac);border-color:var(--ac)}
+
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.toolbar{padding:10px 16px;background:var(--srf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.toolbar input{flex:1;background:var(--bg);border:1px solid var(--bdr);color:var(--txt);padding:8px 14px;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+.toolbar input:focus{border-color:var(--ac)}
+.toolbar button{padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit;border:none;font-weight:500;transition:all 0.15s;background:transparent;border:1px solid var(--bdr);color:var(--t2)}
+.toolbar button:hover{color:var(--txt);border-color:var(--ac)}
+.toolbar button.primary{background:var(--gr);color:#fff;border:none}
+.toolbar select{background:var(--bg);border:1px solid var(--bdr);color:var(--txt);padding:8px 10px;border-radius:8px;font-size:12px;outline:none;font-family:inherit}
+.tag{display:inline-block;padding:2px 8px;border-radius:8px;font-size:10px;background:rgba(129,140,248,0.1);color:var(--ac);margin:0 2px;cursor:pointer}
+.tag:hover{background:rgba(129,140,248,0.2)}
+
+.editor-area{flex:1;display:flex;overflow:hidden}
+.editor{flex:1;padding:20px;background:transparent;border:none;color:var(--txt);font-size:14px;font-family:'SF Mono',Consolas,monospace;line-height:1.7;resize:none;outline:none;overflow-y:auto}
+.preview{flex:1;padding:20px;overflow-y:auto;background:var(--bg2);border-left:1px solid var(--bdr);font-size:14px;line-height:1.7;display:none}
+.preview.show{display:block}
+.preview h1,.preview h2,.preview h3{color:var(--ac);margin:12px 0 6px}
+.preview code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:12px}
+.preview pre{background:#0d0d1a;border:1px solid var(--bdr);border-radius:8px;padding:12px;overflow-x:auto;font-size:12px}
+.preview blockquote{border-left:3px solid var(--ac);padding-left:12px;color:var(--t2);margin:8px 0}
+.preview a{color:var(--ac)}
+
+.ask-ai{position:fixed;bottom:20px;right:20px;width:48px;height:48px;border-radius:50%;background:var(--gr);color:#fff;border:none;font-size:20px;cursor:pointer;box-shadow:0 4px 16px rgba(129,140,248,0.3);z-index:10;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+.ask-ai:hover{transform:scale(1.05)}
+.ai-panel{display:none;position:fixed;bottom:80px;right:20px;width:360px;max-width:90vw;background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r);padding:16px;z-index:10;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+.ai-panel.show{display:block}
+.ai-panel textarea{width:100%;min-height:60px;background:var(--bg);border:1px solid var(--bdr);color:var(--txt);padding:10px;border-radius:8px;font-size:12px;outline:none;resize:vertical;font-family:inherit;margin-bottom:8px}
+.ai-result{max-height:200px;overflow-y:auto;font-size:12px;color:var(--t2);margin-top:8px;padding:8px;background:var(--bg);border-radius:6px;white-space:pre-wrap;display:none}
+
+@media(max-width:768px){.sidebar{display:none}.preview{display:none!important}}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="side-hd">&#x1F4DA; Knowledge Base</div>
+  <div class="side-section" id="docList"></div>
+  <div class="side-ft"><button onclick="newDoc()">+ New Document</button></div>
+</div>
+
+<div class="main">
+  <div class="toolbar">
+    <input type="text" id="docTitle" placeholder="Document title..." onchange="saveDoc()">
+    <input type="text" id="docTags" placeholder="Tags (comma separated)" onchange="saveDoc()" style="width:160px">
+    <select id="viewMode" onchange="togglePreview()"><option value="edit">Edit</option><option value="split">Split View</option></select>
+    <button onclick="exportMD()">Export .md</button>
+    <button onclick="importMD()">Import</button>
+    <button class="primary" onclick="aiPolish()">AI Polish</button>
+    <a href="/" style="color:var(--t3);text-decoration:none;font-size:12px;margin-left:8px">Home</a>
+  </div>
+  <div class="editor-area">
+    <textarea class="editor" id="editor" placeholder="Write in Markdown...&#10;&#10;# Title&#10;## Section&#10;Your content here. AI can help polish and organize." oninput="autoSave()"></textarea>
+    <div class="preview" id="preview"></div>
+  </div>
+</div>
+
+<button class="ask-ai" onclick="toggleAI()" title="Ask AI">&#x1F916;</button>
+<div class="ai-panel" id="aiPanel">
+  <div style="font-size:12px;color:var(--t2);margin-bottom:8px">AI Assistant</div>
+  <textarea id="aiPrompt" placeholder="Ask AI to improve this document..."></textarea>
+  <div style="display:flex;gap:6px">
+    <button class="primary" onclick="askAI()" style="flex:1">Send</button>
+    <button onclick="document.getElementById('aiPanel').classList.remove('show')">Close</button>
+  </div>
+  <div class="ai-result" id="aiResult"></div>
+</div>
+
+<input type="file" id="fileInput" accept=".md,.txt" onchange="onImport(this)" style="display:none">
+
+<script>
+let docs=JSON.parse(localStorage.getItem('kb_docs')||'{}');
+let activeDoc=localStorage.getItem('kb_active')||'';
+let saveTimer=null;
+
+if(!Object.keys(docs).length){const id='d_'+Date.now();docs[id]={title:'Welcome',content:'# Welcome to Knowledge Base\n\nStart writing your documentation here.\n\n## Features\n- Markdown editing\n- AI polish & organize\n- Tag-based organization\n- Export to Markdown\n\nPress **Ctrl+S** to save.',tags:'welcome',updated:Date.now()};activeDoc=id;save()}
+if(!docs[activeDoc]) activeDoc=Object.keys(docs)[0];
+
+function save(){localStorage.setItem('kb_docs',JSON.stringify(docs));localStorage.setItem('kb_active',activeDoc);renderDocs()}
+function renderDocs(){
+  document.getElementById('docList').innerHTML=Object.entries(docs).sort((a,b)=>b[1].updated-a[1].updated).map(([id,d])=>`<div class="doc-item${id===activeDoc?' active':''}" onclick="openDoc('${id}')"><span class="n">${esc(d.title||'Untitled')}</span><span class="del" onclick="event.stopPropagation();deleteDoc('${id}')">&times;</span></div>`).join('');
+}
+function openDoc(id){activeDoc=id;const d=docs[id];document.getElementById('docTitle').value=d.title||'';document.getElementById('docTags').value=d.tags||'';document.getElementById('editor').value=d.content||'';renderDocs();updatePreview()}
+function newDoc(){const id='d_'+Date.now();docs[id]={title:'New Document',content:'',tags:'',updated:Date.now()};activeDoc=id;save();openDoc(id)}
+function deleteDoc(id){if(Object.keys(docs).length<=1)return;delete docs[id];if(activeDoc===id)activeDoc=Object.keys(docs)[0];save();openDoc(activeDoc)}
+function saveDoc(){const d=docs[activeDoc];if(!d)return;d.title=document.getElementById('docTitle').value||'Untitled';d.tags=document.getElementById('docTags').value;d.content=document.getElementById('editor').value;d.updated=Date.now();save();updatePreview()}
+function autoSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveDoc,1000)}
+function updatePreview(){
+  const md=document.getElementById('editor').value||'';
+  const html=md.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\*(.+?)\*/g,'<i>$1</i>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/```(\w*)\n([\s\S]*?)```/g,'<pre><code>$2</code></pre>').replace(/^\- (.+)$/gm,'<li>$1</li>').replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>').replace(/\[(.+?)\]\((.+?)\)/g,'<a href="$2">$1</a>').replace(/\n\n/g,'<br><br>');
+  document.getElementById('preview').innerHTML=html;
+}
+function togglePreview(){const m=document.getElementById('viewMode').value;document.getElementById('preview').classList.toggle('show',m==='split');if(m==='split')updatePreview()}
+function exportMD(){const d=docs[activeDoc];if(!d)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([d.content||'']));a.download=(d.title||'doc')+'.md';a.click()}
+function importMD(){document.getElementById('fileInput').click()}
+function onImport(input){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const id='d_'+Date.now();docs[id]={title:f.name.replace('.md',''),content:r.result,tags:'imported',updated:Date.now()};activeDoc=id;save();openDoc(id)};r.readAsText(f);input.value=''}
+
+// AI
+function toggleAI(){document.getElementById('aiPanel').classList.toggle('show')}
+async function askAI(){
+  const prompt=document.getElementById('aiPrompt').value.trim();
+  if(!prompt)return;
+  const key=localStorage.getItem('ccw_key')||'';
+  if(!key){document.getElementById('aiResult').textContent='Set API Key in Settings first';document.getElementById('aiResult').style.display='block';return}
+  const content=document.getElementById('editor').value||'';
+  document.getElementById('aiResult').textContent='Thinking...';document.getElementById('aiResult').style.display='block';
+  try{
+    const res=await fetch('https://api.deepseek.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:'You are a document editor. Based on the user request, improve or modify the document. Output the COMPLETE revised document in Markdown.'},{role:'user',content:`Document:\n${content.slice(0,8000)}\n\nUser request: ${prompt}`}],max_tokens:4096})});
+    const data=await res.json();
+    const reply=data.choices?.[0]?.message?.content||'Error';
+    document.getElementById('editor').value=reply;saveDoc();
+    document.getElementById('aiResult').textContent='Document updated!';updatePreview();
+  }catch(e){document.getElementById('aiResult').textContent='Error: '+e.message}
+}
+async function aiPolish(){document.getElementById('aiPrompt').value='Polish this document: fix grammar, improve structure, add clarity';askAI()}
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveDoc()}});
+renderDocs();openDoc(activeDoc);
+</script>
+</body>
+</html>

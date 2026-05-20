@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings</title>
+<style>
+:root{--bg:#1a1b2e;--srf:#252740;--bdr:#2e3150;--txt:#e4e5f0;--t2:#9496b0;--t3:#6b6d85;--ac:#818cf8;--a2:#a78bfa;--gr:linear-gradient(135deg,#818cf8,#a78bfa,#c084fc);--bad:#f87171;--good:#34d399;--r:12px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
+.topbar{padding:14px 20px;background:var(--srf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:12px;font-weight:700;font-size:16px}
+.topbar span{background:var(--gr);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.topbar a{color:var(--t2);text-decoration:none;font-size:13px;margin-left:auto}
+.topbar a:hover{color:var(--ac)}
+.container{max-width:700px;margin:0 auto;padding:24px 16px;display:flex;flex-direction:column;gap:20px}
+.card{background:var(--srf);border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden}
+.card-hd{padding:14px 20px;border-bottom:1px solid var(--bdr);font-size:14px;font-weight:600}
+.card-body{padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+label{font-size:12px;color:var(--t2);display:flex;flex-direction:column;gap:4px}
+input,textarea,select{padding:10px 14px;border:1px solid var(--bdr);border-radius:8px;background:var(--bg);color:var(--txt);font-size:13px;outline:none;font-family:inherit}
+input:focus,textarea:focus{border-color:var(--ac)}
+textarea{min-height:80px;resize:vertical}
+.row{display:flex;gap:10px}
+.row>*{flex:1}
+button{padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;border:none;font-weight:500;transition:all 0.15s}
+.btn-primary{background:var(--gr);color:#fff}
+.btn-primary:hover{opacity:0.9}
+.btn-ghost{background:transparent;border:1px solid var(--bdr);color:var(--t2)}
+.btn-ghost:hover{color:var(--txt);border-color:var(--ac)}
+.toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:rgba(37,39,64,0.95);color:#fff;padding:10px 20px;border-radius:16px;font-size:12px;z-index:99;opacity:0;transition:all 0.3s;pointer-events:none}
+.toast.show{opacity:1}
+.mcp-list{display:flex;flex-direction:column;gap:6px}
+.mcp-item{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:12px}
+.mcp-item .name{flex:1;font-weight:600}
+.mcp-item .url{color:var(--t3);font-size:11px}
+.mcp-item button{background:transparent;border:1px solid var(--bdr);color:var(--bad);padding:3px 8px;border-radius:4px;cursor:pointer;font-size:10px}
+</style>
+</head>
+<body>
+<div class="topbar"><span>&#x2699; Settings</span><a href="/">Home</a></div>
+
+<div class="container">
+  <div class="card">
+    <div class="card-hd">API Keys</div>
+    <div class="card-body">
+      <label>DeepSeek API Key<input type="password" id="dsKey" onchange="saveAll()" placeholder="sk-..."></label>
+      <div class="row">
+        <label>Default Model<select id="dsModel" onchange="saveAll()"><option value="deepseek-chat">DeepSeek V3</option><option value="deepseek-reasoner">DeepSeek R1</option></select></label>
+        <label>Max Tokens<input type="number" id="dsMaxTokens" value="8192" onchange="saveAll()"></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">MCP Servers</div>
+    <div class="card-body">
+      <div class="mcp-list" id="mcpList"></div>
+      <div class="row">
+        <input type="text" id="mcpName" placeholder="Server name">
+        <input type="text" id="mcpUrl" placeholder="Endpoint URL">
+      </div>
+      <button class="btn-primary" onclick="addMcp()">+ Add MCP Server</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">SFTP Server</div>
+    <div class="card-body">
+      <div class="row"><label>Host<input type="text" id="sftpHost" onchange="saveAll()"></label><label>Port<input type="number" id="sftpPort" value="22" onchange="saveAll()"></label></div>
+      <div class="row"><label>Username<input type="text" id="sftpUser" onchange="saveAll()"></label><label>Password<input type="password" id="sftpPass" onchange="saveAll()"></label></div>
+      <label>Remote Path<input type="text" id="sftpPath" value="/uploads" onchange="saveAll()"></label>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const cfg=()=>{
+  const c={};
+  ['dsKey','dsModel','dsMaxTokens','sftpHost','sftpPort','sftpUser','sftpPass','sftpPath'].forEach(id=>c[id]=document.getElementById(id)?.value||'');
+  c.mcpServers=JSON.parse(localStorage.getItem('mcp_servers')||'[]');
+  return c;
+};
+function saveAll(){
+  const c=cfg();
+  localStorage.setItem('ccw_key',c.dsKey);
+  localStorage.setItem('ccw_model',c.dsModel);
+  localStorage.setItem('ds_max_tokens',c.dsMaxTokens);
+  ['sftpHost','sftpPort','sftpUser','sftpPass','sftpPath'].forEach(k=>localStorage.setItem('sftp_'+k.replace('sftp','').toLowerCase(),c[k]));
+  toast('Saved');
+}
+function loadAll(){
+  document.getElementById('dsKey').value=localStorage.getItem('ccw_key')||'';
+  document.getElementById('dsModel').value=localStorage.getItem('ccw_model')||'deepseek-chat';
+  document.getElementById('dsMaxTokens').value=localStorage.getItem('ds_max_tokens')||'8192';
+  ['Host','Port','User','Pass','Path'].forEach(k=>{const el=document.getElementById('sftp'+k);if(el)el.value=localStorage.getItem('sftp_'+k.toLowerCase())||''});
+  renderMcp();
+}
+function renderMcp(){
+  const servers=JSON.parse(localStorage.getItem('mcp_servers')||'[]');
+  document.getElementById('mcpList').innerHTML=servers.map((s,i)=>`<div class="mcp-item"><span class="name">${esc(s.name)}</span><span class="url">${esc(s.url)}</span><button onclick="removeMcp(${i})">Remove</button></div>`).join('');
+}
+function addMcp(){
+  const name=document.getElementById('mcpName').value.trim(),url=document.getElementById('mcpUrl').value.trim();
+  if(!name||!url)return;
+  const servers=JSON.parse(localStorage.getItem('mcp_servers')||'[]');
+  servers.push({name,url});localStorage.setItem('mcp_servers',JSON.stringify(servers));
+  document.getElementById('mcpName').value='';document.getElementById('mcpUrl').value='';renderMcp();toast('MCP server added');
+}
+function removeMcp(i){const s=JSON.parse(localStorage.getItem('mcp_servers')||'[]');s.splice(i,1);localStorage.setItem('mcp_servers',JSON.stringify(s));renderMcp()}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+loadAll();
+</script>
+</body>
+</html>

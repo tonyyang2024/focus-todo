@@ -122,6 +122,28 @@ input[type=file]{display:none}
     <div style="padding:4px 0"><button style="width:100%;padding:5px;border-radius:6px;border:1px dashed var(--bdr);background:transparent;color:var(--t3);cursor:pointer;font-size:11px;font-family:inherit" onclick="newChat()">+ New Conversation</button></div>
   </div>
   <div class="side-label" style="padding-left:16px">Built Files</div>
+  <div class="side-section">
+    <div class="side-label">&#x1F3AF; Project Context</div>
+    <select id="projTarget" onchange="saveProjCtx()" style="width:100%;padding:6px;margin:2px 0;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
+      <option value="">-- Target Platform --</option>
+      <option value="SAP S/4HANA Public Cloud">SAP S/4HANA Public Cloud</option>
+      <option value="SAP BTP">SAP BTP</option>
+      <option value="Web App">Web Application</option>
+      <option value="Mobile PWA">Mobile PWA</option>
+      <option value="Desktop App">Desktop App</option>
+      <option value="CLI Tool">CLI / Script</option>
+    </select>
+    <select id="projLang" onchange="saveProjCtx()" style="width:100%;padding:6px;margin:2px 0;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
+      <option value="">-- Language --</option>
+      <option value="ABAP">ABAP (SAP)</option>
+      <option value="Java">Java</option>
+      <option value="Node.js">Node.js</option>
+      <option value="Python">Python</option>
+      <option value="HTML/CSS/JS">HTML5 / Fiori</option>
+      <option value="CDS/ODATA">CDS View / OData</option>
+    </select>
+    <input type="text" id="projEnv" placeholder="API endpoint, config, notes..." onchange="saveProjCtx()" style="width:100%;padding:6px;margin:2px 0;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
+  </div>
   <div class="side-files" id="fileList"><div style="color:var(--t3);font-size:10px;padding:8px;text-align:center">No files yet</div></div>
   <div class="side-ft">
     <button onclick="selfReflect()" style="color:var(--ac)">&#x1F4A1; Reflect</button>
@@ -341,7 +363,13 @@ async function send(){
   addMsg('user',text||(fileNames.length?'Sent: '+fileNames.join(', '):''),files);
   $('input').value='';$('input').style.height='auto';
 
-  const sys={role:'system',content:`You are a full-stack developer AI. CRITICAL RULES:
+  // Inject project context
+  let projCtx='';
+  try{const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
+    if(ctx.target)projCtx=`\nCURRENT PROJECT: Target=${ctx.target} | Language=${ctx.lang||'auto'} | Config=${ctx.env||'none'}\nGenerate code that deploys to ${ctx.target}. Use ${ctx.lang||'the most appropriate language'}.\n`;
+  }catch{}
+
+  const sys={role:'system',content:`You are a full-stack developer AI. CRITICAL RULES:${projCtx}
 1. NEVER output pseudo-code. ALWAYS output COMPLETE, runnable code files.
 2. First describe what you're building (1 line), then output ALL code in separate \`\`\`language blocks.
 3. Language support:
@@ -457,6 +485,19 @@ document.addEventListener('dragleave',e=>{e.preventDefault();$('dropOverlay').cl
 document.addEventListener('drop',e=>{e.preventDefault();$('dropOverlay').classList.remove('on');for(const f of e.dataTransfer.files)readFile(f)});
 document.addEventListener('paste',e=>{for(const it of e.clipboardData?.items||[]){if(it.type.startsWith('image/')){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:'paste-'+Date.now()+'.png',content:r.result,isImage:true});updateAttach();toast('Screenshot pasted')};r.readAsDataURL(it.getAsFile())}}});
 
+function saveProjCtx(){
+  const ctx={target:$('projTarget').value,lang:$('projLang').value,env:$('projEnv').value};
+  localStorage.setItem('wb_proj_ctx',JSON.stringify(ctx));
+}
+function loadProjCtx(){
+  try{
+    const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
+    if(ctx.target)$('projTarget').value=ctx.target;
+    if(ctx.lang)$('projLang').value=ctx.lang;
+    if(ctx.env)$('projEnv').value=ctx.env;
+  }catch{}
+}
+
 function newChat(){const id='c_'+Date.now();conversations[id]={name:'New Chat',messages:[],created:Date.now()};activeConv=id;saveConvs();renderSidebar();renderMessages()}
 
 async function selfReflect(){
@@ -498,7 +539,7 @@ function exportAll(){let t='';for(const f of builtFiles)t+=f.name+' '+f.url+'\n'
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
 
-loadCfg();renderSidebar();renderMessages();
+loadCfg();loadProjCtx();renderSidebar();renderMessages();
 $('input').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='o'){e.preventDefault();addFiles()}});
 </script>

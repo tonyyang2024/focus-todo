@@ -326,11 +326,11 @@ app.patch('/api/tasks/queue/:id', express.json(), (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- SAP Inventory Upload ---
-const { spawn } = require('child_process');
+// --- SAP Inventory Upload (Node.js, zero Python) ---
+const inventoryUpload = require('./inventory-upload');
 const INVENTORY_UPLOAD_DIR = path.join(__dirname, 'data', 'inventory-uploads');
 
-app.post('/api/inventory/upload', upload.single('file'), (req, res) => {
+app.post('/api/inventory/upload', upload.single('file'), async (req, res) => {
   try {
     if (!fs.existsSync(INVENTORY_UPLOAD_DIR)) fs.mkdirSync(INVENTORY_UPLOAD_DIR, { recursive: true });
     const ts = Date.now();
@@ -338,28 +338,15 @@ app.post('/api/inventory/upload', upload.single('file'), (req, res) => {
     fs.writeFileSync(excelPath, req.file.buffer);
 
     const sheetName = req.body.sheetName || 'InventoryUploadTemplate';
-    const jsonOutput = path.join(INVENTORY_UPLOAD_DIR, `result_${ts}.json`);
+    const { summary, successDocs, failedDocs, jsonFile, xlsxFile } = await inventoryUpload.run(excelPath, sheetName, INVENTORY_UPLOAD_DIR);
 
-    const py = spawn('python', [path.join(__dirname, 'inventory-upload.py'), excelPath, sheetName, INVENTORY_UPLOAD_DIR, jsonOutput], { timeout: 300000 });
-    let stdout = '', stderr = '';
+    // Save result JSON with consistent naming for history API
+    const resultJson = { summary, success: successDocs, failed: failedDocs };
+    fs.writeFileSync(path.join(INVENTORY_UPLOAD_DIR, `result_${ts}.json`), JSON.stringify(resultJson, null, 2));
 
-    py.stdout.on('data', d => { stdout += d.toString(); console.log('[PY]', d.toString().slice(0, 200)); });
-    py.stderr.on('data', d => { stderr += d.toString(); });
-
-    py.on('close', (code) => {
-      if (code === 0 && fs.existsSync(jsonOutput)) {
-        const result = JSON.parse(fs.readFileSync(jsonOutput, 'utf8'));
-        res.json({ ok: true, ...result });
-      } else {
-        res.json({ ok: false, error: stderr || stdout || 'Python process failed with code ' + code });
-      }
-    });
-
-    py.on('error', (e) => {
-      res.status(500).json({ ok: false, error: 'Python execution error: ' + e.message });
-    });
+    res.json({ ok: true, summary, success: successDocs, failed: failedDocs });
   } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
+    res.json({ ok: false, error: e.message });
   }
 });
 
@@ -396,23 +383,6 @@ app.get('*', (req, res) => {
 });
 
 async function start() {
-  // Auto-install Python deps if missing (Render Node env doesn't auto-install pip pkgs)
-  const { execSync } = require('child_process');
-  const PY = fs.existsSync('/usr/bin/python3') ? 'python3' : 'python';
-  try {
-    execSync(`${PY} -c "import pandas, requests, openpyxl"`, { stdio: 'pipe', timeout: 5000 });
-    console.log('Python deps OK');
-  } catch {
-    console.log('Installing Python dependencies...');
-    const pip = fs.existsSync('/usr/bin/pip3') ? 'pip3' : 'pip';
-    try {
-      execSync(`${PY} -m ${pip} install --break-system-packages pandas requests openpyxl 2>/dev/null || ${PY} -m pip install --user pandas requests openpyxl`, { stdio: 'pipe', timeout: 120000 });
-      console.log('Python deps installed');
-    } catch (e2) {
-      console.log('Python dep install failed (inventory upload will not work):', e2.message.slice(0, 100));
-    }
-  }
-
   await db.init();
   app.listen(PORT, () => {
     console.log(`Focus Todo running at http://localhost:${PORT}`);

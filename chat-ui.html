@@ -191,11 +191,20 @@ function loadCfg(){
 // ====== SIDEBAR ======
 function renderSidebar(){
   const cl=$('convList'),fl=$('fileList');
-  cl.innerHTML=Object.entries(conversations).map(([id,c])=>`
-    <div class="side-item${id===activeConv?' active':''}" onclick="switchConv('${id}')">
-      <span class="icon">&#x1F4AC;</span><span class="name">${esc(c.name||'Chat')}</span>
+  // Sort by most recent first
+  const sorted=Object.entries(conversations).sort((a,b)=>b[1].created-a[1].created);
+  cl.innerHTML=sorted.map(([id,c])=>{
+    const name=c.name==='New Chat'?'Untitled ('+new Date(c.created).toLocaleDateString()+')':(c.name||'Chat');
+    const lastMsg=c.messages?.length?c.messages[c.messages.length-1].text?.slice(0,40)||'':'No messages';
+    return `<div class="side-item${id===activeConv?' active':''}" onclick="switchConv('${id}')">
+      <span class="icon">&#x1F4AC;</span>
+      <div style="flex:1;min-width:0">
+        <div class="name">${esc(name)}</div>
+        <div style="font-size:9px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lastMsg)}</div>
+      </div>
       <span class="del" onclick="event.stopPropagation();deleteConv('${id}')">&times;</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   fl.innerHTML=builtFiles.length?builtFiles.map((f,i)=>`
     <div class="side-item" onclick="previewFile('${f.url}')">
       <span class="icon">${f.url.endsWith('.html')?'&#x1F310;':'&#x1F4C4;'}</span><span class="name">${esc(f.name)}</span>

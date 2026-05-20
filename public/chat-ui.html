@@ -161,6 +161,17 @@ let activeConv=localStorage.getItem('wb_active')||'default';
 let pendingFiles=[],sending=false,micOn=false,recognition=null;
 let builtFiles=JSON.parse(localStorage.getItem('wb_files')||'[]');
 
+function getProvider(){
+  const providers=JSON.parse(localStorage.getItem('ccw_providers')||'[]');
+  const defaultId=localStorage.getItem('ccw_default_provider')||'ds';
+  const p=providers.find(p=>p.active&&p.id===defaultId)||providers.find(p=>p.active);
+  return p||{type:'deepseek',key:localStorage.getItem('ccw_key')||'',model:localStorage.getItem('ccw_model')||'deepseek-chat'};
+}
+function getProviderURL(p){
+  const urls={deepseek:'https://api.deepseek.com/v1/chat/completions',openai:'https://api.openai.com/v1/chat/completions',anthropic:'https://api.anthropic.com/v1/messages'};
+  return urls[p.type]||'https://api.deepseek.com/v1/chat/completions';
+}
+
 if(!conversations[activeConv]) conversations[activeConv]={name:'New Chat',messages:[],created:Date.now()};
 
 function saveCfg(){localStorage.setItem('ccw_key',$('apikey').value);localStorage.setItem('ccw_model',$('model').value)}
@@ -237,9 +248,10 @@ function fmtAI(t){
 function prog(msg,cls){const p=$('progress'),l=$('progressLog');p.style.display='';l.innerHTML+=`<div style="color:var(--${cls||'t2'});padding:1px 0">${msg}</div>`;l.parentElement.scrollTop=999}
 
 async function send(){
-  const text=$('input').value.trim(),key=$('apikey').value.trim();
+  const provider=getProvider();
+  const text=$('input').value.trim(),key=provider.key;
   if((!text&&!pendingFiles.length)||sending)return;
-  if(!key){toast('Enter API Key first');return}
+  if(!key){toast('Set API Key in Settings first');return}
   sending=true;$('sendBtn').disabled=true;
   const files=[...pendingFiles];pendingFiles=[];updateAttach();
 
@@ -278,7 +290,10 @@ async function send(){
 
   prog('Asking AI to generate code...','ac');
   try{
-    const res=await fetch('https://api.deepseek.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:$('model').value,messages:apiMsgs,max_tokens:8192})});
+    const apiURL=getProviderURL(provider);
+    const providerModel=provider.model||$('model').value||'deepseek-chat';
+    const maxTok=parseInt(localStorage.getItem('ccw_max_tokens')||'8192');
+    const res=await fetch(apiURL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:providerModel,messages:apiMsgs,max_tokens:maxTok})});
     prog('AI response received','good');
     const data=await res.json();
     const reply=data.choices?.[0]?.message?.content||'Error: '+(data.error?.message||'');

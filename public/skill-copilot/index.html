@@ -453,8 +453,17 @@ let currentSpaceId = 'default';
 let activeSkill = null;
 let pendingFiles = [];
 let isListening = false; let recognition = null;
-const DEFAULT_API_KEY = ''; // Set your key here to skip prompts: 'sk-xxx'
-const apiKey = () => localStorage.getItem('sk_key') || DEFAULT_API_KEY || '';
+const DEFAULT_API_KEY = '';
+const apiKey = () => {
+  // Check centralized provider config first
+  try {
+    const providers = JSON.parse(localStorage.getItem('ccw_providers') || '[]');
+    const def = localStorage.getItem('ccw_default_provider') || 'ds';
+    const p = providers.find(p => p.active && p.id === def) || providers.find(p => p.active);
+    if (p && p.key) return p.key;
+  } catch {}
+  return localStorage.getItem('sk_key') || DEFAULT_API_KEY || '';
+};
 
 // ============ SPACES + THREADS ENGINE ============
 let currentThreadId = null;

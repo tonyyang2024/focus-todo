@@ -49,7 +49,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 .ai-panel textarea{width:100%;min-height:60px;background:var(--bg);border:1px solid var(--bdr);color:var(--txt);padding:10px;border-radius:8px;font-size:12px;outline:none;resize:vertical;font-family:inherit;margin-bottom:8px}
 .ai-result{max-height:200px;overflow-y:auto;font-size:12px;color:var(--t2);margin-top:8px;padding:8px;background:var(--bg);border-radius:6px;white-space:pre-wrap;display:none}
 
-@media(max-width:768px){.sidebar{display:none}.preview{display:none!important}}
+@media(max-width:768px){.sidebar{display:none}.preview{display:none!important}.toolbar{flex-wrap:wrap;gap:6px;padding:8px}.toolbar input{width:100%}.toolbar select{width:48%}.editor{font-size:13px;padding:14px}.ask-ai{right:12px;bottom:16px}}
 </style>
 </head>
 <body>
@@ -121,7 +121,11 @@ function toggleAI(){document.getElementById('aiPanel').classList.toggle('show')}
 async function askAI(){
   const prompt=document.getElementById('aiPrompt').value.trim();
   if(!prompt)return;
-  const key=localStorage.getItem('ccw_key')||'';
+  const providers=JSON.parse(localStorage.getItem('ccw_providers')||'[]');
+  const def=localStorage.getItem('ccw_default_provider')||'ds';
+  const p=providers.find(p=>p.active&&p.id===def)||providers.find(p=>p.active);
+  const key=(p&&p.key)||localStorage.getItem('ccw_key')||'';
+  const model=(p&&p.model)||'deepseek-chat';
   if(!key){document.getElementById('aiResult').textContent='Set API Key in Settings first';document.getElementById('aiResult').style.display='block';return}
   const content=document.getElementById('editor').value||'';
   document.getElementById('aiResult').textContent='Thinking...';document.getElementById('aiResult').style.display='block';

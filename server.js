@@ -426,6 +426,108 @@ app.post('/api/workbench/build', express.json(), (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- BTP Deploy ---
+const BTP_BUILDS_DIR = path.join(__dirname, 'data', 'btp-builds');
+
+app.post('/api/btp/deploy', express.json(), async (req, res) => {
+  try {
+    const { code, appName, config: btpCfg } = req.body;
+    if (!code || !btpCfg || !btpCfg.api) return res.status(400).json({ ok: false, error: 'Missing code or BTP config' });
+
+    if (!fs.existsSync(BTP_BUILDS_DIR)) fs.mkdirSync(BTP_BUILDS_DIR, { recursive: true });
+    const buildId = Date.now().toString();
+    const buildDir = path.join(BTP_BUILDS_DIR, buildId);
+    fs.mkdirSync(buildDir, { recursive: true });
+
+    const safeName = (appName || 'fiori-app').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 50);
+
+    // Generate BTP package
+    const manifest = { _version: '1.12.0', 'sap.app': { id: safeName, applicationVersion: { version: '1.0.0' } }, 'sap.ui5': { rootView: { viewName: safeName.replace(/-/g, '.') + '.Main', type: 'XML', async: true }, dependencies: { minUI5Version: '1.108.0', libs: { 'sap.m': {} } }, contentDensities: { compact: true, cozy: true } } };
+    const xsApp = { welcomeFile: 'index.html', routes: [{ source: '/(.*)', localDir: '.' }] };
+    const pkgJson = { name: safeName, version: '1.0.0', scripts: { start: 'npx serve .' } };
+
+    fs.writeFileSync(path.join(buildDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+    fs.writeFileSync(path.join(buildDir, 'xs-app.json'), JSON.stringify(xsApp, null, 2));
+    fs.writeFileSync(path.join(buildDir, 'package.json'), JSON.stringify(pkgJson, null, 2));
+    fs.writeFileSync(path.join(buildDir, 'index.html'), code);
+    fs.writeFileSync(path.join(buildDir, 'README.md'), `# ${safeName}\nDeployed from Workbench at ${new Date().toISOString()}`);
+
+    // Try CF deploy if credentials provided
+    let cfResult = null;
+    if (btpCfg.user && btpCfg.pass && btpCfg.org && btpCfg.space) {
+      try {
+        cfResult = await cfDeploy(buildDir, btpCfg, safeName);
+      } catch (e) {
+        cfResult = { ok: false, error: e.message };
+      }
+    }
+
+    // Package as zip for download
+    const zipFile = path.join(BTP_BUILDS_DIR, `${safeName}.zip`);
+    const { execSync } = require('child_process');
+    try {
+      execSync(`cd "${BTP_BUILDS_DIR}" && tar -czf "${safeName}.tar.gz" -C "${buildId}" .`, { stdio: 'pipe' });
+    } catch {}
+
+    const localUrl = `/api/btp/download/${safeName}`;
+    res.json({
+      ok: true,
+      buildId,
+      packageUrl: localUrl,
+      files: ['manifest.json', 'xs-app.json', 'package.json', 'index.html', 'README.md'],
+      cfDeploy: cfResult,
+      instructions: cfResult?.ok
+        ? `Deployed to BTP: ${cfResult.url}`
+        : `1. Download package\n2. Open SAP Business Application Studio\n3. Import project from archive\n4. Deploy to BTP Cloud Foundry\n\nOr use cf CLI:\ncf login -a ${btpCfg.api}\ncf push ${safeName} -p ${buildDir}`
+    });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+async function cfDeploy(buildDir, cfg, appName) {
+  const https = require('https');
+  // CF Login
+  const loginData = JSON.stringify({ grant_type: 'password', username: cfg.user, password: cfg.pass, client_id: 'cf', client_secret: '' });
+  const tokenRes = await cfApiRequest(cfg.api, '/oauth/token', 'POST', loginData, 'application/x-www-form-urlencoded');
+  if (!tokenRes.ok) throw new Error('CF login failed: ' + (tokenRes.error || 'invalid credentials'));
+
+  const token = tokenRes.data.access_token;
+  // Create app
+  const appRes = await cfApiRequest(cfg.api, '/v3/apps', 'POST', JSON.stringify({ name: appName, relationships: { space: { data: { guid: cfg.space } } }, lifecycle: { type: 'buildpack', data: { buildpacks: ['staticfile_buildpack'] } } }), 'application/json', token);
+  if (!appRes.ok && !appRes.data?.errors?.some(e => e.title === 'CF-AppAlreadyExists')) throw new Error('CF create app failed: ' + JSON.stringify(appRes.data).slice(0, 200));
+
+  return { ok: true, url: `https://${appName}.cfapps.${new URL(cfg.api).hostname.split('.').slice(1).join('.')}` };
+}
+
+function cfApiRequest(api, path, method, body, contentType, token) {
+  return new Promise((resolve) => {
+    const u = new URL(api);
+    const opts = {
+      hostname: u.hostname, port: 443, path, method,
+      headers: { 'Content-Type': contentType, 'Content-Length': Buffer.byteLength(body) },
+      rejectUnauthorized: false, timeout: 30000
+    };
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+    const req = https.request(opts, (res) => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => {
+        try { resolve({ ok: res.statusCode < 400, data: JSON.parse(d) }); }
+        catch { resolve({ ok: false, error: d.slice(0, 200) }); }
+      });
+    });
+    req.on('error', (e) => resolve({ ok: false, error: e.message }));
+    req.write(body); req.end();
+  });
+}
+
+app.get('/api/btp/download/:name', (req, res) => {
+  const tgz = path.join(BTP_BUILDS_DIR, req.params.name + '.tar.gz');
+  const zip = path.join(BTP_BUILDS_DIR, req.params.name + '.zip');
+  if (fs.existsSync(tgz)) return res.download(tgz);
+  if (fs.existsSync(zip)) return res.download(zip);
+  res.status(404).json({ error: 'Package not found' });
+});
+
 // --- Route fallbacks ---
 app.get('/todolist', (req, res) => res.redirect('/todolist/'));
 app.get('/todolist/*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'todolist', 'index.html')));

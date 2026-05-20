@@ -127,7 +127,7 @@ input[type=file]{display:none}
     <select id="projTarget" onchange="saveProjCtx()" style="width:100%;padding:6px;margin:2px 0;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
       <option value="">-- Target Platform --</option>
       <option value="SAP S/4HANA Public Cloud">SAP S/4HANA Public Cloud</option>
-      <option value="SAP BTP">SAP BTP</option>
+      <option value="SAP BTP (Cloud Foundry)">SAP BTP (Cloud Foundry)</option>
       <option value="Web App">Web Application</option>
       <option value="Mobile PWA">Mobile PWA</option>
       <option value="Desktop App">Desktop App</option>
@@ -143,6 +143,10 @@ input[type=file]{display:none}
       <option value="CDS/ODATA">CDS View / OData</option>
     </select>
     <input type="text" id="projEnv" placeholder="API endpoint / OData URL..." onchange="saveProjCtx()" style="width:100%;padding:6px;margin:2px 0;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
+    <div style="display:flex;gap:4px;margin:2px 0">
+      <input type="text" id="projOrg" placeholder="CF Org" onchange="saveProjCtx()" style="flex:1;padding:6px;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
+      <input type="text" id="projSpace" placeholder="CF Space" onchange="saveProjCtx()" style="flex:1;padding:6px;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
+    </div>
     <div style="display:flex;gap:4px;margin:2px 0">
       <input type="text" id="projUser" placeholder="Username" onchange="saveProjCtx()" style="flex:1;padding:6px;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
       <input type="password" id="projPass" placeholder="Password" onchange="saveProjCtx()" style="flex:1;padding:6px;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
@@ -307,9 +311,12 @@ function fmtAI(t){
       const isHTML=l==='html'||code.includes('<!DOCTYPE');
       const fid='f'+Date.now()+Math.random().toString(36).slice(2,6);
       bf[fid]={code:code.trim(),ext,lang:l};
+      let btpBtn='';
+      try{const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');if(ctx.target?.includes('BTP')&&isHTML)btpBtn=`<button class="deploy" onclick="deployToBTP('${fid}')" style="color:var(--ac)">&#x1F310; BTP</button>`}catch{}
       const btns=`<button onclick="copyBlock(this)">Copy</button>
         <button onclick="editBlock(this,'${fid}')">Edit</button>
         ${isHTML?`<button class="deploy" onclick="deployBlock('${fid}')">&#x25B6; Preview</button>`:`<button class="deploy" onclick="deployBlock('${fid}')">&#x1F4C1; Deploy</button>`}
+        ${btpBtn}
         <button onclick="downloadBlock(this,'${ext}')">Save</button>`;
       return `<div class="code-block"><div class="pre-btns">${btns}</div><pre class="code-pre"><code class="language-${l}" contenteditable="false" id="${fid}">${c}</code></pre></div>`;
     }).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
@@ -435,6 +442,25 @@ async function send(){
 
 // ====== DEPLOY ======
 async function deployBlock(fid){const b=bf[fid];if(b)await deployCode(b.code,'build_'+Date.now()+'.'+b.ext)}
+async function deployToBTP(fid){
+  const b=bf[fid];
+  if(!b)return;
+  const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
+  if(!ctx.env){toast('Set BTP CF API in Project Context first');return}
+  prog('Packaging for BTP...','ac');
+  try{
+    const res=await fetch('/api/btp/deploy',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code:b.code,appName:ctx.appName||'fiori-app',config:{api:ctx.env,org:ctx.org||'',space:ctx.space||'',user:ctx.user||'',pass:ctx.pass||''}})});
+    const d=await res.json();
+    if(d.ok){
+      if(d.cfDeploy?.ok){prog('Deployed to BTP: '+d.cfDeploy.url,'good');addMsg('ai','## BTP Deploy Success\n\nApp deployed to: '+d.cfDeploy.url);}
+      else{prog('BTP package ready. Download & deploy manually.','good');
+        addMsg('ai','## BTP Package Ready\n\nDownload: <a href="'+d.packageUrl+'" style="color:var(--ac)">'+d.packageUrl+'</a>\n\n'+d.instructions);
+      }
+      saveConvs();renderMessages();
+    }else prog('BTP deploy failed: '+d.error,'bad');
+  }catch(e){prog('Error: '+e.message,'bad')}
+}
 async function deployCode(code,filename){
   try{
     const res=await fetch('/api/workbench/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,filename})});
@@ -490,7 +516,7 @@ document.addEventListener('drop',e=>{e.preventDefault();$('dropOverlay').classLi
 document.addEventListener('paste',e=>{for(const it of e.clipboardData?.items||[]){if(it.type.startsWith('image/')){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:'paste-'+Date.now()+'.png',content:r.result,isImage:true});updateAttach();toast('Screenshot pasted')};r.readAsDataURL(it.getAsFile())}}});
 
 function saveProjCtx(){
-  const ctx={target:$('projTarget').value,lang:$('projLang').value,env:$('projEnv').value,user:$('projUser').value,pass:$('projPass').value};
+  const ctx={target:$('projTarget').value,lang:$('projLang').value,env:$('projEnv').value,org:$('projOrg').value,space:$('projSpace').value,user:$('projUser').value,pass:$('projPass').value};
   localStorage.setItem('wb_proj_ctx',JSON.stringify(ctx));
 }
 function loadProjCtx(){
@@ -499,6 +525,8 @@ function loadProjCtx(){
     if(ctx.target)$('projTarget').value=ctx.target;
     if(ctx.lang)$('projLang').value=ctx.lang;
     if(ctx.env)$('projEnv').value=ctx.env;
+    if(ctx.org)$('projOrg').value=ctx.org;
+    if(ctx.space)$('projSpace').value=ctx.space;
     if(ctx.user)$('projUser').value=ctx.user;
     if(ctx.pass)$('projPass').value=ctx.pass;
   }catch{}

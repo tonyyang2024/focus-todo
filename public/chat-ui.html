@@ -124,6 +124,7 @@ input[type=file]{display:none}
   <div class="side-label" style="padding-left:16px">Built Files</div>
   <div class="side-files" id="fileList"><div style="color:var(--t3);font-size:10px;padding:8px;text-align:center">No files yet</div></div>
   <div class="side-ft">
+    <button onclick="selfReflect()" style="color:var(--ac)">&#x1F4A1; Reflect</button>
     <button onclick="exportAll()">Export All</button>
     <button onclick="clearFiles()">Clear</button>
   </div>
@@ -406,7 +407,13 @@ async function deployCode(code,filename){
   try{
     const res=await fetch('/api/workbench/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,filename})});
     const d=await res.json();
-    if(d.ok){builtFiles.unshift({name:filename,url:d.url,time:Date.now()});saveFiles();renderSidebar();showPreview(d.url);toast('Deployed: '+d.url)}
+    if(d.ok){builtFiles.unshift({name:filename,url:d.url,time:Date.now()});saveFiles();renderSidebar();showPreview(d.url);toast('Deployed: '+d.url);
+      // Auto-learn: save successful deployment pattern to knowledge base
+      try{
+        fetch('/api/memory/save',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({key:'pattern_'+Date.now(),value:{filename,url:d.url,timestamp:new Date().toISOString()},tags:['deploy','success','auto']})
+        }).catch(()=>{});
+      }catch{}}
     else toast('Failed: '+d.error);
   }catch(e){toast('Server error')}
 }
@@ -446,6 +453,42 @@ document.addEventListener('drop',e=>{e.preventDefault();$('dropOverlay').classLi
 document.addEventListener('paste',e=>{for(const it of e.clipboardData?.items||[]){if(it.type.startsWith('image/')){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:'paste-'+Date.now()+'.png',content:r.result,isImage:true});updateAttach();toast('Screenshot pasted')};r.readAsDataURL(it.getAsFile())}}});
 
 function newChat(){const id='c_'+Date.now();conversations[id]={name:'New Chat',messages:[],created:Date.now()};activeConv=id;saveConvs();renderSidebar();renderMessages()}
+
+async function selfReflect(){
+  const provider=getProvider();
+  if(!provider.key){toast('Set API Key in Settings first');return}
+  prog('Self-reflecting on conversations...','ac');
+
+  // Gather recent conversations for context
+  const allConvs=Object.values(conversations);
+  const recentMsgs=allConvs.flatMap(c=>c.messages||[]).slice(-20);
+  const summary=recentMsgs.map(m=>`[${m.role}]: ${(m.text||'').slice(0,200)}`).join('\n');
+
+  if(!summary){prog('No conversations to reflect on','t3');return}
+
+  const analysisPrompt={role:'system',content:`You are a self-improving AI. Analyze these recent conversations and suggest concrete improvements to the Workbench application:
+
+1. What patterns do you see in user requests?
+2. What features would make the Workbench more useful?
+3. Generate actual code changes for the most impactful improvement (modify chat-ui.html).
+4. Output the improved code section wrapped in \`\`\`html.
+
+Be specific and actionable. Focus on ONE improvement at a time.`};
+
+  prog('Analyzing conversation patterns...','ac');
+  try{
+    const res=await fetch('https://api.deepseek.com/v1/chat/completions',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+provider.key},
+      body:JSON.stringify({model:provider.model||'deepseek-chat',messages:[analysisPrompt,{role:'user',content:'Recent conversations:\n'+summary}],max_tokens:4096})
+    });
+    const data=await res.json();
+    const reply=data.choices?.[0]?.message?.content||'Error';
+    addMsg('ai','## Self-Reflection Analysis\n\n'+reply);
+    conversations[activeConv].messages.push({role:'ai',text:'## Self-Reflection Analysis\n\n'+reply,time:Date.now()});
+    saveConvs();renderMessages();
+    prog('Reflection complete. Review suggested improvements.','good');
+  }catch(e){prog('Reflection failed: '+e.message,'bad')}
+}
 function exportAll(){let t='';for(const f of builtFiles)t+=f.name+' '+f.url+'\n';const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t]));a.download='files.txt';a.click()}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}

@@ -26,15 +26,27 @@ function basicAuth() {
   return 'Basic ' + Buffer.from(USERNAME + ':' + PASSWORD).toString('base64');
 }
 
+// Session state (maintains cookies across CSRF + POST, like Python requests.Session)
+let sessionCookie = '';
+
 function httpsRequest(method, urlPath, headers, body) {
   return new Promise((resolve, reject) => {
     const url = new URL(API_URL);
+    const allHeaders = { ...headers, 'Authorization': basicAuth() };
+    if (sessionCookie) allHeaders['Cookie'] = sessionCookie;
+
     const opts = {
       hostname: url.hostname, port: 443, path: url.pathname + url.search,
-      method, headers: { ...headers, 'Authorization': basicAuth() },
+      method, headers: allHeaders,
       timeout: TIMEOUT, rejectUnauthorized: false
     };
     const req = https.request(opts, res => {
+      // Save cookies from response
+      const setCookie = res.headers['set-cookie'];
+      if (setCookie) {
+        sessionCookie = (Array.isArray(setCookie) ? setCookie : [setCookie])
+          .map(c => c.split(';')[0]).join('; ');
+      }
       let d = '';
       res.on('data', c => d += c);
       res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: d }));
@@ -175,6 +187,8 @@ function tryParse(str) {
 }
 
 async function run(filePath, sheetName, outputDir) {
+  // Reset session for fresh run
+  sessionCookie = '';
   console.log('=== SAP S/4HANA Bulk Inventory Upload ===');
   console.log('File:', filePath);
   console.log('Sheet:', sheetName || 'default');

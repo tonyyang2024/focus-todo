@@ -205,6 +205,7 @@
 
 <script>
 let selectedFile = null;
+let uploading = false; // Prevent double-submit
 
 const dz = document.getElementById('dropZone');
 dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('active'); });
@@ -234,9 +235,13 @@ function log(msg, cls) {
 }
 
 async function startUpload() {
-  if (!selectedFile) return;
+  if (!selectedFile || uploading) return;
+  uploading = true;
   const btn = document.getElementById('btnUpload');
   btn.disabled = true; btn.innerHTML = '&#x23F3; Uploading...';
+  // Also disable file selection during upload
+  document.getElementById('dropZone').style.pointerEvents = 'none';
+  document.getElementById('dropZone').style.opacity = '0.5';
 
   // Reset
   document.getElementById('logPanel').innerHTML = '';
@@ -299,7 +304,11 @@ async function startUpload() {
     log('Error: ' + e.message, 'err');
   }
 
+  uploading = false;
   btn.disabled = false; btn.innerHTML = '&#x1F680; Start Upload';
+  document.getElementById('dropZone').style.pointerEvents = '';
+  document.getElementById('dropZone').style.opacity = '';
+  document.getElementById('fileInput').disabled = false;
   loadHistory();
 }
 

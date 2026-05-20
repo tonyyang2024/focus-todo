@@ -439,5 +439,7 @@ async function start() {
   app.listen(PORT, () => {
     console.log(`Focus Todo running at http://localhost:${PORT}`);
   });
+  // Also start MCP server
+  try { require('./mcp-server'); } catch {}
 }
 start();

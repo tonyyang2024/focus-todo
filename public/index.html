@@ -135,6 +135,8 @@ nav.tabs button .ti{font-size:17px}
       <input type="password" id="sKey" placeholder="Paste your API key..." oninput="sSave()">
     </div>
     <p style="font-size:10px;color:var(--t3);margin-top:8px">Key stored locally. All apps read from here.</p>
+    <div class="section-label" style="margin-top:16px">Connected MCP Services</div>
+    <div id="mcpStatus" style="font-size:11px;color:var(--t2);margin-top:4px"></div>
   </div>
 </main>
 
@@ -250,7 +252,21 @@ function stopMic(){if(rec){try{rec.stop()}catch{};rec=null}micOn=false;$('micBtn
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
 
+function renderMcpStatus(){
+  const servers=JSON.parse(localStorage.getItem('mcp_servers')||'[]');
+  $('mcpStatus').innerHTML=servers.length?servers.map(s=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px"><span style="color:var(--good)">&#x25CF;</span> ${esc(s.name)} <span style="color:var(--t3);font-size:10px">${esc(s.url)}</span></div>`).join(''):'<span style="color:var(--t3)">No MCP servers configured</span>';
+}
+
 updateKeyUI();sModelUpdate();
+// Pre-configure local MCP server
+(function(){
+  const servers=JSON.parse(localStorage.getItem('mcp_servers')||'[]');
+  if(!servers.find(s=>s.url.includes(':3001'))){
+    servers.push({name:'Focus MCP',url:'http://localhost:3001'});
+    localStorage.setItem('mcp_servers',JSON.stringify(servers));
+  }
+})();
+renderMcpStatus();
 const k=getKey();if(k.key){$('sKey').value=k.key;$('sProv').value=k.type;sModelUpdate();setTimeout(()=>$('sMod').value=k.model,100)}
 $('chatInput').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'});
 </script>

@@ -91,116 +91,177 @@ const tools = {
     }
   },
 
-  // ====== Joule Sales Order Tools ======
-  joule_sales_order_get: {
-    name: 'joule_sales_order_get',
-    description: 'Get a specific sales order by document number from SAP S/4HANA',
-    parameters: { orderNo: 'string (required) - Sales order number', config: 'object (required) - {baseURL, username, password}' },
+  // ====== SAP Joule (A2A Protocol) Tools ======
+  joule_chat: {
+    name: 'joule_chat',
+    description: 'Send a natural language query to SAP Joule AI via A2A protocol. Ask about sales orders, business partners, inventory, or any SAP business data.',
+    parameters: { query: 'string (required) - Natural language question for Joule', config: 'object (required) - {jouleURL, clientId, clientSecret, tokenURL}' },
     handler: async (params) => {
       const cfg = loadJouleConfig(params.config);
-      if (!cfg.baseURL) return { ok: false, error: 'Joule SAP config not set. Configure in Workbench Project Context.' };
-      return await callOData(cfg, `/A_SalesOrder('${params.orderNo}')`, 'GET');
+      if (!cfg.jouleURL) return { ok: false, error: 'Joule endpoint not configured. Set in Workbench Project Context.' };
+      return await callJouleA2A(cfg, params.query);
     }
   },
 
-  joule_sales_order_list: {
-    name: 'joule_sales_order_list',
-    description: 'List sales orders with optional filters from SAP S/4HANA',
-    parameters: { config: 'object (required) - {baseURL, username, password}', filter: 'string (optional) - OData filter expression', top: 'number (optional) - Max results, default 10' },
+  joule_sales_order: {
+    name: 'joule_sales_order',
+    description: 'Query SAP Joule about sales orders using natural language. Example: "Show me order 12345" or "List pending orders for customer ACME"',
+    parameters: { query: 'string (required) - Natural language query about sales orders', config: 'object (required) - Joule configuration' },
     handler: async (params) => {
       const cfg = loadJouleConfig(params.config);
-      if (!cfg.baseURL) return { ok: false, error: 'Joule SAP config not set.' };
-      let path = '/A_SalesOrder';
-      const query = [];
-      if (params.filter) query.push('$filter=' + encodeURIComponent(params.filter));
-      if (params.top) query.push('$top=' + params.top);
-      else query.push('$top=10');
-      if (query.length) path += '?' + query.join('&');
-      return await callOData(cfg, path, 'GET');
+      if (!cfg.jouleURL) return { ok: false, error: 'Joule endpoint not configured.' };
+      return await callJouleA2A(cfg, 'Sales Order: ' + params.query);
     }
   },
 
-  joule_sales_order_items: {
-    name: 'joule_sales_order_items',
-    description: 'Get items for a sales order',
-    parameters: { orderNo: 'string (required) - Sales order number', config: 'object (required) - {baseURL, username, password}' },
+  joule_business_data: {
+    name: 'joule_business_data',
+    description: 'Ask SAP Joule any business-related question - customers, inventory, financials, procurement, etc.',
+    parameters: { query: 'string (required) - Business question', config: 'object (required) - Joule configuration' },
     handler: async (params) => {
       const cfg = loadJouleConfig(params.config);
-      return await callOData(cfg, `/A_SalesOrderItem?$filter=SalesOrder eq '${params.orderNo}'&$top=50`, 'GET');
+      if (!cfg.jouleURL) return { ok: false, error: 'Joule endpoint not configured.' };
+      return await callJouleA2A(cfg, params.query);
     }
   },
 
-  joule_business_partner: {
-    name: 'joule_business_partner',
-    description: 'Search business partners (customers)',
-    parameters: { query: 'string (required) - Search term', config: 'object (required) - {baseURL, username, password}' },
+  joule_status: {
+    name: 'joule_status',
+    description: 'Check SAP Joule A2A connection status',
+    parameters: { config: 'object (required) - Joule configuration' },
     handler: async (params) => {
       const cfg = loadJouleConfig(params.config);
-      return await callOData(cfg, `/A_BusinessPartner?$filter=contains(BusinessPartnerFullName,'${params.query}')&$top=10`, 'GET');
-    }
-  },
-
-  joule_sap_status: {
-    name: 'joule_sap_status',
-    description: 'Check SAP S/4HANA connection status',
-    parameters: { config: 'object (required) - {baseURL, username, password}' },
-    handler: async (params) => {
-      const cfg = loadJouleConfig(params.config);
-      if (!cfg.baseURL) return { ok: false, error: 'Not configured' };
+      if (!cfg.jouleURL) return { ok: false, error: 'Joule endpoint not configured' };
       try {
-        const result = await callOData(cfg, '/A_SalesOrder?$top=1', 'GET');
-        return { ok: true, connected: true, endpoint: cfg.baseURL, message: 'Connected to S/4HANA' };
+        const result = await callJouleA2A(cfg, 'ping');
+        return { ok: true, connected: true, endpoint: cfg.jouleURL, message: 'Joule A2A connection established' };
       } catch (e) {
-        return { ok: false, connected: false, endpoint: cfg.baseURL, message: 'Connection failed: ' + e.message };
+        return { ok: false, connected: false, message: 'Joule connection failed: ' + e.message };
       }
+    }
+  },
+
+  joule_agent_invoke: {
+    name: 'joule_agent_invoke',
+    description: 'Invoke a custom Joule agent/skill for complex multi-step workflows',
+    parameters: { agentId: 'string (required) - Joule agent/skill ID', input: 'object (required) - Input parameters for the agent', config: 'object (required) - Joule configuration' },
+    handler: async (params) => {
+      const cfg = loadJouleConfig(params.config);
+      if (!cfg.jouleURL) return { ok: false, error: 'Joule endpoint not configured.' };
+      // A2A agent invocation
+      const a2aPayload = {
+        jsonrpc: '2.0',
+        method: 'agent/invoke',
+        params: { agentId: params.agentId, input: params.input },
+        id: Date.now().toString()
+      };
+      return await sendA2ARequest(cfg, a2aPayload);
     }
   }
 };
 
-// ====== Joule Helpers ======
+// ====== Joule A2A Protocol ======
 const JOULE_CONFIG_FILE = path.join(__dirname, 'data', 'joule-config.json');
 
 function loadJouleConfig(providedConfig) {
-  // Merge provided config with stored config
   let stored = {};
   try {
     if (fs.existsSync(JOULE_CONFIG_FILE)) stored = JSON.parse(fs.readFileSync(JOULE_CONFIG_FILE, 'utf8'));
   } catch {}
   return {
-    baseURL: providedConfig?.baseURL || stored.baseURL || process.env.JOULE_SAP_URL || '',
-    username: providedConfig?.username || stored.username || process.env.JOULE_SAP_USER || '',
-    password: providedConfig?.password || stored.password || process.env.JOULE_SAP_PASS || '',
+    jouleURL: providedConfig?.jouleURL || stored.jouleURL || process.env.JOULE_URL || '',
+    clientId: providedConfig?.clientId || stored.clientId || process.env.JOULE_CLIENT_ID || '',
+    clientSecret: providedConfig?.clientSecret || stored.clientSecret || process.env.JOULE_CLIENT_SECRET || '',
+    tokenURL: providedConfig?.tokenURL || stored.tokenURL || process.env.JOULE_TOKEN_URL || '',
   };
 }
 
-function callOData(cfg, path, method) {
+async function getJouleToken(cfg) {
+  if (!cfg.tokenURL || !cfg.clientId || !cfg.clientSecret) return null;
   return new Promise((resolve) => {
-    if (!cfg.baseURL) return resolve({ ok: false, error: 'SAP endpoint not configured' });
-    const url = new URL(cfg.baseURL);
-    const auth = Buffer.from(cfg.username + ':' + cfg.password).toString('base64');
+    const body = 'grant_type=client_credentials&client_id=' + encodeURIComponent(cfg.clientId) + '&client_secret=' + encodeURIComponent(cfg.clientSecret);
+    const u = new URL(cfg.tokenURL);
     const opts = {
-      hostname: url.hostname, port: 443, path: (url.pathname + path).replace('//', '/'), method,
-      headers: { 'Authorization': 'Basic ' + auth, 'Accept': 'application/json', 'x-csrf-token': 'fetch' },
-      rejectUnauthorized: false, timeout: 30000
+      hostname: u.hostname, port: 443, path: u.pathname, method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) },
+      rejectUnauthorized: false, timeout: 15000
     };
     const req = https.request(opts, (res) => {
-      let d = '';
-      res.on('data', c => d += c);
+      let d = ''; res.on('data', c => d += c);
+      res.on('end', () => {
+        try { const j = JSON.parse(d); resolve(j.access_token || null); }
+        catch { resolve(null); }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.write(body); req.end();
+  });
+}
+
+function sendA2ARequest(cfg, payload) {
+  return new Promise((resolve) => {
+    const u = new URL(cfg.jouleURL);
+    const body = JSON.stringify(payload);
+    const opts = {
+      hostname: u.hostname, port: 443, path: u.pathname, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      rejectUnauthorized: false, timeout: 60000
+    };
+    const req = https.request(opts, (res) => {
+      let d = ''; res.on('data', c => d += c);
       res.on('end', () => {
         try {
-          const json = JSON.parse(d);
-          resolve({
-            ok: res.statusCode < 400,
-            status: res.statusCode,
-            count: json.d?.results ? json.d.results.length : 0,
-            data: json.d?.results || json.d || json,
-          });
-        } catch { resolve({ ok: false, status: res.statusCode, raw: d.slice(0, 500) }); }
+          const j = JSON.parse(d);
+          resolve({ ok: res.statusCode < 400, status: res.statusCode, data: j.result || j });
+        } catch { resolve({ ok: false, status: res.statusCode, raw: d.slice(0, 1000) }); }
       });
     });
     req.on('error', (e) => resolve({ ok: false, error: e.message }));
-    req.end();
+    req.write(body); req.end();
   });
+}
+
+async function callJouleA2A(cfg, query) {
+  // A2A tasks/send protocol
+  const payload = {
+    jsonrpc: '2.0',
+    method: 'tasks/send',
+    params: {
+      id: 'joule-' + Date.now(),
+      message: { role: 'user', parts: [{ type: 'text', text: query }] }
+    },
+    id: Date.now().toString()
+  };
+
+  // Try with OAuth token first
+  const token = await getJouleToken(cfg);
+  if (token) {
+    const u = new URL(cfg.jouleURL);
+    const body = JSON.stringify(payload);
+    const opts = {
+      hostname: u.hostname, port: 443, path: u.pathname, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'Content-Length': Buffer.byteLength(body) },
+      rejectUnauthorized: false, timeout: 60000
+    };
+    return new Promise((resolve) => {
+      const req = https.request(opts, (res) => {
+        let d = ''; res.on('data', c => d += c);
+        res.on('end', () => {
+          try {
+            const j = JSON.parse(d);
+            const result = j.result || j;
+            const answer = result.output?.message?.parts?.[0]?.text || result.answer || result.message || JSON.stringify(result).slice(0, 2000);
+            resolve({ ok: true, query, answer, source: 'SAP Joule', timestamp: new Date().toISOString() });
+          } catch { resolve({ ok: false, error: 'Joule response parse error', raw: d.slice(0, 500) }); }
+        });
+      });
+      req.on('error', (e) => resolve({ ok: false, error: 'Joule connection error: ' + e.message }));
+      req.write(body); req.end();
+    });
+  }
+
+  // Fallback: direct A2A call without OAuth
+  return await sendA2ARequest(cfg, payload);
 }
 
 function formatSize(b) {

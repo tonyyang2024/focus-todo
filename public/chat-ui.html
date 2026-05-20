@@ -159,12 +159,12 @@ input[type=file]{display:none}
   <div style="display:flex;gap:4px"><input type="text" id="projOrg" placeholder="CF Org" onchange="saveProjCtx()" style="flex:1"><input type="text" id="projSpace" placeholder="CF Space" onchange="saveProjCtx()" style="flex:1"></div>
   <div style="display:flex;gap:4px"><input type="text" id="projUser" placeholder="User" onchange="saveProjCtx()" style="flex:1"><input type="password" id="projPass" placeholder="Password" onchange="saveProjCtx()" style="flex:1"></div>
 
-  <h3 style="margin-top:12px">&#x1F4E6; Joule Sales Order</h3>
-  <input type="text" id="jouleOrderNo" placeholder="Order number..." onkeydown="if(event.key==='Enter')queryJoule()">
+  <h3 style="margin-top:12px">&#x1F916; SAP Joule (A2A)</h3>
+  <input type="text" id="jouleQuery" placeholder="Ask Joule anything..." onkeydown="if(event.key==='Enter')askJoule()">
   <div style="display:flex;gap:4px">
-    <button onclick="queryJoule()" class="primary">&#x1F50D; Query</button>
-    <button onclick="listJouleOrders()">List Recent</button>
-    <button onclick="checkJouleStatus()">Test SAP</button>
+    <button onclick="askJoule()" class="primary">&#x1F4AC; Ask</button>
+    <button onclick="askJouleSO()">Sales Orders</button>
+    <button onclick="checkJouleStatus()">Test</button>
   </div>
 
   <h3 style="margin-top:12px">&#x1F4C1; Built Files</h3>
@@ -301,10 +301,48 @@ function toggleMic(){micOn?stopMic():startMic()}
 function startMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast('Voice not supported');return}recognition=new SR();recognition.continuous=false;recognition.lang='zh-CN';recognition.interimResults=true;recognition.onresult=e=>{const t=e.results[0][0].transcript.trim();if(t){$('input').value=($('input').value+' '+t).trim();stopMic();$('input').focus();micRetries=0}};recognition.onerror=e=>{if(e.error==='no-speech'){if(micRetries<2){micRetries++;stopMic();setTimeout(startMic,500);return}toast('No speech')}else if(e.error==='not-allowed')toast('Microphone denied')else if(e.error!=='aborted'&&e.error!=='network')toast('Voice: '+e.error);stopMic();micRetries=0};recognition.onend=()=>{if(micOn)stopMic()};recognition.start();micOn=true;$('micBtn').classList.add('btn-rec')}
 function stopMic(){if(recognition){try{recognition.stop()}catch{};recognition=null}micOn=false;$('micBtn').classList.remove('btn-rec')}
 
-// ====== JOULE ======
-async function queryJoule(){const n=$('jouleOrderNo').value.trim();if(!n){toast('Enter order number');return}const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');prog('Querying order '+n+'...','ac');try{const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_sales_order_get',params:{orderNo:n,config:{baseURL:ctx.env,username:ctx.user,password:ctx.pass}}})});const d=await r.json();addMsg('ai',d.ok?'## Sales Order: '+n+'\n```json\n'+JSON.stringify(d.data,null,2).slice(0,3000)+'\n```':'Order not found');prog(d.ok?'OK':'Failed','good');saveConvs();renderMessages()}catch(e){prog('Error','bad')}}
-async function listJouleOrders(){const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');prog('Listing orders...','ac');try{const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_sales_order_list',params:{top:10,config:{baseURL:ctx.env,username:ctx.user,password:ctx.pass}}})});const d=await r.json();if(d.ok&&d.data?.length){addMsg('ai','## Recent Orders\n'+d.data.map(o=>`- ${o.SalesOrder||o.SalesDocument}: ${o.SoldToParty||''} ${o.TotalNetAmount||''} ${o.TransactionCurrency||''}`).join('\n'))}else addMsg('ai','No orders found');prog('OK','good');saveConvs();renderMessages()}catch(e){prog('Error','bad')}}
-async function checkJouleStatus(){const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');prog('Testing SAP...','ac');try{const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_sap_status',params:{config:{baseURL:ctx.env,username:ctx.user,password:ctx.pass}}})});const d=await r.json();addMsg('ai',d.connected?'## Connected to SAP S/4HANA';'## SAP Connection Failed\n'+d.message);prog(d.connected?'Connected':'Failed','good');saveConvs();renderMessages()}catch(e){prog('Error','bad')}}
+// ====== SAP JOULE (A2A) ======
+function getJouleConfig(){
+  try{const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');return{jouleURL:ctx.env||'',clientId:ctx.user||'',clientSecret:ctx.pass||'',tokenURL:(ctx.env||'').replace(/\/api.*$/,'/oauth/token')}}catch{return{}}
+}
+async function askJoule(){
+  const q=$('jouleQuery').value.trim();
+  if(!q){toast('Enter a question for Joule');return}
+  const cfg=getJouleConfig();
+  if(!cfg.jouleURL){toast('Set Joule endpoint in Project Context');return}
+  prog('Asking SAP Joule...','ac');
+  try{
+    const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_chat',params:{query:q,config:cfg}})});
+    const d=await r.json();
+    if(d.ok)addMsg('ai','## SAP Joule Response\n\n'+d.answer);
+    else addMsg('ai','Joule: '+(d.error||'No response'));
+    prog(d.ok?'Response received':'Failed','good');saveConvs();renderMessages();
+  }catch(e){prog('Error','bad')}
+}
+async function askJouleSO(){
+  const q=$('jouleQuery').value.trim()||'Show me recent sales orders';
+  const cfg=getJouleConfig();
+  if(!cfg.jouleURL){toast('Set Joule endpoint in Project Context');return}
+  prog('Querying Joule for sales orders...','ac');
+  try{
+    const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_sales_order',params:{query:q,config:cfg}})});
+    const d=await r.json();
+    if(d.ok)addMsg('ai','## Joule Sales Orders\n\n'+d.answer);
+    else addMsg('ai','Joule: '+(d.error||'No response'));
+    prog('OK','good');saveConvs();renderMessages();
+  }catch(e){prog('Error','bad')}
+}
+async function checkJouleStatus(){
+  const cfg=getJouleConfig();
+  if(!cfg.jouleURL){toast('Set Joule endpoint');return}
+  prog('Testing Joule A2A connection...','ac');
+  try{
+    const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_status',params:{config:cfg}})});
+    const d=await r.json();
+    addMsg('ai',d.connected?'## SAP Joule: Connected\n\nA2A endpoint: '+cfg.jouleURL:'## SAP Joule: Not Connected\n\n'+d.message);
+    prog(d.connected?'Connected':'Failed','good');saveConvs();renderMessages();
+  }catch(e){prog('Error','bad')}
+}
 
 // ====== SELF-REFLECT ======
 async function selfReflect(){

@@ -49,6 +49,7 @@
   .msg.user { align-self: flex-end; flex-direction: row-reverse; }
   .msg.ai { align-self: flex-start; }
   @keyframes in { from { opacity:0; transform:translateY(6px); } }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.4)} 50%{box-shadow:0 0 0 10px rgba(248,113,113,0)} }
   .msg .avatar {
     width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center;
     justify-content: center; font-size: 15px; flex-shrink: 0; margin-top: 2px;
@@ -177,7 +178,8 @@
 <div class="input-area">
   <div class="input-row">
     <button class="btn" onclick="addFiles()" title="添加文件">&#x1F4CE;</button>
-    <textarea id="input" rows="1" placeholder="输入消息，或拖放文件/粘贴截图..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+    <button class="btn" id="micBtn" onclick="toggleMic()" title="语音输入">&#x1F3A4;</button>
+    <textarea id="input" rows="1" placeholder="输入消息，或拖放文件/粘贴截图/语音输入..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
     <button class="btn btn-send" id="sendBtn" onclick="send()">&#x27A4;</button>
   </div>
   <div class="input-hint">Enter 发送 · Shift+Enter 换行 · Ctrl+V 粘贴图片 · 拖放文件到窗口</div>
@@ -355,6 +357,31 @@ function exportChat() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([t], {type:'text/markdown'}));
   a.download = 'chat-' + new Date().toISOString().slice(0,10) + '.md'; a.click();
+}
+
+// Voice input
+let micOn = false, recognition = null;
+function toggleMic() {
+  if (micOn) { stopMic(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { toast('Browser does not support voice input'); return; }
+  recognition = new SR(); recognition.continuous = false; recognition.lang = 'zh-CN';
+  recognition.onresult = e => {
+    $('input').value = ($('input').value + ' ' + e.results[0][0].transcript).trim();
+    stopMic(); $('input').focus();
+  };
+  recognition.onerror = e => { stopMic(); if (e.error !== 'aborted') toast('Voice error: ' + e.error); };
+  recognition.onend = () => stopMic();
+  recognition.start(); micOn = true;
+  $('micBtn').style.background = 'var(--bad)'; $('micBtn').style.color = '#fff';
+  $('micBtn').style.animation = 'pulse 1.2s infinite';
+  toast('Listening...');
+}
+function stopMic() {
+  if (recognition) { try { recognition.stop(); } catch{}; recognition = null; }
+  micOn = false;
+  $('micBtn').style.background = ''; $('micBtn').style.color = '';
+  $('micBtn').style.animation = '';
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }

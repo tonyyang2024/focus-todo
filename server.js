@@ -410,6 +410,22 @@ app.get('/api/inventory/download/:id', (req, res) => {
   else res.status(404).json({ error: 'File not found' });
 });
 
+// --- Workbench: Build & Execute ---
+const WORKBENCH_DIR = path.join(__dirname, 'public', 'builds');
+
+app.post('/api/workbench/build', express.json(), (req, res) => {
+  try {
+    const { code, filename } = req.body;
+    if (!code || !filename) return res.status(400).json({ error: 'code and filename required' });
+    if (!fs.existsSync(WORKBENCH_DIR)) fs.mkdirSync(WORKBENCH_DIR, { recursive: true });
+    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filePath = path.join(WORKBENCH_DIR, safeName);
+    fs.writeFileSync(filePath, code, 'utf8');
+    const url = '/builds/' + safeName;
+    res.json({ ok: true, url, path: filePath });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // --- Route fallbacks ---
 app.get('/todolist', (req, res) => res.redirect('/todolist/'));
 app.get('/todolist/*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'todolist', 'index.html')));

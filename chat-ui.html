@@ -181,17 +181,54 @@ function addMsg(role, text, files){
   $('msgs').appendChild(d); $('msgs').scrollTop=$('msgs').scrollHeight;
 }
 
+const builtFiles = {};
 function fmtAI(t){
   return esc(t||'')
     .replace(/```(\w*)\n([\s\S]*?)```/g,(_,lang,code)=>{
       const c=esc(code.trim()), l=lang||'code', ext=lang||'txt';
       const isHTML=l==='html'||c.includes('<!DOCTYPE')||c.includes('<html');
-      let btns=`<button onclick="copyCode(this)">Copy</button><button onclick="downloadCode(this,'${ext}')">Save .${ext}</button>`;
-      if(isHTML) btns+=`<button class="run" onclick="previewCode(this)">&#x25B6; Preview</button>`;
+      const fid='f'+Date.now()+Math.random().toString(36).slice(2,6);
+      builtFiles[fid]=code.trim();
+      let btns=`<button onclick="copyCode(this)">Copy</button><button onclick="downloadCode(this,'${ext}')">Save</button>`;
+      if(isHTML) btns+=`<button class="run" onclick="deployPreview('${fid}')">&#x25B6; Deploy & Preview</button>`;
+      else btns+=`<button class="run" onclick="deployBuild('${fid}','${ext}')">&#x1F4C1; Deploy</button>`;
       return `<pre>${$('buildMode')?.checked?`<div class="pre-actions">${btns}</div>`:''}<code>${c}</code></pre>`;
     })
     .replace(/`([^`]+)`/g,'<code>$1</code>')
     .replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+}
+
+async function deployPreview(fid) {
+  const code = builtFiles[fid];
+  if (!code) return;
+  const name = 'app_' + Date.now() + '.html';
+  try {
+    const res = await fetch('/api/workbench/build', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, filename: name })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      window.open(data.url, '_blank');
+      toast('Deployed: ' + data.url);
+    } else { toast('Deploy failed: ' + data.error); }
+  } catch(e) { toast('Server error: ' + e.message); }
+}
+
+async function deployBuild(fid, ext) {
+  const code = builtFiles[fid];
+  if (!code) return;
+  const name = 'build_' + Date.now() + '.' + ext;
+  try {
+    const res = await fetch('/api/workbench/build', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, filename: name })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      addMsg('ai', 'File saved: <a href="' + data.url + '" target="_blank" style="color:var(--accent)">' + data.url + '</a> (open in browser or download)');
+    }
+  } catch(e) { toast('Server error'); }
 }
 
 // ====== Send ======
@@ -261,9 +298,8 @@ async function send(){
 }
 
 // ====== Code actions ======
-function copyCode(btn){ const c=btn.closest('pre').querySelector('code').textContent; navigator.clipboard.writeText(c).then(()=>toast('Copied')); }
+function copyCode(btn){ navigator.clipboard.writeText(btn.closest('pre').querySelector('code').textContent).then(()=>toast('Copied')); }
 function downloadCode(btn,ext){ const c=btn.closest('pre').querySelector('code').textContent; const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([c])); a.download='code.'+ext; a.click(); }
-function previewCode(btn){ const c=btn.closest('pre').querySelector('code').textContent; const w=window.open('','_blank'); w.document.write(c); w.document.close(); toast('Preview opened'); }
 
 // ====== Files ======
 function onFiles(inp){ for(const f of inp.files) readFile(f); inp.value=''; }

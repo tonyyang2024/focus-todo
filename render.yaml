@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: focus-todo
+    env: node
+    buildCommand: pip install -r requirements.txt && npm install
+    startCommand: node server.js
+    plan: free

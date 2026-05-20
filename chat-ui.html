@@ -142,7 +142,11 @@ input[type=file]{display:none}
       <option value="HTML/CSS/JS">HTML5 / Fiori</option>
       <option value="CDS/ODATA">CDS View / OData</option>
     </select>
-    <input type="text" id="projEnv" placeholder="API endpoint, config, notes..." onchange="saveProjCtx()" style="width:100%;padding:6px;margin:2px 0;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
+    <input type="text" id="projEnv" placeholder="API endpoint / OData URL..." onchange="saveProjCtx()" style="width:100%;padding:6px;margin:2px 0;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
+    <div style="display:flex;gap:4px;margin:2px 0">
+      <input type="text" id="projUser" placeholder="Username" onchange="saveProjCtx()" style="flex:1;padding:6px;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
+      <input type="password" id="projPass" placeholder="Password" onchange="saveProjCtx()" style="flex:1;padding:6px;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
+    </div>
   </div>
   <div class="side-files" id="fileList"><div style="color:var(--t3);font-size:10px;padding:8px;text-align:center">No files yet</div></div>
   <div class="side-ft">
@@ -366,7 +370,7 @@ async function send(){
   // Inject project context
   let projCtx='';
   try{const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
-    if(ctx.target)projCtx=`\nCURRENT PROJECT: Target=${ctx.target} | Language=${ctx.lang||'auto'} | Config=${ctx.env||'none'}\nGenerate code that deploys to ${ctx.target}. Use ${ctx.lang||'the most appropriate language'}.\n`;
+    if(ctx.target)projCtx=`\nCURRENT PROJECT:\n- Platform: ${ctx.target}\n- Language: ${ctx.lang||'auto'}\n- Endpoint: ${ctx.env||'not set'}\n- Auth: ${ctx.user?'Basic Auth with username '+ctx.user:'not configured'}\nGenerate production-ready code for ${ctx.target}. Use ${ctx.lang||'the most appropriate language'}. Include proper authentication handling.\n`;
   }catch{}
 
   const sys={role:'system',content:`You are a full-stack developer AI. CRITICAL RULES:${projCtx}
@@ -486,7 +490,7 @@ document.addEventListener('drop',e=>{e.preventDefault();$('dropOverlay').classLi
 document.addEventListener('paste',e=>{for(const it of e.clipboardData?.items||[]){if(it.type.startsWith('image/')){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:'paste-'+Date.now()+'.png',content:r.result,isImage:true});updateAttach();toast('Screenshot pasted')};r.readAsDataURL(it.getAsFile())}}});
 
 function saveProjCtx(){
-  const ctx={target:$('projTarget').value,lang:$('projLang').value,env:$('projEnv').value};
+  const ctx={target:$('projTarget').value,lang:$('projLang').value,env:$('projEnv').value,user:$('projUser').value,pass:$('projPass').value};
   localStorage.setItem('wb_proj_ctx',JSON.stringify(ctx));
 }
 function loadProjCtx(){
@@ -495,6 +499,8 @@ function loadProjCtx(){
     if(ctx.target)$('projTarget').value=ctx.target;
     if(ctx.lang)$('projLang').value=ctx.lang;
     if(ctx.env)$('projEnv').value=ctx.env;
+    if(ctx.user)$('projUser').value=ctx.user;
+    if(ctx.pass)$('projPass').value=ctx.pass;
   }catch{}
 }
 

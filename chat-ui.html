@@ -152,6 +152,15 @@ input[type=file]{display:none}
       <input type="password" id="projPass" placeholder="Password" onchange="saveProjCtx()" style="flex:1;padding:6px;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit">
     </div>
   </div>
+  <div class="side-section" style="border-top:1px solid var(--bdr);padding-top:8px">
+    <div class="side-label">&#x1F4E6; Joule Sales Order</div>
+    <input type="text" id="jouleOrderNo" placeholder="Order number..." style="width:100%;padding:5px;margin:2px 0;background:var(--bg);border:1px solid var(--bdr);border-radius:5px;color:var(--txt);font-size:10px;font-family:inherit" onkeydown="if(event.key==='Enter')queryJoule()">
+    <div style="display:flex;gap:4px;margin:4px 0">
+      <button onclick="queryJoule()" style="flex:1;padding:4px;border-radius:4px;border:1px solid var(--bdr);background:var(--bg);color:var(--ac);cursor:pointer;font-size:9px;font-family:inherit">&#x1F50D; Query</button>
+      <button onclick="listJouleOrders()" style="flex:1;padding:4px;border-radius:4px;border:1px solid var(--bdr);background:var(--bg);color:var(--t2);cursor:pointer;font-size:9px;font-family:inherit">List Recent</button>
+      <button onclick="checkJouleStatus()" style="flex:1;padding:4px;border-radius:4px;border:1px solid var(--bdr);background:var(--bg);color:var(--t2);cursor:pointer;font-size:9px;font-family:inherit">Test</button>
+    </div>
+  </div>
   <div class="side-files" id="fileList"><div style="color:var(--t3);font-size:10px;padding:8px;text-align:center">No files yet</div></div>
   <div class="side-ft">
     <button onclick="selfReflect()" style="color:var(--ac)">&#x1F4A1; Reflect</button>
@@ -530,6 +539,64 @@ function loadProjCtx(){
     if(ctx.user)$('projUser').value=ctx.user;
     if(ctx.pass)$('projPass').value=ctx.pass;
   }catch{}
+}
+
+// ====== Joule Sales Order ======
+function getJouleConfig(){
+  try{return JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}')}catch{return{}}
+}
+async function queryJoule(){
+  const orderNo=$('jouleOrderNo').value.trim();
+  if(!orderNo){toast('Enter order number');return}
+  const ctx=getJouleConfig();
+  if(!ctx.env){toast('Set SAP endpoint in Project Context');return}
+  prog('Querying order '+orderNo+'...','ac');
+  try{
+    const res=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({tool:'joule_sales_order_get',params:{orderNo,config:{baseURL:ctx.env,username:ctx.user||'',password:ctx.pass||''}}})});
+    const d=await res.json();
+    if(d.ok){
+      const order=d.data;
+      addMsg('ai','## Sales Order: '+orderNo+'\n\n```json\n'+JSON.stringify(order,null,2).slice(0,3000)+'\n```');
+      prog('Order found','good');
+    }else{
+      addMsg('ai','Order '+orderNo+' not found or SAP connection failed.\n\nError: '+(d.error||'Unknown'));
+      prog('Query failed','bad');
+    }
+    saveConvs();renderMessages();
+  }catch(e){prog('Error: '+e.message,'bad')}
+}
+async function listJouleOrders(){
+  const ctx=getJouleConfig();
+  if(!ctx.env){toast('Set SAP endpoint in Project Context');return}
+  prog('Listing recent orders...','ac');
+  try{
+    const res=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({tool:'joule_sales_order_list',params:{top:10,config:{baseURL:ctx.env,username:ctx.user||'',password:ctx.pass||''}}})});
+    const d=await res.json();
+    if(d.ok&&d.data?.length){
+      const summary=d.data.map(o=>`- **${o.SalesOrder||o.SalesDocument}**: ${o.SoldToParty||''} | ${o.TotalNetAmount||''} ${o.TransactionCurrency||''} | ${o.SalesOrderType||''}`).join('\n');
+      addMsg('ai','## Recent Sales Orders\n\n'+summary+'\n\nUse the query box above to see details.');
+      prog(d.data.length+' orders found','good');
+    }else{
+      addMsg('ai','No sales orders found or SAP connection not available.');
+      prog('No results','t3');
+    }
+    saveConvs();renderMessages();
+  }catch(e){prog('Error: '+e.message,'bad')}
+}
+async function checkJouleStatus(){
+  const ctx=getJouleConfig();
+  if(!ctx.env){toast('Set SAP endpoint in Project Context');return}
+  prog('Testing SAP connection...','ac');
+  try{
+    const res=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({tool:'joule_sap_status',params:{config:{baseURL:ctx.env,username:ctx.user||'',password:ctx.pass||''}}})});
+    const d=await res.json();
+    addMsg('ai',d.connected?'## SAP Connection: OK\n\nConnected to '+d.endpoint:'## SAP Connection: FAILED\n\n'+d.message);
+    prog(d.connected?'Connected':'Failed','good');
+    saveConvs();renderMessages();
+  }catch(e){prog('Error: '+e.message,'bad')}
 }
 
 function newChat(){const id='c_'+Date.now();conversations[id]={name:'New Chat',messages:[],created:Date.now()};activeConv=id;saveConvs();renderSidebar();renderMessages()}

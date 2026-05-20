@@ -89,8 +89,119 @@ const tools = {
         return { ok: true, count: results.length, results: results.map(r => ({ key: r.key, tags: r.tags, updated: r.updated_at })) };
       } catch (e) { return { ok: false, error: e.message }; }
     }
+  },
+
+  // ====== Joule Sales Order Tools ======
+  joule_sales_order_get: {
+    name: 'joule_sales_order_get',
+    description: 'Get a specific sales order by document number from SAP S/4HANA',
+    parameters: { orderNo: 'string (required) - Sales order number', config: 'object (required) - {baseURL, username, password}' },
+    handler: async (params) => {
+      const cfg = loadJouleConfig(params.config);
+      if (!cfg.baseURL) return { ok: false, error: 'Joule SAP config not set. Configure in Workbench Project Context.' };
+      return await callOData(cfg, `/A_SalesOrder('${params.orderNo}')`, 'GET');
+    }
+  },
+
+  joule_sales_order_list: {
+    name: 'joule_sales_order_list',
+    description: 'List sales orders with optional filters from SAP S/4HANA',
+    parameters: { config: 'object (required) - {baseURL, username, password}', filter: 'string (optional) - OData filter expression', top: 'number (optional) - Max results, default 10' },
+    handler: async (params) => {
+      const cfg = loadJouleConfig(params.config);
+      if (!cfg.baseURL) return { ok: false, error: 'Joule SAP config not set.' };
+      let path = '/A_SalesOrder';
+      const query = [];
+      if (params.filter) query.push('$filter=' + encodeURIComponent(params.filter));
+      if (params.top) query.push('$top=' + params.top);
+      else query.push('$top=10');
+      if (query.length) path += '?' + query.join('&');
+      return await callOData(cfg, path, 'GET');
+    }
+  },
+
+  joule_sales_order_items: {
+    name: 'joule_sales_order_items',
+    description: 'Get items for a sales order',
+    parameters: { orderNo: 'string (required) - Sales order number', config: 'object (required) - {baseURL, username, password}' },
+    handler: async (params) => {
+      const cfg = loadJouleConfig(params.config);
+      return await callOData(cfg, `/A_SalesOrderItem?$filter=SalesOrder eq '${params.orderNo}'&$top=50`, 'GET');
+    }
+  },
+
+  joule_business_partner: {
+    name: 'joule_business_partner',
+    description: 'Search business partners (customers)',
+    parameters: { query: 'string (required) - Search term', config: 'object (required) - {baseURL, username, password}' },
+    handler: async (params) => {
+      const cfg = loadJouleConfig(params.config);
+      return await callOData(cfg, `/A_BusinessPartner?$filter=contains(BusinessPartnerFullName,'${params.query}')&$top=10`, 'GET');
+    }
+  },
+
+  joule_sap_status: {
+    name: 'joule_sap_status',
+    description: 'Check SAP S/4HANA connection status',
+    parameters: { config: 'object (required) - {baseURL, username, password}' },
+    handler: async (params) => {
+      const cfg = loadJouleConfig(params.config);
+      if (!cfg.baseURL) return { ok: false, error: 'Not configured' };
+      try {
+        const result = await callOData(cfg, '/A_SalesOrder?$top=1', 'GET');
+        return { ok: true, connected: true, endpoint: cfg.baseURL, message: 'Connected to S/4HANA' };
+      } catch (e) {
+        return { ok: false, connected: false, endpoint: cfg.baseURL, message: 'Connection failed: ' + e.message };
+      }
+    }
   }
 };
+
+// ====== Joule Helpers ======
+const JOULE_CONFIG_FILE = path.join(__dirname, 'data', 'joule-config.json');
+
+function loadJouleConfig(providedConfig) {
+  // Merge provided config with stored config
+  let stored = {};
+  try {
+    if (fs.existsSync(JOULE_CONFIG_FILE)) stored = JSON.parse(fs.readFileSync(JOULE_CONFIG_FILE, 'utf8'));
+  } catch {}
+  return {
+    baseURL: providedConfig?.baseURL || stored.baseURL || process.env.JOULE_SAP_URL || '',
+    username: providedConfig?.username || stored.username || process.env.JOULE_SAP_USER || '',
+    password: providedConfig?.password || stored.password || process.env.JOULE_SAP_PASS || '',
+  };
+}
+
+function callOData(cfg, path, method) {
+  return new Promise((resolve) => {
+    if (!cfg.baseURL) return resolve({ ok: false, error: 'SAP endpoint not configured' });
+    const url = new URL(cfg.baseURL);
+    const auth = Buffer.from(cfg.username + ':' + cfg.password).toString('base64');
+    const opts = {
+      hostname: url.hostname, port: 443, path: (url.pathname + path).replace('//', '/'), method,
+      headers: { 'Authorization': 'Basic ' + auth, 'Accept': 'application/json', 'x-csrf-token': 'fetch' },
+      rejectUnauthorized: false, timeout: 30000
+    };
+    const req = https.request(opts, (res) => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(d);
+          resolve({
+            ok: res.statusCode < 400,
+            status: res.statusCode,
+            count: json.d?.results ? json.d.results.length : 0,
+            data: json.d?.results || json.d || json,
+          });
+        } catch { resolve({ ok: false, status: res.statusCode, raw: d.slice(0, 500) }); }
+      });
+    });
+    req.on('error', (e) => resolve({ ok: false, error: e.message }));
+    req.end();
+  });
+}
 
 function formatSize(b) {
   if (b < 1024) return b + ' B';

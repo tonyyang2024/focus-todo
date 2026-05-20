@@ -426,6 +426,33 @@ app.post('/api/workbench/build', express.json(), (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- Joule Config ---
+app.post('/api/joule/config', express.json(), (req, res) => {
+  try {
+    const { baseURL, username, password } = req.body;
+    const cfg = { baseURL: baseURL || '', username: username || '' };
+    if (password && password !== '********') cfg.password = password;
+    else {
+      const existing = fs.existsSync(JOULE_CONFIG_FILE) ? JSON.parse(fs.readFileSync(JOULE_CONFIG_FILE, 'utf8')) : {};
+      cfg.password = existing.password || '';
+    }
+    fs.writeFileSync(JOULE_CONFIG_FILE, JSON.stringify(cfg, null, 2));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/joule/config', (req, res) => {
+  try {
+    if (fs.existsSync(JOULE_CONFIG_FILE)) {
+      const cfg = JSON.parse(fs.readFileSync(JOULE_CONFIG_FILE, 'utf8'));
+      cfg.password = cfg.password ? '********' : '';
+      res.json(cfg);
+    } else res.json({ baseURL: '', username: '', password: '' });
+  } catch (e) { res.json({ baseURL: '', username: '', password: '' }); }
+});
+
+const JOULE_CONFIG_FILE = path.join(__dirname, 'data', 'joule-config.json');
+
 // --- BTP Deploy ---
 const BTP_BUILDS_DIR = path.join(__dirname, 'data', 'btp-builds');
 

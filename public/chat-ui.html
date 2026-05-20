@@ -83,7 +83,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 
 /* RIGHT PANEL */
 .panel-toggle{position:fixed;right:12px;top:12px;z-index:20;width:32px;height:32px;border-radius:50%;background:var(--card);border:1px solid var(--bdr);color:var(--t2);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
-.panel{display:none;position:fixed;right:0;top:0;bottom:0;width:280px;z-index:15;background:var(--card);border-left:1px solid var(--bdr);overflow-y:auto;padding:16px 14px;gap:14px;flex-direction:column}
+.panel-overlay{display:none;position:fixed;inset:0;z-index:14;background:rgba(0,0,0,0.3)}
+.panel-overlay.show{display:block}
+.panel{display:none;position:fixed;right:0;top:0;bottom:0;width:300px;z-index:15;background:var(--card);border-left:1px solid var(--bdr);overflow-y:auto;padding:16px 14px;gap:14px;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,0.1)}
 .panel.show{display:flex}
 .panel h3{font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--t3);font-weight:600}
 .panel input,.panel select{width:100%;padding:6px 8px;border:1px solid var(--bdr);border-radius:var(--r);font-size:10px;outline:none;font-family:inherit;background:var(--bg);margin:3px 0}
@@ -130,7 +132,7 @@ input[type=file]{display:none}
     <span class="key-dot off" id="keyDot"></span>
     <span id="keyLabel" style="font-size:10px;color:var(--t3)">No Key</span>
     <a href="/settings.html">Config</a>
-    <button id="toolsToggleBtn" onclick="var p=document.getElementById('toolsPanel');p.classList.toggle('show')">&#x2699; Tools</button>
+    <button id="toolsToggleBtn" onclick="var p=document.getElementById('toolsPanel');var o=document.getElementById('panelOverlay');p.classList.toggle('show');o.classList.toggle('show')">&#x2699; Tools</button>
   </div>
 
   <div class="progress-panel" id="progress"><div style="display:flex;justify-content:space-between"><span style="font-weight:600;color:var(--ac)">Build Progress</span><span onclick="$('progress').classList.remove('show')" style="cursor:pointer">&times;</span></div><div id="progressLog"></div></div>
@@ -142,16 +144,22 @@ input[type=file]{display:none}
       <div class="input-row">
         <button class="btn btn-ghost" onclick="addFiles()">&#x1F4CE;</button>
         <button class="btn btn-ghost" id="micBtn" onclick="toggleMic()">&#x1F3A4;</button>
+        <button class="btn btn-ghost" id="modeBtn" onclick="toggleMode()" title="Switch Code/Joule mode">&#x1F4BB;</button>
         <textarea id="input" rows="1" placeholder="Tell me what to build..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
         <button class="btn btn-accent" id="sendBtn" onclick="send()">&#x27A4;</button>
       </div>
-      <div class="hint">Enter to send · Shift+Enter newline · Drop files or paste images · Voice input</div>
+      <div class="hint"><span id="modeLabel">Code Mode</span> · Enter to send · Shift+Enter newline · Drop files</div>
     </div>
   </div>
 </div>
 
 <!-- RIGHT TOOLS PANEL -->
+<div class="panel-overlay" id="panelOverlay" onclick="closeTools()"></div>
 <div class="panel" id="toolsPanel">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <span style="font-weight:700;font-size:14px">&#x2699; Tools</span>
+    <button onclick="closeTools()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t3);line-height:1">&times;</button>
+  </div>
   <h3>&#x1F3AF; Project Context</h3>
   <select id="projTarget" onchange="saveProjCtx()"><option value="">Target Platform</option><option value="SAP S/4HANA Public Cloud">S/4HANA Public Cloud</option><option value="SAP BTP (Cloud Foundry)">SAP BTP CF</option><option value="Web App">Web App</option><option value="Mobile PWA">Mobile PWA</option><option value="Desktop App">Desktop</option><option value="CLI Tool">CLI Script</option></select>
   <select id="projLang" onchange="saveProjCtx()"><option value="">Language</option><option value="ABAP">ABAP</option><option value="Java">Java</option><option value="Node.js">Node.js</option><option value="Python">Python</option><option value="HTML5/Fiori">HTML5 / Fiori</option><option value="CDS/ODATA">CDS / OData</option></select>
@@ -249,7 +257,15 @@ async function deployBTP(fid){
   if(d.ok){prog(d.cfDeploy?.ok?'Live: '+d.cfDeploy.url:'Package: '+d.packageUrl,'good');addMsg('ai','## BTP Ready\n\n'+d.instructions)}else prog('Failed: '+d.error,'bad')
 }
 function refine(p){$('input').value=p+': ';$('input').focus()}
-function toggleTools(){const p=$('toolsPanel');if(p)p.classList.toggle('show')}
+function closeTools(){$('toolsPanel').classList.remove('show');$('panelOverlay').classList.remove('show')}
+let workbenchMode='code'; // 'code' or 'joule'
+function toggleMode(){
+  workbenchMode=workbenchMode==='code'?'joule':'code';
+  $('modeBtn').innerHTML=workbenchMode==='joule'?'&#x1F3ED;':'&#x1F4BB;';
+  $('modeLabel').textContent=workbenchMode==='joule'?'Joule Mode (SAP)':'Code Mode';
+  $('input').placeholder=workbenchMode==='joule'?'Ask SAP Joule... (e.g. show sales order 12345)':'Tell me what to build...';
+  toast(workbenchMode==='joule'?'Switched to Joule mode':'Switched to Code mode');
+}
 function showPreview(url){const p=$('previewPanel');p.innerHTML=`<div class="pp-bar"><span>Preview</span><a href="${url}" target="_blank">Open in tab</a><button onclick="this.closest('.preview-panel').classList.remove('show')">Close</button></div><iframe src="${url}"></iframe>`;p.classList.add('show')}
 function previewFile(url){showPreview(url)}
 
@@ -272,14 +288,12 @@ async function send(){
   // Context
   let projCtx='';
   try{const x=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');if(x.target)projCtx=`\nPROJECT: ${x.target} | ${x.lang||'auto'} | Endpoint: ${x.env||'none'} | Auth: ${x.user?'configured':'none'}`}catch{}
-  // Handle /joule command
-  let actualContent=c;
-  if(c.startsWith('/joule ')){
-    const q=c.slice(7);
+  // Joule mode: route to SAP Joule directly
+  if(workbenchMode==='joule'){
     const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
-    prog('Routing to SAP Joule...','ac');
+    prog('Asking SAP Joule...','ac');
     try{
-      const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_chat',params:{query:q,config:{jouleURL:ctx.env||'',clientId:ctx.user||'',clientSecret:ctx.pass||'',tokenURL:(ctx.env||'').replace(/\/api.*$/,'/oauth/token')}}})});
+      const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_chat',params:{query:c,config:{jouleURL:ctx.env||'',clientId:ctx.user||'',clientSecret:ctx.pass||'',tokenURL:(ctx.env||'').replace(/\/api.*$/,'/oauth/token')}}})});
       const d=await r.json();
       if(d.ok)addMsg('ai','## SAP Joule\n\n'+d.answer);
       else addMsg('ai','Joule unavailable: '+(d.error||'No response'));

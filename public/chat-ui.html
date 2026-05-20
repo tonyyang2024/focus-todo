@@ -421,8 +421,22 @@ function readFile(file){const r=new FileReader();r.onload=()=>{pendingFiles.push
 function updateAttach(){$('attachBar').innerHTML=pendingFiles.map((f,i)=>`<span class="atch">${f.isImage?'&#x1F5BC;':'&#x1F4C4;'} ${esc(f.name.slice(0,15))} <span class="x" onclick="pendingFiles.splice(${i},1);updateAttach()">x</span></span>`).join('')}
 
 // ====== VOICE ======
+let micRetries=0;
 function toggleMic(){micOn?stopMic():startMic()}
-function startMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast('Voice not supported');return}recognition=new SR();recognition.continuous=false;recognition.lang='zh-CN';recognition.onresult=e=>{$('input').value=($('input').value+' '+e.results[0][0].transcript).trim();stopMic();$('input').focus()};recognition.onerror=e=>{stopMic();if(e.error!=='aborted')toast('Voice error')};recognition.onend=()=>stopMic();recognition.start();micOn=true;$('micBtn').classList.add('rec');toast('Listening...')}
+function startMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('Voice not supported');return}
+  recognition=new SR();recognition.continuous=false;recognition.lang='zh-CN';recognition.interimResults=true;
+  recognition.onresult=e=>{const t=e.results[0][0].transcript.trim();if(t){$('input').value=($('input').value+' '+t).trim();stopMic();$('input').focus();micRetries=0}}
+  recognition.onerror=e=>{
+    if(e.error==='no-speech'){if(micRetries<2){micRetries++;stopMic();setTimeout(startMic,500);return}toast('No speech detected')}
+    else if(e.error==='not-allowed')toast('Microphone denied - enable in settings')
+    else if(e.error!=='aborted')toast('Voice error: '+e.error);
+    stopMic();micRetries=0;
+  };
+  recognition.onend=()=>{if(micOn)stopMic()};
+  recognition.start();micOn=true;$('micBtn').classList.add('rec');toast('Speak now...');
+}
 function stopMic(){if(recognition){try{recognition.stop()}catch{};recognition=null}micOn=false;$('micBtn').classList.remove('rec')}
 
 // ====== DRAG/PASTE ======

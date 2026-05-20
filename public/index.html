@@ -237,15 +237,30 @@ function loadHist(i){const h=JSON.parse(localStorage.getItem('hub_hist')||'[]');
 function newChat(){msgs=[];localStorage.setItem('hub_current','[]');$('chatMsgs').innerHTML='<div class="empty"><span style="font-size:24px">&#x1F4AC;</span><br>New conversation</div>';switchTab('chat')}
 
 // Voice
-let micOn=false,rec=null;
+let micOn=false,rec=null,micRetries=0;
 function toggleVoice(){micOn?stopMic():startMic()}
 function startMic(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR)return;
-  rec=new SR();rec.continuous=false;rec.lang='zh-CN';
-  rec.onresult=e=>{$('chatInput').value=($('chatInput').value+' '+e.results[0][0].transcript).trim();stopMic()}
-  rec.onerror=()=>stopMic();rec.onend=()=>stopMic();
-  rec.start();micOn=true;$('micBtn').classList.add('rec')
+  if(!SR){toast('Browser does not support voice input');return}
+  rec=new SR();rec.continuous=false;rec.lang='zh-CN';rec.interimResults=true;
+  rec.onresult=e=>{
+    const t=e.results[0][0].transcript.trim();
+    if(t){$('chatInput').value=($('chatInput').value+' '+t).trim();stopMic();$('chatInput').focus();micRetries=0}
+  }
+  rec.onerror=e=>{
+    if(e.error==='no-speech'){
+      if(micRetries<2){micRetries++;stopMic();setTimeout(startMic,500);return}
+      toast('No speech detected. Please check microphone and try again.');
+    }else if(e.error==='not-allowed'){
+      toast('Microphone access denied. Enable in browser settings.');
+    }else if(e.error!=='aborted'){
+      toast('Voice error: '+e.error);
+    }
+    stopMic();micRetries=0;
+  };
+  rec.onend=()=>{if(micOn)stopMic()};
+  rec.start();micOn=true;$('micBtn').classList.add('rec');micRetries=0;
+  toast('Listening... (speak now)');
 }
 function stopMic(){if(rec){try{rec.stop()}catch{};rec=null}micOn=false;$('micBtn').classList.remove('rec')}
 

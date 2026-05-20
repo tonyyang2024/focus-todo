@@ -130,7 +130,7 @@ input[type=file]{display:none}
     <span class="key-dot off" id="keyDot"></span>
     <span id="keyLabel" style="font-size:10px;color:var(--t3)">No Key</span>
     <a href="/settings.html">Config</a>
-    <button onclick="toggleTools()">&#x2699; Tools</button>
+    <button id="toolsToggleBtn" onclick="var p=document.getElementById('toolsPanel');p.classList.toggle('show')">&#x2699; Tools</button>
   </div>
 
   <div class="progress-panel" id="progress"><div style="display:flex;justify-content:space-between"><span style="font-weight:600;color:var(--ac)">Build Progress</span><span onclick="$('progress').classList.remove('show')" style="cursor:pointer">&times;</span></div><div id="progressLog"></div></div>

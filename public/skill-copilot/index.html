@@ -10,11 +10,11 @@
 <link rel="manifest" href="manifest.json">
 <style>
   :root {
-    --bg: #1a1b2e; --bg2: #212339; --surface: #252740;
-    --border: #2e3150; --text: #e4e5f0; --text2: #9496b0; --text3: #6b6d85;
-    --accent: #818cf8; --accent2: #a78bfa; --accent3: #c084fc;
-    --good: #34d399; --bad: #f87171; --warn: #f59e0b;
-    --gradient: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c084fc 100%);
+    --bg: #f5f6f7; --bg2: #f0f1f2; --surface: #fff;
+    --border: #e0e3e8; --text: #1d2d3e; --text2: #556b82; --text3: #8b95a5;
+    --accent: #0070f2; --accent2: #0057b8; --accent3: #0070f2;
+    --good: #188918; --bad: #d20a0a; --warn: #e78c07;
+    --gradient: linear-gradient(135deg, #0070f2 0%, #0057b8 100%);
     --radius: 14px; --radius-sm: 10px;
     --sidebar-w: 240px;
   }
@@ -57,7 +57,7 @@
     cursor: pointer; font-size: 12px; color: var(--text2);
     transition: all 0.15s; margin-bottom: 2px;
   }
-  .space-item:hover { background: rgba(129,140,248,0.06); color: var(--text); }
+  .space-item:hover { background: rgba(0,112,242,0.06); color: var(--text); }
   .space-item.active { background: rgba(129,140,248,0.12); color: var(--accent); font-weight: 600; }
   .space-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); flex-shrink: 0; }
   .space-item .count { margin-left: auto; font-size: 10px; color: var(--text3); }
@@ -95,7 +95,7 @@
     cursor: pointer; font-size: 12px; color: var(--text2);
     transition: all 0.15s; border: 1px solid transparent;
   }
-  .skill-mini:hover { background: rgba(129,140,248,0.06); color: var(--text); }
+  .skill-mini:hover { background: rgba(0,112,242,0.06); color: var(--text); }
   .skill-mini.active {
     background: rgba(129,140,248,0.12); color: var(--accent);
     border-color: rgba(129,140,248,0.2); font-weight: 600;

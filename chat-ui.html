@@ -60,6 +60,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 .pre-btns button:hover{color:var(--txt);border-color:var(--ac)}
 .pre-btns .deploy{color:var(--good);border-color:var(--good)}
 .pre-btns .deploy:hover{background:rgba(52,211,153,0.08)}
+.code-block{margin:6px 0}
+.code-pre code[contenteditable="true"]{display:block;padding:8px;border-radius:4px;min-height:60px}
+.refine-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.refine-chips span{font-size:9px;color:var(--t3);padding:2px 4px}
+.refine-chips button{padding:3px 10px;border-radius:12px;border:1px solid var(--bdr);background:var(--bg);color:var(--t2);cursor:pointer;font-size:10px;font-family:inherit;transition:all 0.15s}
+.refine-chips button:hover{border-color:var(--ac);color:var(--ac)}
 
 /* Input */
 .input-area{padding:10px 14px 14px;background:var(--srf);border-top:1px solid var(--bdr);flex-shrink:0}
@@ -244,7 +250,17 @@ function renderMessages(){
 function renderMsg(role,text,files){
   let h='<div class="msg '+(role==='user'?'user':'ai')+'"><div class="av">'+(role==='user'?'&#x1F464;':'&#x1F916;')+'</div>';
   if(files?.length) h+='<div class="attachments">'+files.map(f=>f.isImage?`<img src="${f.content}" style="max-width:140px;max-height:80px;border-radius:6px;cursor:pointer" onclick="window.open('${f.content}')">`:`<span class="atch">&#x1F4C4; ${esc(f.name.slice(0,18))}</span>`).join('')+'</div>';
-  h+='<div class="bubble">'+(role==='ai'?fmtAI(text):esc(text||''))+'</div></div>';
+  h+='<div class="bubble">'+(role==='ai'?fmtAI(text):esc(text||''))+'</div>';
+  // Add refine chips for AI messages with code
+  if(role==='ai'&&text&&text.includes('```')){
+    h+=`<div class="refine-chips"><span>Refine: </span>
+      <button onclick="refineCode('Optimize this code for performance and readability')">&#x26A1; Optimize</button>
+      <button onclick="refineCode('Add error handling and input validation')">&#x1F6E0; Error handling</button>
+      <button onclick="refineCode('Add detailed comments and documentation')">&#x1F4DD; Comments</button>
+      <button onclick="refineCode('Fix potential bugs and edge cases')">&#x1F41B; Fix bugs</button>
+    </div>`;
+  }
+  h+='</div>';
   return h;
 }
 
@@ -261,14 +277,40 @@ function fmtAI(t){
   return esc(t||'')
     .replace(/```(\w*)\n([\s\S]*?)```/g,(_,lang,code)=>{
       const c=esc(code.trim()),l=lang||'code',ext=l==='html'?'html':l==='javascript'?'js':l==='python'?'py':l||'txt';
-      const isHTML=l==='html'||c.includes('<!DOCTYPE');
+      const isHTML=l==='html'||code.includes('<!DOCTYPE');
       const fid='f'+Date.now()+Math.random().toString(36).slice(2,6);
-      bf[fid]={code:code.trim(),ext};
-      let btns=`<button onclick="copyBlock(this)">Copy</button><button onclick="saveBlock(this,'${ext}')">Save</button>`;
-      if(isHTML) btns+=`<button class="deploy" onclick="deployBlock('${fid}')">&#x25B6; Deploy & Preview</button>`;
-      else btns+=`<button class="deploy" onclick="deployBlock('${fid}')">&#x1F4C1; Deploy</button>`;
-      return `<pre>${$('buildMode')?.checked!==false?`<div class="pre-btns">${btns}</div>`:''}<code>${c}</code></pre>`;
+      bf[fid]={code:code.trim(),ext,lang:l};
+      const btns=`<button onclick="copyBlock(this)">Copy</button>
+        <button onclick="editBlock(this,'${fid}')">Edit</button>
+        ${isHTML?`<button class="deploy" onclick="deployBlock('${fid}')">&#x25B6; Preview</button>`:`<button class="deploy" onclick="deployBlock('${fid}')">&#x1F4C1; Deploy</button>`}
+        <button onclick="downloadBlock(this,'${ext}')">Save</button>`;
+      return `<div class="code-block"><div class="pre-btns">${btns}</div><pre class="code-pre"><code class="language-${l}" contenteditable="false" id="${fid}">${c}</code></pre></div>`;
     }).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+}
+
+// Inline code editing
+function editBlock(btn,fid){
+  const pre=btn.closest('.code-block').querySelector('code');
+  if(pre.contentEditable==='true'){
+    pre.contentEditable='false';
+    pre.style.outline='none';
+    pre.style.background='';
+    btn.textContent='Edit';
+    bf[fid].code=pre.textContent;
+  } else {
+    pre.contentEditable='true';
+    pre.style.outline='2px solid var(--ac)';
+    pre.style.background='rgba(0,112,242,0.02)';
+    btn.textContent='Done';
+    pre.focus();
+  }
+}
+function downloadBlock(btn,ext){
+  const code=btn.closest('.code-block').querySelector('code').textContent;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([code]));
+  a.download='code.'+ext;a.click();
+  toast('Downloaded');
 }
 
 // ====== SEND ======
@@ -368,7 +410,8 @@ async function deployCode(code,filename){
     else toast('Failed: '+d.error);
   }catch(e){toast('Server error')}
 }
-function copyBlock(btn){navigator.clipboard.writeText(btn.closest('pre').querySelector('code').textContent);toast('Copied')}
+function copyBlock(btn){navigator.clipboard.writeText(btn.closest('.code-block').querySelector('code').textContent);toast('Copied')}
+function refineCode(prompt){$('input').value=prompt;$('input').focus();$('input').style.height='auto';$('input').style.height=Math.min($('input').scrollHeight,100)+'px'}
 function saveBlock(btn,ext){const c=btn.closest('pre').querySelector('code').textContent;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c]));a.download='code.'+ext;a.click()}
 
 // ====== FILES ======

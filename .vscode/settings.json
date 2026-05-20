@@ -1,0 +1,18 @@
+{
+  "terminal.integrated.profiles.windows": {
+    "ClaudeCloud 助手": {
+      "path": "cmd.exe",
+      "args": ["/k", "C:\\workspace\\yoohome-claudecloud\\claudecloud.bat"],
+      "icon": "robot"
+    }
+  },
+  "terminal.integrated.defaultProfile.windows": "ClaudeCloud 助手",
+  "files.exclude": {
+    "**/.claude/cache": true,
+    "**/.claude/sessions": true
+  },
+  "workbench.colorCustomizations": {
+    "activityBar.foreground": "#4ade80",
+    "activityBar.activeBorder": "#4ade80"
+  }
+}

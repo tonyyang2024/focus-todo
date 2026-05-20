@@ -232,20 +232,23 @@ async function send(){
   const files=[...pendingFiles];pendingFiles=[];updateAttach();
 
   let content='';
+  const fileNames=[];
   for(const f of files){
-    if(f.isImage)content+=`[Image: ${f.name}]\n`;
-    else content+=`[File: ${f.name}]\n\`\`\`\n${f.text?.slice(0,4000)||'[Binary]'}\n\`\`\`\n`;
+    fileNames.push(f.name);
+    if(!f.isImage) content+=`[File: ${f.name}]\n\`\`\`\n${f.text?.slice(0,4000)||'[Binary]'}\n\`\`\`\n`;
   }
+  if(fileNames.length&&!content) content='[Attached: '+fileNames.join(', ')+']\n';
   if(text)content+=text;
-  addMsg('user',text||'Sent files',files);
+  addMsg('user',text||(fileNames.length?'Sent: '+fileNames.join(', '):''),files);
   $('input').value='';$('input').style.height='auto';
 
   const sys={role:'system',content:`You are a full-stack developer AI. CRITICAL: NEVER output pseudo-code or descriptions. ALWAYS output complete, runnable code files. For ANY application request, output a COMPLETE single HTML file with CSS+JS inline. Use CDN for libraries. First code block must be the runnable application.`};
   const apiMsgs=[sys];
   for(const m of conversations[activeConv].messages){
     const role=m.role==='ai'?'assistant':m.role;
-    if(m.files?.some(f=>f.isImage)){const p=m.files.filter(f=>f.isImage).map(f=>({type:'image_url',image_url:{url:f.content}}));if(m.text)p.push({type:'text',text:m.text});apiMsgs.push({role,content:p})}
-    else apiMsgs.push({role,content:m.text||''});
+    let txt=m.text||'';
+    if(m.files?.length){const names=m.files.map(f=>f.name).join(', ');txt='[Attached: '+names+']\n'+txt}
+    apiMsgs.push({role,content:txt});
   }
 
   try{

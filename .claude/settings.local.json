@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(start *)",
+      "Bash(ipconfig)",
+      "Bash(RAILWAY_TOKEN=ccede747-8bb5-451d-951d-b38301585d28 npx *)",
+      "Bash(cp /c/workspace/yoohome-claudecloud/.vscode/chat-extension/extension.js __TRACKED_VAR__/.vscode/extensions/code-chat-panel/extension.js)",
+      "Bash(cp /c/workspace/yoohome-claudecloud/.vscode/chat-extension/webview.html __TRACKED_VAR__/.vscode/extensions/code-chat-panel/webview.html)",
+      "Bash(cp /c/workspace/yoohome-claudecloud/.vscode/chat-extension/package.json __TRACKED_VAR__/.vscode/extensions/code-chat-panel/package.json)",
+      "Bash(taskkill //f //im node.exe)",
+      "Bash(where sshd *)",
+      "Read(//c/Windows/**)",
+      "Bash(choco install *)",
+      "Bash(powershell -Command \"Get-Service sshd -ErrorAction SilentlyContinue | Select-Object Name,Status\")",
+      "Bash(cp /c/workspace/yoohome-claudecloud/sftp-storage/* /h/sftp-storage/)",
+      "Read(//h/sftp-storage//**)",
+      "Read(//c/Users/18233563536/Desktop/claude skills//**)",
+      "Read(//c/Users/18233563536/Desktop//**)",
+      "Bash(/c/Users/18233563536/.fly/bin/flyctl version *)",
+      "Bash(powershell *)"
+    ]
+  }
+}

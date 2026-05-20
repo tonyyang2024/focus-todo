@@ -186,6 +186,7 @@
   <div class="card">
     <div class="card-header">
       &#x1F4CA; Upload History
+      <button onclick="clearHistory()" style="margin-left:auto;padding:5px 14px;border:1px solid #fecaca;background:#fef2f2;color:var(--bad);border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;font-weight:500">&#x1F5D1; Clear All</button>
     </div>
     <div style="overflow-x:auto">
       <table>
@@ -340,6 +341,15 @@ async function loadHistory() {
 }
 
 loadHistory();
+
+async function clearHistory() {
+  if (!confirm('Delete all upload history and files? This cannot be undone.')) return;
+  try {
+    await fetch('/api/inventory/history', { method: 'DELETE' });
+    document.getElementById('historyBody').innerHTML = '';
+    document.getElementById('emptyHistory').style.display = '';
+  } catch(e) { alert('Failed: ' + e.message); }
+}
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 </script>

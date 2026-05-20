@@ -366,6 +366,17 @@ app.get('/api/inventory/history', (req, res) => {
   } catch (e) { res.json([]); }
 });
 
+app.delete('/api/inventory/history', (req, res) => {
+  try {
+    if (fs.existsSync(INVENTORY_UPLOAD_DIR)) {
+      fs.readdirSync(INVENTORY_UPLOAD_DIR).forEach(f => {
+        fs.unlinkSync(path.join(INVENTORY_UPLOAD_DIR, f));
+      });
+    }
+    res.json({ ok: true, message: 'History cleared' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/inventory/download/:id', (req, res) => {
   const xlsxFile = path.join(INVENTORY_UPLOAD_DIR, `inventory_upload_result_${req.params.id}.xlsx`);
   const jsonFile = path.join(INVENTORY_UPLOAD_DIR, `result_${req.params.id}.json`);

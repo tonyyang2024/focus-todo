@@ -4,23 +4,32 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#1a1b2e">
-<title>Focus Todo</title>
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f5f6f7">
+<title>Focus Hub</title>
 <style>
-:root{--bg:#1a1b2e;--srf:#252740;--bdr:#2e3150;--txt:#e4e5f0;--t2:#9496b0;--t3:#6b6d85;--ac:#818cf8;--a2:#a78bfa;--gr:linear-gradient(135deg,#818cf8,#a78bfa,#c084fc);--bad:#f87171;--good:#34d399;--warn:#f59e0b;--safe:env(safe-area-inset-bottom,8px)}
+:root{
+  --bg:#f5f6f7;--card:#fff;--bdr:#e0e3e8;--bdr2:#d5dadd;
+  --txt:#1d2d3e;--t2:#556b82;--t3:#8b95a5;
+  --brand:#0070f2;--brandHover:#0057b8;--brandLight:#e5f0ff;
+  --good:#188918;--bad:#d20a0a;--warn:#e78c07;
+  --r:8px;--r2:16px;
+  --safe:env(safe-area-inset-bottom,8px);
+  --font: '72','72full',-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;
+}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--txt);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+body{font-family:var(--font);background:var(--bg);color:var(--txt);height:100dvh;display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
 
-/* HEADER */
-.header{padding:10px 16px;background:var(--srf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;flex-shrink:0}
-.header h1{font-size:14px;font-weight:700;background:var(--gr);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.header .sep{flex:1}
-.header .key-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.header .key-dot.ok{background:var(--good)}
-.header .key-dot.no{background:var(--bad)}
-.header a{color:var(--t2);text-decoration:none;font-size:11px;padding:4px 10px;border:1px solid var(--bdr);border-radius:6px;transition:all 0.15s}
-.header a:hover{color:var(--ac);border-color:var(--ac)}
+/* SHELL BAR */
+.shell{background:#354a5f;color:#fff;padding:0 16px;height:44px;display:flex;align-items:center;gap:12px;flex-shrink:0;box-shadow:0 2px 4px rgba(0,0,0,0.15)}
+.shell h1{font-size:14px;font-weight:700;letter-spacing:0.3px}
+.shell .sep{flex:1}
+.shell .key-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.shell .key-dot.ok{background:#64e599}
+.shell .key-dot.no{background:#ff8888}
+.shell .key-label{font-size:10px;opacity:0.8}
+.shell a{color:rgba(255,255,255,0.7);text-decoration:none;font-size:10px;padding:3px 8px;border:1px solid rgba(255,255,255,0.2);border-radius:4px;transition:all 0.15s}
+.shell a:hover{color:#fff;border-color:rgba(255,255,255,0.4)}
 
 /* CONTENT */
 .content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px}
@@ -28,273 +37,233 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 .tab-content.active{display:block}
 
 /* CARDS */
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
-.card{background:var(--srf);border:1px solid var(--bdr);border-radius:14px;padding:18px 14px;text-decoration:none;color:var(--txt);display:flex;flex-direction:column;align-items:center;gap:8px;transition:all 0.2s;text-align:center}
-.card:hover{border-color:var(--ac);transform:translateY(-1px)}
-.card .icon{font-size:32px}
-.card h3{font-size:13px;margin:0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.card{background:var(--card);border-radius:var(--r);box-shadow:0 1px 3px rgba(0,0,0,0.08);border:1px solid var(--bdr);padding:20px 14px;text-decoration:none;color:var(--txt);display:flex;flex-direction:column;align-items:center;gap:10px;transition:all 0.2s;text-align:center}
+.card:hover{border-color:var(--brand);box-shadow:0 2px 8px rgba(0,112,242,0.12)}
+.card:active{background:var(--brandLight)}
+.card .sap-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.card .sap-icon.blue{background:#e5f0ff;color:var(--brand)}
+.card .sap-icon.teal{background:#daf5f0;color:#188918}
+.card .sap-icon.amber{background:#fff3e0;color:#e78c07}
+.card .sap-icon.purple{background:#f3e5ff;color:#8b5cf6}
+.card .sap-icon.rose{background:#ffe5f0;color:#d20a4a}
+.card .sap-icon.slate{background:#eef2f6;color:#556b82}
+.card h3{font-size:13px;font-weight:600;margin:0;color:var(--txt)}
 .card p{font-size:10px;color:var(--t2);line-height:1.4;margin:0}
 
-/* CHAT PANEL (Workbench lite) */
-.chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:calc(100dvh - 200px)}
-.chat-msg{max-width:85%;padding:8px 12px;border-radius:10px;font-size:12px;line-height:1.5;word-break:break-word;white-space:pre-wrap}
-.chat-msg.user{align-self:flex-end;background:linear-gradient(135deg,#4c3f8a,#3d3578);border-bottom-right-radius:3px}
-.chat-msg.ai{align-self:flex-start;background:var(--srf);border:1px solid var(--bdr);border-bottom-left-radius:3px}
-.chat-msg.ai code{background:var(--bg);padding:1px 4px;border-radius:3px;font-size:10px}
+/* CHAT */
+.chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:calc(100dvh - 210px)}
+.chat-msg{max-width:85%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5;word-break:break-word;white-space:pre-wrap}
+.chat-msg.user{align-self:flex-end;background:var(--brandLight);color:var(--txt);border:1px solid rgba(0,112,242,0.15);border-bottom-right-radius:4px}
+.chat-msg.ai{align-self:flex-start;background:var(--card);border:1px solid var(--bdr);border-bottom-left-radius:4px;color:var(--txt)}
+.chat-msg.ai code{background:#f5f6f7;padding:2px 5px;border-radius:3px;font-size:11px;border:1px solid var(--bdr)}
 .chat-input-row{display:flex;gap:6px}
-.chat-input-row textarea{flex:1;background:var(--bg);border:2px solid var(--bdr);color:var(--txt);padding:10px 14px;border-radius:20px;font-size:13px;font-family:inherit;resize:none;outline:none;min-height:40px;max-height:80px;line-height:1.3}
-.chat-input-row textarea:focus{border-color:var(--ac)}
+.chat-input-row textarea{flex:1;background:var(--card);border:2px solid var(--bdr);color:var(--txt);padding:10px 14px;border-radius:20px;font-size:13px;font-family:var(--font);resize:none;outline:none;min-height:40px;max-height:80px;line-height:1.3;transition:border-color 0.2s}
+.chat-input-row textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,112,242,0.1)}
 .chat-input-row textarea::placeholder{color:var(--t3)}
-.chat-input-row button{width:40px;height:40px;border-radius:50%;border:none;background:var(--gr);color:#fff;font-size:16px;cursor:pointer;flex-shrink:0;transition:all 0.15s}
+.chat-input-row button{width:40px;height:40px;border-radius:50%;border:none;background:var(--brand);color:#fff;font-size:16px;cursor:pointer;flex-shrink:0;transition:all 0.15s;display:flex;align-items:center;justify-content:center}
+.chat-input-row button:hover{background:var(--brandHover)}
 .chat-input-row button:disabled{opacity:0.4}
-.chat-input-row button.rec{background:var(--bad);animation:pulse 1.2s infinite}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.4)}50%{box-shadow:0 0 0 10px rgba(248,113,113,0)}}
+.chat-input-row button.mic{background:var(--card);color:var(--t2);border:1px solid var(--bdr)}
+.chat-input-row button.mic:hover{color:var(--brand);border-color:var(--brand)}
+.chat-input-row button.rec{background:var(--bad);color:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(210,10,10,.4)}50%{box-shadow:0 0 0 10px rgba(210,10,10,0)}}
 
 /* SETTINGS */
-.setting-row{display:flex;align-items:center;gap:10px;padding:12px;background:var(--srf);border:1px solid var(--bdr);border-radius:10px;margin-bottom:8px}
-.setting-row .lbl{width:80px;font-size:12px;font-weight:600;flex-shrink:0}
-.setting-row input,select{padding:8px 12px;border:1px solid var(--bdr);border-radius:8px;background:var(--bg);color:var(--txt);font-size:12px;outline:none;font-family:inherit;flex:1}
-.setting-row input:focus{border-color:var(--ac)}
-.setting-row .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.setting-row .dot.act{background:var(--good)}
+.section-label{font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--t2);margin-bottom:8px;font-weight:600}
+.f-inp{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--card);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,0.03)}
+.f-inp .lbl{width:70px;font-size:12px;color:var(--t2);font-weight:500;flex-shrink:0}
+.f-inp input,select{padding:8px 10px;border:1px solid var(--bdr);border-radius:6px;background:var(--bg);color:var(--txt);font-size:12px;outline:none;font-family:var(--font);flex:1;transition:border-color 0.15s}
+.f-inp input:focus,select:focus{border-color:var(--brand)}
+.f-inp .status-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:var(--bdr)}
+.f-inp .status-dot.act{background:var(--good)}
 
 /* HISTORY */
-.hist-item{padding:10px 14px;background:var(--srf);border:1px solid var(--bdr);border-radius:10px;margin-bottom:6px;cursor:pointer;transition:all 0.15s}
-.hist-item:hover{border-color:var(--ac)}
-.hist-item .h-title{font-size:12px;font-weight:600}
-.hist-item .h-preview{font-size:10px;color:var(--t2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hist-item .h-meta{font-size:9px;color:var(--t3);margin-top:2px}
+.hist-item{padding:12px 14px;background:var(--card);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:6px;cursor:pointer;transition:all 0.15s;box-shadow:0 1px 2px rgba(0,0,0,0.03)}
+.hist-item:hover{border-color:var(--brand)}
+.hist-item:active{background:var(--brandLight)}
+.hist-item .h-title{font-size:13px;font-weight:600;color:var(--txt)}
+.hist-item .h-preview{font-size:11px;color:var(--t2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-item .h-meta{font-size:10px;color:var(--t3);margin-top:2px;display:flex;align-items:center;gap:4px}
+.hist-item .h-meta .count{background:var(--brandLight);color:var(--brand);padding:1px 6px;border-radius:6px;font-size:9px;font-weight:600}
 
 /* TAB BAR */
-.tabbar{display:flex;border-top:1px solid var(--bdr);background:var(--srf);padding:6px 0 var(--safe);flex-shrink:0}
-.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;cursor:pointer;color:var(--t3);font-size:10px;transition:all 0.15s;border:none;background:none;font-family:inherit}
-.tab.active{color:var(--ac)}
-.tab .t-icon{font-size:18px}
+.tabbar{display:flex;border-top:1px solid var(--bdr);background:var(--card);padding:4px 0 var(--safe);flex-shrink:0;box-shadow:0 -1px 3px rgba(0,0,0,0.04)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;cursor:pointer;color:var(--t2);font-size:10px;transition:all 0.15s;border:none;background:none;font-family:var(--font)}
+.tab.active{color:var(--brand)}
+.tab .t-icon{font-size:18px;opacity:0.7;transition:opacity 0.15s}
+.tab.active .t-icon{opacity:1}
 
 /* TOAST */
-.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(37,39,64,0.95);border:1px solid var(--bdr);color:#fff;padding:8px 16px;border-radius:14px;font-size:11px;z-index:99;opacity:0;transition:all 0.3s;pointer-events:none}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:#1d2d3e;color:#fff;padding:10px 20px;border-radius:20px;font-size:12px;z-index:99;opacity:0;transition:all 0.3s;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .empty-state{text-align:center;padding:40px 16px;color:var(--t2);font-size:13px;line-height:1.8}
 
+input[type="file"]{display:none}
 @media(min-width:769px){
-.tabbar{padding:8px 0}
-.tab{padding:8px 0;font-size:11px}
-.tab .t-icon{font-size:20px}
-.content{max-width:800px;margin:0 auto;width:100%}
+  .tabbar{padding:6px 0}
+  .tab{padding:8px 0;font-size:11px}
+  .tab .t-icon{font-size:20px}
+  .content{max-width:800px;margin:0 auto;width:100%}
+  .cards{grid-template-columns:repeat(3,1fr)}
 }
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<div class="header">
+<div class="shell">
   <span class="key-dot no" id="keyDot"></span>
   <h1>Focus Hub</h1>
   <span class="sep"></span>
-  <span id="keyLabel" style="font-size:10px;color:var(--t3)">No Key</span>
-  <a href="/settings.html" target="_blank">Config</a>
+  <span class="key-label" id="keyLabel">No API Key</span>
+  <a href="/settings.html">Config</a>
 </div>
 
-<!-- CONTENT -->
 <div class="content">
-  <!-- TAB: Home -->
+  <!-- HOME -->
   <div class="tab-content active" id="tab-home">
-    <div style="text-align:center;margin-bottom:16px">
-      <div style="font-size:28px;margin-bottom:4px">&#x1F3E0;</div>
-      <h2 style="font-size:16px">Focus Hub</h2>
-      <p style="font-size:11px;color:var(--t2)">All tools in one place</p>
+    <div style="padding:12px 0 16px;text-align:center">
+      <h2 style="font-size:18px;font-weight:600;color:var(--txt)">Focus Hub</h2>
+      <p style="font-size:12px;color:var(--t2);margin-top:2px">Productivity tools & AI assistant</p>
     </div>
     <div class="cards">
-      <a href="/todolist/" class="card"><span class="icon">&#x1F4CB;</span><h3>Todo</h3><p>Pomodoro timer</p></a>
-      <a href="/skill-copilot/" class="card"><span class="icon">&#x1F916;</span><h3>AI Copilot</h3><p>13 skills + voice</p></a>
-      <a href="/chat-ui.html" class="card"><span class="icon">&#x26A1;</span><h3>Workbench</h3><p>Code builder</p></a>
-      <a href="/fiori-upload.html" class="card"><span class="icon">&#x1F4E6;</span><h3>Files</h3><p>SFTP upload</p></a>
-      <a href="/inventory-upload.html" class="card"><span class="icon">&#x1F3ED;</span><h3>SAP</h3><p>Inventory</p></a>
-      <a href="/docs.html" class="card"><span class="icon">&#x1F4DA;</span><h3>Docs</h3><p>Knowledge base</p></a>
+      <a href="/todolist/" class="card"><span class="sap-icon blue">&#x1F4CB;</span><h3>Todo</h3><p>Task management</p></a>
+      <a href="/skill-copilot/" class="card"><span class="sap-icon purple">&#x1F916;</span><h3>Copilot</h3><p>AI skills + voice</p></a>
+      <a href="/chat-ui.html" class="card"><span class="sap-icon blue">&#x26A1;</span><h3>Workbench</h3><p>Code builder</p></a>
+      <a href="/fiori-upload.html" class="card"><span class="sap-icon teal">&#x1F4E4;</span><h3>Files</h3><p>SFTP upload</p></a>
+      <a href="/inventory-upload.html" class="card"><span class="sap-icon amber">&#x1F3ED;</span><h3>Inventory</h3><p>SAP upload</p></a>
+      <a href="/docs.html" class="card"><span class="sap-icon slate">&#x1F4DD;</span><h3>Docs</h3><p>Knowledge base</p></a>
     </div>
   </div>
 
-  <!-- TAB: Chat (embedded workbench lite) -->
+  <!-- CHAT -->
   <div class="tab-content" id="tab-chat">
-    <div class="chat-msgs" id="chatMsgs">
-      <div class="empty-state"><div style="font-size:30px">&#x26A1;</div>Quick Chat<br><small style="color:var(--t3)">Uses key from Settings</small></div>
-    </div>
+    <div class="chat-msgs" id="chatMsgs"><div class="empty-state"><span style="font-size:24px">&#x1F4AC;</span><br>Ask anything</div></div>
     <div class="chat-input-row">
-      <button id="micBtn2" onclick="toggleVoice()">&#x1F3A4;</button>
-      <textarea id="chatInput" rows="1" placeholder="Describe what you want..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend()}"></textarea>
+      <button class="mic" id="micBtn2" onclick="toggleVoice()">&#x1F3A4;</button>
+      <textarea id="chatInput" rows="1" placeholder="Describe your request..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend()}"></textarea>
       <button id="chatSendBtn" onclick="chatSend()">&#x27A4;</button>
     </div>
   </div>
 
-  <!-- TAB: History -->
+  <!-- HISTORY -->
   <div class="tab-content" id="tab-history">
+    <div class="section-label" style="margin-bottom:12px">Recent Conversations</div>
     <div id="historyList"></div>
   </div>
 
-  <!-- TAB: Settings -->
+  <!-- SETTINGS -->
   <div class="tab-content" id="tab-settings">
-    <h3 style="font-size:14px;margin-bottom:12px">API Key</h3>
-    <div class="setting-row">
+    <div class="section-label">API Configuration</div>
+    <div class="f-inp">
       <span class="lbl">Provider</span>
-      <select id="sProvider" onchange="sRender()">
-        <option value="deepseek">DeepSeek</option>
-        <option value="openai">OpenAI</option>
-        <option value="anthropic">Anthropic</option>
-      </select>
-      <select id="sModel" onchange="sSave()">
-        <option value="deepseek-chat">deepseek-chat</option>
-        <option value="deepseek-reasoner">deepseek-reasoner</option>
-      </select>
+      <select id="sProvider" onchange="sRender()"><option value="deepseek">DeepSeek</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></select>
+      <select id="sModel" onchange="sSave()"><option value="deepseek-chat">deepseek-chat</option></select>
     </div>
-    <div class="setting-row">
-      <span class="dot" id="sDot"></span>
-      <span class="lbl">Key</span>
-      <input type="password" id="sKey" placeholder="sk-..." oninput="sSave()">
+    <div class="f-inp">
+      <span class="status-dot" id="sDot"></span>
+      <span class="lbl">API Key</span>
+      <input type="password" id="sKey" placeholder="Paste your API key..." oninput="sSave()">
     </div>
+    <p style="font-size:10px;color:var(--t3);margin-top:8px">Key stored locally in your browser. Configure once, all apps read from here.</p>
   </div>
 </div>
 
-<!-- TAB BAR -->
 <div class="tabbar">
   <button class="tab active" data-tab="home" onclick="switchTab('home')"><span class="t-icon">&#x1F3E0;</span>Home</button>
   <button class="tab" data-tab="chat" onclick="switchTab('chat')"><span class="t-icon">&#x1F4AC;</span>Chat</button>
   <button class="tab" data-tab="history" onclick="switchTab('history')"><span class="t-icon">&#x1F4C4;</span>History</button>
   <button class="tab" data-tab="settings" onclick="switchTab('settings')"><span class="t-icon">&#x2699;</span>Settings</button>
 </div>
-
 <div class="toast" id="toast"></div>
 
 <script>
 const $=id=>document.getElementById(id);
-
-// ====== TAB SWITCHING ======
-function switchTab(name){
+function switchTab(n){
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  $('tab-'+name).classList.add('active');
-  document.querySelector(`[data-tab="${name}"]`).classList.add('active');
-  if(name==='history') renderHistory();
+  $('tab-'+n).classList.add('active');
+  document.querySelector(`[data-tab="${n}"]`).classList.add('active');
+  if(n==='history')renderHistory();
 }
 
-// ====== KEY MANAGEMENT ======
 function getKeyConfig(){
   const providers=JSON.parse(localStorage.getItem('ccw_providers')||'[]');
   const def=localStorage.getItem('ccw_default_provider')||'ds';
   return providers.find(p=>p.active&&p.id===def)||providers.find(p=>p.active)||{type:'deepseek',key:localStorage.getItem('ccw_key')||'',model:'deepseek-chat'};
 }
-
 function updateKeyUI(){
   const p=getKeyConfig();
-  const dot=$('keyDot'),lbl=$('keyLabel');
-  if(p.key){dot.className='key-dot ok';lbl.textContent='Key: '+p.type+' ✓'}
-  else{dot.className='key-dot no';lbl.textContent='No key configured'}
+  $('keyDot').className='key-dot'+(p.key?' ok':' no');
+  $('keyLabel').textContent=p.key?p.type+' configured':'No API Key';
 }
-
-// ====== SETTINGS TAB ======
 function sRender(){
-  const type=$('sProvider').value;
   const models={deepseek:['deepseek-chat','deepseek-reasoner'],openai:['gpt-4o','gpt-4o-mini'],anthropic:['claude-sonnet-4-6','claude-opus-4-7']};
-  $('sModel').innerHTML=(models[type]||['custom']).map(m=>`<option>${m}</option>`).join('');
+  $('sModel').innerHTML=(models[$('sProvider').value]||['custom']).map(m=>`<option>${m}</option>`).join('');
   const p=getKeyConfig();
-  $('sProvider').value=type;
   $('sKey').value=p.key||'';
-  $('sDot').className='dot'+(p.key&&p.active!==false?' act':'');
+  $('sDot').className='status-dot'+(p.key?' act':'');
 }
 function sSave(){
-  const type=$('sProvider').value;
-  const key=$('sKey').value.trim();
-  const model=$('sModel').value;
-  const providers=[{id:'ds',type,key,model,active:!!key}];
-  localStorage.setItem('ccw_providers',JSON.stringify(providers));
+  const type=$('sProvider').value, key=$('sKey').value.trim(), model=$('sModel').value;
+  localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type,key,model,active:!!key}]));
   localStorage.setItem('ccw_default_provider','ds');
-  $('sDot').className='dot'+(key?' act':'');
+  $('sDot').className='status-dot'+(key?' act':'');
   updateKeyUI();
   if(key)toast('Key saved');
 }
 
-// ====== QUICK CHAT ======
 let chatMsgs=[];
 async function chatSend(){
-  const input=$('chatInput');
-  const text=input.value.trim();
-  if(!text)return;
-  const key=getKeyConfig().key;
-  if(!key){toast('Set API Key in Settings tab first');return}
+  const t=$('chatInput').value.trim();
+  if(!t)return;
+  const k=getKeyConfig().key;
+  if(!k){toast('Set API Key in Settings tab');return}
   $('chatSendBtn').disabled=true;
-  chatMsgs.push({role:'user',content:text});
-  addChatMsg('user',text);
-  input.value='';
-
+  chatMsgs.push({role:'user',content:t});
+  addChatMsg('user',t);$('chatInput').value='';
   try{
-    const res=await fetch('https://api.deepseek.com/v1/chat/completions',{
-      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({model:getKeyConfig().model||'deepseek-chat',messages:chatMsgs,max_tokens:4096})
-    });
-    const data=await res.json();
-    const reply=data.choices?.[0]?.message?.content||'Error';
+    const r=await fetch('https://api.deepseek.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+k},body:JSON.stringify({model:getKeyConfig().model||'deepseek-chat',messages:chatMsgs,max_tokens:4096})});
+    const d=await r.json();
+    const reply=d.choices?.[0]?.message?.content||'Error';
     chatMsgs.push({role:'assistant',content:reply});
-    addChatMsg('ai',reply);
-    saveChatHistory();
+    addChatMsg('ai',reply);saveHistory();
   }catch(e){addChatMsg('ai','Error: '+e.message)}
   $('chatSendBtn').disabled=false;
 }
-
 function addChatMsg(role,text){
-  const d=document.createElement('div');
-  d.className='chat-msg '+role;
-  d.textContent=text;
-  const el=$('chatMsgs');
-  const empty=el.querySelector('.empty-state');
-  if(empty)empty.remove();
-  el.appendChild(d);
-  el.scrollTop=el.scrollHeight;
+  const d=document.createElement('div');d.className='chat-msg '+role;d.textContent=text;
+  const e=$('chatMsgs').querySelector('.empty-state');if(e)e.remove();
+  $('chatMsgs').appendChild(d);$('chatMsgs').scrollTop=$('chatMsgs').scrollHeight;
 }
-
-// Chat history persistence
-function saveChatHistory(){
-  const hist=JSON.parse(localStorage.getItem('hub_chat_history')||'[]');
-  if(chatMsgs.length>1) hist.unshift({time:Date.now(),preview:chatMsgs[0]?.content?.slice(0,50),msgs:chatMsgs});
-  if(hist.length>20)hist.length=20;
-  localStorage.setItem('hub_chat_history',JSON.stringify(hist));
+function saveHistory(){
+  const h=JSON.parse(localStorage.getItem('hub_history')||'[]');
+  if(chatMsgs.length>1)h.unshift({time:Date.now(),preview:chatMsgs[0]?.content?.slice(0,60),count:chatMsgs.length,msgs:chatMsgs});
+  if(h.length>30)h.length=30;
+  localStorage.setItem('hub_history',JSON.stringify(h));
 }
-
 function renderHistory(){
-  const hist=JSON.parse(localStorage.getItem('hub_chat_history')||'[]');
-  const el=$('historyList');
-  if(!hist.length){el.innerHTML='<div class="empty-state">No chat history yet</div>';return}
-  el.innerHTML=hist.map((h,i)=>`<div class="hist-item" onclick="loadHistory(${i})"><div class="h-title">${esc(h.preview||'Chat')}</div><div class="h-meta">${new Date(h.time).toLocaleString()}</div></div>`).join('');
+  const h=JSON.parse(localStorage.getItem('hub_history')||'[]');
+  $('historyList').innerHTML=h.length?h.map((x,i)=>`<div class="hist-item" onclick="loadHistory(${i})"><div class="h-title">${esc(x.preview||'Chat')}</div><div class="h-meta"><span class="count">${x.count||0} msgs</span>${new Date(x.time).toLocaleString()}</div></div>`).join(''):'<div class="empty-state">No conversations yet<br><small>Chat history appears here</small></div>';
 }
+function loadHistory(i){const h=JSON.parse(localStorage.getItem('hub_history')||'[]');if(h[i]){chatMsgs=h[i].msgs;$('chatMsgs').innerHTML=chatMsgs.map(m=>`<div class="chat-msg ${m.role}">${esc(m.content)}</div>`).join('');switchTab('chat')}}
 
-function loadHistory(i){
-  const hist=JSON.parse(localStorage.getItem('hub_chat_history')||'[]');
-  if(!hist[i])return;
-  chatMsgs=hist[i].msgs;
-  const el=$('chatMsgs');
-  el.innerHTML=chatMsgs.map(m=>`<div class="chat-msg ${m.role}">${esc(m.content)}</div>`).join('');
-  switchTab('chat');
-}
-
-// ====== VOICE ======
 let micOn=false,rec=null;
 function toggleVoice(){micOn?stopMic():startMic()}
 function startMic(){
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){toast('Voice not supported');return}
   rec=new SR();rec.continuous=false;rec.lang='zh-CN';
-  rec.onresult=e=>{$('chatInput').value=($('chatInput').value+' '+e.results[0][0].transcript).trim();stopMic();$('chatInput').focus()}
-  rec.onerror=e=>{stopMic()}
-  rec.onend=()=>stopMic();
+  rec.onresult=e=>{$('chatInput').value=($('chatInput').value+' '+e.results[0][0].transcript).trim();stopMic()}
+  rec.onerror=()=>stopMic();rec.onend=()=>stopMic();
   rec.start();micOn=true;$('micBtn2').classList.add('rec');toast('Listening...')
 }
 function stopMic(){if(rec){try{rec.stop()}catch{};rec=null}micOn=false;$('micBtn2').classList.remove('rec')}
 
-// ====== UTILS ======
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
 
-// Init
-updateKeyUI();
-sRender();
+updateKeyUI();sRender();
 $('chatInput').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'});
 </script>
 </body>

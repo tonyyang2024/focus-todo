@@ -372,6 +372,7 @@
 
   <div class="sidebar-footer">
     <button onclick="exportSpace()">&#x1F4E4;</button>
+    <a href="/settings.html" style="flex:1;padding:4px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;font-size:10px;font-family:inherit;text-decoration:none;text-align:center">Settings</a>
     <button onclick="deleteSpace()">&#x1F5D1;</button>
     <button onclick="changeAPIKey()" title="更换API Key">&#x1F511;</button>
   </div>
@@ -620,12 +621,11 @@ function exportSpace() {
     if (!localStorage.getItem('sk_key')) localStorage.setItem('sk_key', DEFAULT_API_KEY);
   }
   if (!apiKey()) {
-    // Only prompt if no key available
     setTimeout(() => {
-      showModal('DeepSeek API Key', '输入 sk-... (仅存本地，保存后不再提示)', true, (val) => {
-        if (val) { localStorage.setItem('sk_key', val.trim()); toast('Key 已保存', 'success'); }
+      showModal('API Key Required', '请先在 Settings 页面配置 API Key，或在下方输入 DeepSeek Key', true, (val) => {
+        if (val) { localStorage.setItem('sk_key', val.trim()); localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type:'deepseek',key:val.trim(),model:'deepseek-chat',active:true}])); localStorage.setItem('ccw_default_provider','ds'); toast('Key saved (also available in Settings)', 'success'); }
       });
-    }, 1000);
+    }, 1500);
   }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
   renderAll();

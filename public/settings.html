@@ -107,8 +107,6 @@ const PROVIDER_TYPES = {
 
 const DEFAULT_PROVIDERS = [
   { id:'ds', type:'deepseek', key:'', model:'deepseek-chat', active:true },
-  { id:'oa', type:'openai', key:'', model:'gpt-4o', active:false },
-  { id:'an', type:'anthropic', key:'', model:'claude-sonnet-4-6', active:false },
 ];
 
 function loadProviders(){ try{return JSON.parse(localStorage.getItem('ccw_providers')||'null')||DEFAULT_PROVIDERS}catch{return DEFAULT_PROVIDERS} }

@@ -123,7 +123,7 @@ input[type=file]{display:none}
   <div class="topbar">
     <h1>Workbench</h1>
     <select id="model" onchange="saveCfg()"><option value="deepseek-chat">DeepSeek V3</option><option value="deepseek-reasoner">DeepSeek R1</option></select>
-    <input type="password" id="apikey" placeholder="API Key sk-..." onchange="saveCfg()">
+    <a href="/settings.html" id="keyStatus" style="font-size:10px;color:var(--t3);text-decoration:none;padding:3px 8px;border:1px solid var(--bdr);border-radius:5px">Settings</a>
     <button onclick="newChat()" class="primary">+ New</button>
   </div>
 
@@ -174,11 +174,19 @@ function getProviderURL(p){
 
 if(!conversations[activeConv]) conversations[activeConv]={name:'New Chat',messages:[],created:Date.now()};
 
-function saveCfg(){localStorage.setItem('ccw_key',$('apikey').value);localStorage.setItem('ccw_model',$('model').value)}
+function saveCfg(){} // Key managed in Settings
 function saveConvs(){localStorage.setItem('wb_convs',JSON.stringify(conversations));localStorage.setItem('wb_active',activeConv)}
 function saveFiles(){localStorage.setItem('wb_files',JSON.stringify(builtFiles))}
 
-function loadCfg(){$('apikey').value=localStorage.getItem('ccw_key')||'';$('model').value=localStorage.getItem('ccw_model')||'deepseek-chat'}
+function loadCfg(){
+  const p=getProvider();
+  const s=$('keyStatus');
+  if(p.key){s.textContent='Key: '+p.type+' ✓';s.style.color='var(--good)';s.style.borderColor='var(--good)'}
+  else{s.textContent='Set API Key';s.style.color='var(--bad)';s.style.borderColor='var(--bad)'}
+  const modelMap={deepseek:['deepseek-chat','deepseek-reasoner'],openai:['gpt-4o','gpt-4o-mini','gpt-4-turbo'],anthropic:['claude-sonnet-4-6','claude-opus-4-7','claude-haiku-4-5']};
+  const models=modelMap[p.type]||[p.model||'deepseek-chat'];
+  $('model').innerHTML=models.map(m=>`<option value="${m}"${m===p.model?' selected':''}>${m}</option>`).join('');
+}
 
 // ====== SIDEBAR ======
 function renderSidebar(){

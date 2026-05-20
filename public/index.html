@@ -2,82 +2,300 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1b2e">
 <title>Focus Todo</title>
 <style>
-  :root {
-    --bg: #1a1b2e; --surface: #252740; --border: #2e3150;
-    --text: #e4e5f0; --text2: #9496b0; --accent: #818cf8;
-    --gradient: linear-gradient(135deg, #818cf8, #a78bfa, #c084fc);
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
-    background: var(--bg); color: var(--text);
-    min-height: 100vh; display: flex; align-items: center; justify-content: center;
-    background-image: radial-gradient(ellipse at 50% 0%, rgba(129,140,248,0.06) 0%, transparent 60%),
-                      radial-gradient(ellipse at 80% 100%, rgba(192,132,252,0.04) 0%, transparent 50%);
-  }
-  .container { text-align: center; padding: 40px 24px; }
-  h1 {
-    font-size: 2.5rem; font-weight: 700; margin-bottom: 12px;
-    background: var(--gradient); -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent; background-clip: text;
-  }
-  .sub { color: var(--text2); font-size: 1.05rem; margin-bottom: 40px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; max-width: 800px; margin: 0 auto; padding: 0 16px; }
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 16px; padding: 24px 16px; text-decoration: none;
-    transition: all 0.2s; text-align: center; color: var(--text);
-  }
-  .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
-  .card .icon { font-size: 36px; margin-bottom: 12px; }
-  .card h3 { font-size: 15px; margin-bottom: 6px; }
-  .card p { font-size: 11px; color: var(--text2); line-height: 1.5; }
+:root{--bg:#1a1b2e;--srf:#252740;--bdr:#2e3150;--txt:#e4e5f0;--t2:#9496b0;--t3:#6b6d85;--ac:#818cf8;--a2:#a78bfa;--gr:linear-gradient(135deg,#818cf8,#a78bfa,#c084fc);--bad:#f87171;--good:#34d399;--warn:#f59e0b;--safe:env(safe-area-inset-bottom,8px)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--txt);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+
+/* HEADER */
+.header{padding:10px 16px;background:var(--srf);border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.header h1{font-size:14px;font-weight:700;background:var(--gr);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header .sep{flex:1}
+.header .key-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.header .key-dot.ok{background:var(--good)}
+.header .key-dot.no{background:var(--bad)}
+.header a{color:var(--t2);text-decoration:none;font-size:11px;padding:4px 10px;border:1px solid var(--bdr);border-radius:6px;transition:all 0.15s}
+.header a:hover{color:var(--ac);border-color:var(--ac)}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* CARDS */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.card{background:var(--srf);border:1px solid var(--bdr);border-radius:14px;padding:18px 14px;text-decoration:none;color:var(--txt);display:flex;flex-direction:column;align-items:center;gap:8px;transition:all 0.2s;text-align:center}
+.card:hover{border-color:var(--ac);transform:translateY(-1px)}
+.card .icon{font-size:32px}
+.card h3{font-size:13px;margin:0}
+.card p{font-size:10px;color:var(--t2);line-height:1.4;margin:0}
+
+/* CHAT PANEL (Workbench lite) */
+.chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:calc(100dvh - 200px)}
+.chat-msg{max-width:85%;padding:8px 12px;border-radius:10px;font-size:12px;line-height:1.5;word-break:break-word;white-space:pre-wrap}
+.chat-msg.user{align-self:flex-end;background:linear-gradient(135deg,#4c3f8a,#3d3578);border-bottom-right-radius:3px}
+.chat-msg.ai{align-self:flex-start;background:var(--srf);border:1px solid var(--bdr);border-bottom-left-radius:3px}
+.chat-msg.ai code{background:var(--bg);padding:1px 4px;border-radius:3px;font-size:10px}
+.chat-input-row{display:flex;gap:6px}
+.chat-input-row textarea{flex:1;background:var(--bg);border:2px solid var(--bdr);color:var(--txt);padding:10px 14px;border-radius:20px;font-size:13px;font-family:inherit;resize:none;outline:none;min-height:40px;max-height:80px;line-height:1.3}
+.chat-input-row textarea:focus{border-color:var(--ac)}
+.chat-input-row textarea::placeholder{color:var(--t3)}
+.chat-input-row button{width:40px;height:40px;border-radius:50%;border:none;background:var(--gr);color:#fff;font-size:16px;cursor:pointer;flex-shrink:0;transition:all 0.15s}
+.chat-input-row button:disabled{opacity:0.4}
+.chat-input-row button.rec{background:var(--bad);animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.4)}50%{box-shadow:0 0 0 10px rgba(248,113,113,0)}}
+
+/* SETTINGS */
+.setting-row{display:flex;align-items:center;gap:10px;padding:12px;background:var(--srf);border:1px solid var(--bdr);border-radius:10px;margin-bottom:8px}
+.setting-row .lbl{width:80px;font-size:12px;font-weight:600;flex-shrink:0}
+.setting-row input,select{padding:8px 12px;border:1px solid var(--bdr);border-radius:8px;background:var(--bg);color:var(--txt);font-size:12px;outline:none;font-family:inherit;flex:1}
+.setting-row input:focus{border-color:var(--ac)}
+.setting-row .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.setting-row .dot.act{background:var(--good)}
+
+/* HISTORY */
+.hist-item{padding:10px 14px;background:var(--srf);border:1px solid var(--bdr);border-radius:10px;margin-bottom:6px;cursor:pointer;transition:all 0.15s}
+.hist-item:hover{border-color:var(--ac)}
+.hist-item .h-title{font-size:12px;font-weight:600}
+.hist-item .h-preview{font-size:10px;color:var(--t2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-item .h-meta{font-size:9px;color:var(--t3);margin-top:2px}
+
+/* TAB BAR */
+.tabbar{display:flex;border-top:1px solid var(--bdr);background:var(--srf);padding:6px 0 var(--safe);flex-shrink:0}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;cursor:pointer;color:var(--t3);font-size:10px;transition:all 0.15s;border:none;background:none;font-family:inherit}
+.tab.active{color:var(--ac)}
+.tab .t-icon{font-size:18px}
+
+/* TOAST */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(37,39,64,0.95);border:1px solid var(--bdr);color:#fff;padding:8px 16px;border-radius:14px;font-size:11px;z-index:99;opacity:0;transition:all 0.3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.empty-state{text-align:center;padding:40px 16px;color:var(--t2);font-size:13px;line-height:1.8}
+
+@media(min-width:769px){
+.tabbar{padding:8px 0}
+.tab{padding:8px 0;font-size:11px}
+.tab .t-icon{font-size:20px}
+.content{max-width:800px;margin:0 auto;width:100%}
+}
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>&#x1F345; Focus Todo</h1>
-  <div class="sub">Todo + Pomodoro + AI Copilot + File Manager</div>
-  <div class="cards">
-    <a href="/todolist/" class="card">
-      <div class="icon">&#x1F4CB;</div>
-      <h3>Todo + 番茄钟</h3>
-      <p>艾森豪威尔四象限任务管理 + 番茄工作法</p>
-    </a>
-    <a href="/skill-copilot/" class="card">
-      <div class="icon">&#x1F916;</div>
-      <h3>AI Skill Copilot</h3>
-      <p>13 个 AI 技能 + 语音输入 + TTS 朗读 + 知识库</p>
-    </a>
-    <a href="/fiori-upload.html" class="card">
-      <div class="icon">&#x1F4E6;</div>
-      <h3>附件管理</h3>
-      <p>Fiori 风格批量上传 + SFTP 文件服务器</p>
-    </a>
-    <a href="/inventory-upload.html" class="card">
-      <div class="icon">&#x1F3ED;</div>
-      <h3>库存上传</h3>
-      <p>SAP S/4HANA 批量库存 Excel 上传 + 台账</p>
-    </a>
-    <a href="/chat-ui.html" class="card">
-      <div class="icon">&#x26A1;</div>
-      <h3>AI Workbench</h3>
-      <p>拖文件 · 粘贴截图 · 语音编程 · 自动部署预览</p>
-    </a>
-    <a href="/docs.html" class="card">
-      <div class="icon">&#x1F4DA;</div>
-      <h3>知识库</h3>
-      <p>Markdown 文档编辑 · AI 润色 · 标签管理 · 导出</p>
-    </a>
-    <a href="/settings.html" class="card">
-      <div class="icon">&#x2699;</div>
-      <h3>设置</h3>
-      <p>API Key · MCP Server · SFTP · 统一配置</p>
-    </a>
+
+<!-- HEADER -->
+<div class="header">
+  <span class="key-dot no" id="keyDot"></span>
+  <h1>Focus Hub</h1>
+  <span class="sep"></span>
+  <span id="keyLabel" style="font-size:10px;color:var(--t3)">No Key</span>
+  <a href="/settings.html" target="_blank">Config</a>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+  <!-- TAB: Home -->
+  <div class="tab-content active" id="tab-home">
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:28px;margin-bottom:4px">&#x1F3E0;</div>
+      <h2 style="font-size:16px">Focus Hub</h2>
+      <p style="font-size:11px;color:var(--t2)">All tools in one place</p>
+    </div>
+    <div class="cards">
+      <a href="/todolist/" class="card"><span class="icon">&#x1F4CB;</span><h3>Todo</h3><p>Pomodoro timer</p></a>
+      <a href="/skill-copilot/" class="card"><span class="icon">&#x1F916;</span><h3>AI Copilot</h3><p>13 skills + voice</p></a>
+      <a href="/chat-ui.html" class="card"><span class="icon">&#x26A1;</span><h3>Workbench</h3><p>Code builder</p></a>
+      <a href="/fiori-upload.html" class="card"><span class="icon">&#x1F4E6;</span><h3>Files</h3><p>SFTP upload</p></a>
+      <a href="/inventory-upload.html" class="card"><span class="icon">&#x1F3ED;</span><h3>SAP</h3><p>Inventory</p></a>
+      <a href="/docs.html" class="card"><span class="icon">&#x1F4DA;</span><h3>Docs</h3><p>Knowledge base</p></a>
+    </div>
+  </div>
+
+  <!-- TAB: Chat (embedded workbench lite) -->
+  <div class="tab-content" id="tab-chat">
+    <div class="chat-msgs" id="chatMsgs">
+      <div class="empty-state"><div style="font-size:30px">&#x26A1;</div>Quick Chat<br><small style="color:var(--t3)">Uses key from Settings</small></div>
+    </div>
+    <div class="chat-input-row">
+      <button id="micBtn2" onclick="toggleVoice()">&#x1F3A4;</button>
+      <textarea id="chatInput" rows="1" placeholder="Describe what you want..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatSend()}"></textarea>
+      <button id="chatSendBtn" onclick="chatSend()">&#x27A4;</button>
+    </div>
+  </div>
+
+  <!-- TAB: History -->
+  <div class="tab-content" id="tab-history">
+    <div id="historyList"></div>
+  </div>
+
+  <!-- TAB: Settings -->
+  <div class="tab-content" id="tab-settings">
+    <h3 style="font-size:14px;margin-bottom:12px">API Key</h3>
+    <div class="setting-row">
+      <span class="lbl">Provider</span>
+      <select id="sProvider" onchange="sRender()">
+        <option value="deepseek">DeepSeek</option>
+        <option value="openai">OpenAI</option>
+        <option value="anthropic">Anthropic</option>
+      </select>
+      <select id="sModel" onchange="sSave()">
+        <option value="deepseek-chat">deepseek-chat</option>
+        <option value="deepseek-reasoner">deepseek-reasoner</option>
+      </select>
+    </div>
+    <div class="setting-row">
+      <span class="dot" id="sDot"></span>
+      <span class="lbl">Key</span>
+      <input type="password" id="sKey" placeholder="sk-..." oninput="sSave()">
+    </div>
   </div>
 </div>
+
+<!-- TAB BAR -->
+<div class="tabbar">
+  <button class="tab active" data-tab="home" onclick="switchTab('home')"><span class="t-icon">&#x1F3E0;</span>Home</button>
+  <button class="tab" data-tab="chat" onclick="switchTab('chat')"><span class="t-icon">&#x1F4AC;</span>Chat</button>
+  <button class="tab" data-tab="history" onclick="switchTab('history')"><span class="t-icon">&#x1F4C4;</span>History</button>
+  <button class="tab" data-tab="settings" onclick="switchTab('settings')"><span class="t-icon">&#x2699;</span>Settings</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+
+// ====== TAB SWITCHING ======
+function switchTab(name){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  $('tab-'+name).classList.add('active');
+  document.querySelector(`[data-tab="${name}"]`).classList.add('active');
+  if(name==='history') renderHistory();
+}
+
+// ====== KEY MANAGEMENT ======
+function getKeyConfig(){
+  const providers=JSON.parse(localStorage.getItem('ccw_providers')||'[]');
+  const def=localStorage.getItem('ccw_default_provider')||'ds';
+  return providers.find(p=>p.active&&p.id===def)||providers.find(p=>p.active)||{type:'deepseek',key:localStorage.getItem('ccw_key')||'',model:'deepseek-chat'};
+}
+
+function updateKeyUI(){
+  const p=getKeyConfig();
+  const dot=$('keyDot'),lbl=$('keyLabel');
+  if(p.key){dot.className='key-dot ok';lbl.textContent='Key: '+p.type+' ✓'}
+  else{dot.className='key-dot no';lbl.textContent='No key configured'}
+}
+
+// ====== SETTINGS TAB ======
+function sRender(){
+  const type=$('sProvider').value;
+  const models={deepseek:['deepseek-chat','deepseek-reasoner'],openai:['gpt-4o','gpt-4o-mini'],anthropic:['claude-sonnet-4-6','claude-opus-4-7']};
+  $('sModel').innerHTML=(models[type]||['custom']).map(m=>`<option>${m}</option>`).join('');
+  const p=getKeyConfig();
+  $('sProvider').value=type;
+  $('sKey').value=p.key||'';
+  $('sDot').className='dot'+(p.key&&p.active!==false?' act':'');
+}
+function sSave(){
+  const type=$('sProvider').value;
+  const key=$('sKey').value.trim();
+  const model=$('sModel').value;
+  const providers=[{id:'ds',type,key,model,active:!!key}];
+  localStorage.setItem('ccw_providers',JSON.stringify(providers));
+  localStorage.setItem('ccw_default_provider','ds');
+  $('sDot').className='dot'+(key?' act':'');
+  updateKeyUI();
+  if(key)toast('Key saved');
+}
+
+// ====== QUICK CHAT ======
+let chatMsgs=[];
+async function chatSend(){
+  const input=$('chatInput');
+  const text=input.value.trim();
+  if(!text)return;
+  const key=getKeyConfig().key;
+  if(!key){toast('Set API Key in Settings tab first');return}
+  $('chatSendBtn').disabled=true;
+  chatMsgs.push({role:'user',content:text});
+  addChatMsg('user',text);
+  input.value='';
+
+  try{
+    const res=await fetch('https://api.deepseek.com/v1/chat/completions',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({model:getKeyConfig().model||'deepseek-chat',messages:chatMsgs,max_tokens:4096})
+    });
+    const data=await res.json();
+    const reply=data.choices?.[0]?.message?.content||'Error';
+    chatMsgs.push({role:'assistant',content:reply});
+    addChatMsg('ai',reply);
+    saveChatHistory();
+  }catch(e){addChatMsg('ai','Error: '+e.message)}
+  $('chatSendBtn').disabled=false;
+}
+
+function addChatMsg(role,text){
+  const d=document.createElement('div');
+  d.className='chat-msg '+role;
+  d.textContent=text;
+  const el=$('chatMsgs');
+  const empty=el.querySelector('.empty-state');
+  if(empty)empty.remove();
+  el.appendChild(d);
+  el.scrollTop=el.scrollHeight;
+}
+
+// Chat history persistence
+function saveChatHistory(){
+  const hist=JSON.parse(localStorage.getItem('hub_chat_history')||'[]');
+  if(chatMsgs.length>1) hist.unshift({time:Date.now(),preview:chatMsgs[0]?.content?.slice(0,50),msgs:chatMsgs});
+  if(hist.length>20)hist.length=20;
+  localStorage.setItem('hub_chat_history',JSON.stringify(hist));
+}
+
+function renderHistory(){
+  const hist=JSON.parse(localStorage.getItem('hub_chat_history')||'[]');
+  const el=$('historyList');
+  if(!hist.length){el.innerHTML='<div class="empty-state">No chat history yet</div>';return}
+  el.innerHTML=hist.map((h,i)=>`<div class="hist-item" onclick="loadHistory(${i})"><div class="h-title">${esc(h.preview||'Chat')}</div><div class="h-meta">${new Date(h.time).toLocaleString()}</div></div>`).join('');
+}
+
+function loadHistory(i){
+  const hist=JSON.parse(localStorage.getItem('hub_chat_history')||'[]');
+  if(!hist[i])return;
+  chatMsgs=hist[i].msgs;
+  const el=$('chatMsgs');
+  el.innerHTML=chatMsgs.map(m=>`<div class="chat-msg ${m.role}">${esc(m.content)}</div>`).join('');
+  switchTab('chat');
+}
+
+// ====== VOICE ======
+let micOn=false,rec=null;
+function toggleVoice(){micOn?stopMic():startMic()}
+function startMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('Voice not supported');return}
+  rec=new SR();rec.continuous=false;rec.lang='zh-CN';
+  rec.onresult=e=>{$('chatInput').value=($('chatInput').value+' '+e.results[0][0].transcript).trim();stopMic();$('chatInput').focus()}
+  rec.onerror=e=>{stopMic()}
+  rec.onend=()=>stopMic();
+  rec.start();micOn=true;$('micBtn2').classList.add('rec');toast('Listening...')
+}
+function stopMic(){if(rec){try{rec.stop()}catch{};rec=null}micOn=false;$('micBtn2').classList.remove('rec')}
+
+// ====== UTILS ======
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+
+// Init
+updateKeyUI();
+sRender();
+$('chatInput').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'});
+</script>
 </body>
 </html>

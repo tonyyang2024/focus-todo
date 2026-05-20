@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "postinstall": "pip3 install --break-system-packages pandas requests openpyxl 2>/dev/null; pip3 install --user pandas requests openpyxl 2>/dev/null; pip install --user pandas requests openpyxl 2>/dev/null; python3 -m pip install --user pandas requests openpyxl 2>/dev/null; exit 0",
     "sftp": "node sftp-server.js",
     "sftp-add-user": "node sftp-server.js --add-user",
     "sftp-list-users": "node sftp-server.js --list-users"

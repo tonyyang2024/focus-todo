@@ -54,7 +54,7 @@ main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(210,10,10,.4)}50%{box-shadow:0 0 0 10px rgba(210,10,10,0)}}
 
 /* History */
-.h-item{padding:12px 14px;background:var(--card);border:1px solid var(--bdr);border-radius:var(--r2);margin-bottom:6px;cursor:pointer;transition:all 0.15s}
+.h-item{padding:12px 14px;background:var(--card);border:1px solid var(--bdr);border-radius:var(--r2);margin-bottom:6px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center}
 .h-item:hover{border-color:var(--ac)}
 .h-item:active{background:#f9f9f9}
 .h-item .h-title{font-size:13px;font-weight:600}
@@ -115,7 +115,10 @@ nav.tabs button .ti{font-size:17px}
   </div>
 
   <div class="page" id="page-history">
-    <div class="section-label">Recent Conversations</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div class="section-label" style="margin-bottom:0">Recent Conversations</div>
+      <button onclick="clearAllHistory()" style="background:none;border:1px solid var(--bdr);color:var(--bad);padding:4px 12px;border-radius:4px;cursor:pointer;font-size:11px;font-family:inherit">Clear All</button>
+    </div>
     <div id="historyList"></div>
   </div>
 
@@ -224,8 +227,10 @@ function saveHist(){
 }
 function renderHistory(){
   hist=JSON.parse(localStorage.getItem('hub_hist')||'[]');
-  $('historyList').innerHTML=(hist.length?hist.map((x,i)=>`<div class="h-item" onclick="loadHist(${i})"><div class="h-title">${esc(x.preview||'Chat')}</div><div class="h-meta"><span class="h-count">${x.n||0} msgs</span>${new Date(x.time).toLocaleString()}</div></div>`).join(''):'<div class="empty">No conversations yet</div>')+`<button class="h-item" onclick="newChat()" style="text-align:center;color:var(--ac);font-weight:500">+ New Conversation</button>`;
+  $('historyList').innerHTML=(hist.length?hist.map((x,i)=>`<div class="h-item"><div onclick="loadHist(${i})" style="flex:1"><div class="h-title">${esc(x.preview||'Chat')}</div><div class="h-meta"><span class="h-count">${x.n||0} msgs</span>${new Date(x.time).toLocaleString()}</div></div><button onclick="event.stopPropagation();delHist(${i})" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:16px;padding:0 4px;flex-shrink:0;margin-left:8px" title="Delete">&times;</button></div>`).join(''):'<div class="empty">No conversations yet</div>')+`<button class="h-item" onclick="newChat()" style="text-align:center;color:var(--ac);font-weight:500">+ New Conversation</button>`;
 }
+function delHist(i){hist=JSON.parse(localStorage.getItem('hub_hist')||'[]');hist.splice(i,1);localStorage.setItem('hub_hist',JSON.stringify(hist));renderHistory()}
+function clearAllHistory(){if(!confirm('Delete all chat history?'))return;localStorage.setItem('hub_hist','[]');localStorage.setItem('hub_current','[]');renderHistory();msgs=[];$('chatMsgs').innerHTML='<div class="empty"><span style="font-size:24px">&#x1F4AC;</span><br>All cleared</div>'}
 function loadHist(i){const h=JSON.parse(localStorage.getItem('hub_hist')||'[]');if(h[i]){msgs=h[i].msgs;$('chatMsgs').innerHTML=msgs.map(m=>`<div class="msg ${m.role}">${esc(m.content)}</div>`).join('');localStorage.setItem('hub_current',JSON.stringify(msgs));switchTab('chat')}}
 function newChat(){msgs=[];localStorage.setItem('hub_current','[]');$('chatMsgs').innerHTML='<div class="empty"><span style="font-size:24px">&#x1F4AC;</span><br>New conversation</div>';switchTab('chat')}
 

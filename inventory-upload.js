@@ -105,7 +105,7 @@ function parseExcel(filePath, sheetName) {
         _goodsMvtCode: get('GoodsMovementCode') || '05',
         _headerText: get('MaterialDocumentHeaderText') || '',
         _inventoryStockType: get('InventoryStockType') || '',
-        _excelRow
+        _excelRow: excelRow
       };
       records.push(record);
     } catch (e) {

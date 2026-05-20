@@ -264,7 +264,8 @@ async function send() {
       if (m.text) parts.push({ type: 'text', text: m.text });
       apiMsgs.push({ role: m.role, content: parts });
     } else {
-      apiMsgs.push({ role: m.role, content: m.text || '' });
+      const role = m.role === 'ai' ? 'assistant' : m.role;
+    apiMsgs.push({ role, content: m.text || '' });
     }
   }
   // Add current user message
@@ -284,7 +285,7 @@ async function send() {
     const data = await res.json();
     const reply = data.choices?.[0]?.message?.content || 'API Error: ' + (data.error?.message || JSON.stringify(data).slice(0, 200));
     addMsg('ai', reply);
-    messages.push({ role: 'ai', text: reply });
+    messages.push({ role: 'assistant', text: reply });
   } catch (e) {
     addMsg('ai', 'Network error: ' + e.message);
   }

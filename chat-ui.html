@@ -437,7 +437,12 @@ function startMic(){
   recognition.onresult=e=>{const t=e.results[0][0].transcript.trim();if(t){$('input').value=($('input').value+' '+t).trim();stopMic();$('input').focus();micRetries=0}}
   recognition.onerror=e=>{
     if(e.error==='no-speech'){if(micRetries<2){micRetries++;stopMic();setTimeout(startMic,500);return}toast('No speech detected')}
-    else if(e.error==='not-allowed')toast('Microphone denied - enable in settings')
+    else if(e.error==='not-allowed')toast('Microphone denied - enable in browser settings')
+    else if(e.error==='network'){
+      toast('Voice needs internet access. Use Chrome or type instead.');
+      // Network error means Web Speech API can't reach Google speech servers
+      // Common in restricted network environments
+    }
     else if(e.error!=='aborted')toast('Voice error: '+e.error);
     stopMic();micRetries=0;
   };

@@ -309,9 +309,11 @@ function startMic(){
   rec.onerror=e=>{
     if(e.error==='no-speech'){
       if(micRetries<2){micRetries++;stopMic();setTimeout(startMic,500);return}
-      toast('No speech detected. Please check microphone and try again.');
+      toast('No speech detected. Check microphone.');
     }else if(e.error==='not-allowed'){
-      toast('Microphone access denied. Enable in browser settings.');
+      toast('Microphone denied. Enable in browser settings.');
+    }else if(e.error==='network'){
+      toast('Voice needs Google speech servers. Try Win+H dictation or type instead.');
     }else if(e.error!=='aborted'){
       toast('Voice error: '+e.error);
     }

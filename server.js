@@ -396,6 +396,23 @@ app.get('*', (req, res) => {
 });
 
 async function start() {
+  // Auto-install Python deps if missing (Render Node env doesn't auto-install pip pkgs)
+  const { execSync } = require('child_process');
+  const PY = fs.existsSync('/usr/bin/python3') ? 'python3' : 'python';
+  try {
+    execSync(`${PY} -c "import pandas, requests, openpyxl"`, { stdio: 'pipe', timeout: 5000 });
+    console.log('Python deps OK');
+  } catch {
+    console.log('Installing Python dependencies...');
+    const pip = fs.existsSync('/usr/bin/pip3') ? 'pip3' : 'pip';
+    try {
+      execSync(`${PY} -m ${pip} install --break-system-packages pandas requests openpyxl 2>/dev/null || ${PY} -m pip install --user pandas requests openpyxl`, { stdio: 'pipe', timeout: 120000 });
+      console.log('Python deps installed');
+    } catch (e2) {
+      console.log('Python dep install failed (inventory upload will not work):', e2.message.slice(0, 100));
+    }
+  }
+
   await db.init();
   app.listen(PORT, () => {
     console.log(`Focus Todo running at http://localhost:${PORT}`);

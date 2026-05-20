@@ -15,10 +15,15 @@ function loadConfig() {
 
 function getApiConfig() {
   const cfg = loadConfig();
+  const DEFAULTS = {
+    url: 'https://my428151-api.s4hana.cloud.sap/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/A_MaterialDocumentHeader',
+    username: 'SPS_INTEGRATION',
+    password: String.raw`\AvP(dSdU8Ydq&N/6WLrdgxk@UL=52Y(s]W4)>ew`
+  };
   return {
-    url: cfg.url || process.env.SAP_API_URL || '',
-    username: cfg.username || process.env.SAP_API_USER || '',
-    password: cfg.password || process.env.SAP_API_PASS || ''
+    url: cfg.url || DEFAULTS.url,
+    username: cfg.username || DEFAULTS.username,
+    password: cfg.password || DEFAULTS.password
   };
 }
 

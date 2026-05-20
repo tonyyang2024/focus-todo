@@ -329,6 +329,31 @@ app.patch('/api/tasks/queue/:id', express.json(), (req, res) => {
 // --- SAP Inventory Upload (Node.js, zero Python) ---
 const inventoryUpload = require('./inventory-upload');
 const INVENTORY_UPLOAD_DIR = path.join(__dirname, 'data', 'inventory-uploads');
+const SAP_CONFIG_FILE = path.join(__dirname, 'data', 'sap-config.json');
+
+app.get('/api/inventory/config', (req, res) => {
+  try {
+    if (fs.existsSync(SAP_CONFIG_FILE)) {
+      const cfg = JSON.parse(fs.readFileSync(SAP_CONFIG_FILE, 'utf8'));
+      res.json({ url: cfg.url || '', username: cfg.username || '', password: '' }); // hide password
+    } else {
+      res.json({ url: '', username: '', password: '' });
+    }
+  } catch (e) { res.json({ url: '', username: '', password: '' }); }
+});
+
+app.post('/api/inventory/config', express.json(), (req, res) => {
+  try {
+    const { url, username, password } = req.body;
+    const cfg = { url: url || '', username: username || '' };
+    if (password && password !== '********') cfg.password = password;
+    else if (fs.existsSync(SAP_CONFIG_FILE)) {
+      cfg.password = JSON.parse(fs.readFileSync(SAP_CONFIG_FILE, 'utf8')).password || '';
+    }
+    fs.writeFileSync(SAP_CONFIG_FILE, JSON.stringify(cfg, null, 2));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 app.post('/api/inventory/upload', upload.single('file'), async (req, res) => {
   try {

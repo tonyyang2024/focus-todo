@@ -4,9 +4,26 @@ const https = require('https');
 const path = require('path');
 const fs = require('fs');
 
-const API_URL = 'https://my428151-api.s4hana.cloud.sap/sap/opu/odata/sap/API_MATERIAL_DOCUMENT_SRV/A_MaterialDocumentHeader';
-const USERNAME = 'SPS_INTEGRATION';
-const PASSWORD = String.raw`\AvP(dSdU8Ydq&N/6WLrdgxk@UL=52Y(s]W4)>ew`;
+const CONFIG_FILE = path.join(__dirname, 'data', 'sap-config.json');
+
+function loadConfig() {
+  try {
+    if (fs.existsSync(CONFIG_FILE)) return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+  } catch {}
+  return { url: '', username: '', password: '' };
+}
+
+function getApiConfig() {
+  const cfg = loadConfig();
+  return {
+    url: cfg.url || process.env.SAP_API_URL || '',
+    username: cfg.username || process.env.SAP_API_USER || '',
+    password: cfg.password || process.env.SAP_API_PASS || ''
+  };
+}
+
+let API_URL, USERNAME, PASSWORD;
+
 const BATCH_SIZE = 500;
 const TIMEOUT = 120000;
 const MAX_RETRY = 2;
@@ -187,9 +204,20 @@ function tryParse(str) {
 }
 
 async function run(filePath, sheetName, outputDir) {
+  // Load config
+  const cfg = getApiConfig();
+  API_URL = cfg.url;
+  USERNAME = cfg.username;
+  PASSWORD = cfg.password;
+
+  if (!API_URL || !USERNAME || !PASSWORD) {
+    throw new Error('SAP API not configured. Set URL, username, and password in the settings panel.');
+  }
+
   // Reset session for fresh run
   sessionCookie = '';
   console.log('=== SAP S/4HANA Bulk Inventory Upload ===');
+  console.log('API:', API_URL);
   console.log('File:', filePath);
   console.log('Sheet:', sheetName || 'default');
 

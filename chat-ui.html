@@ -160,12 +160,8 @@ input[type=file]{display:none}
   <div style="display:flex;gap:4px"><input type="text" id="projUser" placeholder="User" onchange="saveProjCtx()" style="flex:1"><input type="password" id="projPass" placeholder="Password" onchange="saveProjCtx()" style="flex:1"></div>
 
   <h3 style="margin-top:12px">&#x1F916; SAP Joule (A2A)</h3>
-  <input type="text" id="jouleQuery" placeholder="Ask Joule anything..." onkeydown="if(event.key==='Enter')askJoule()">
-  <div style="display:flex;gap:4px">
-    <button onclick="askJoule()" class="primary">&#x1F4AC; Ask</button>
-    <button onclick="askJouleSO()">Sales Orders</button>
-    <button onclick="checkJouleStatus()">Test</button>
-  </div>
+  <p style="font-size:9px;color:var(--t3);margin-bottom:6px">Type in the main chat input. Add <b>/joule</b> prefix for SAP queries.</p>
+  <button onclick="checkJouleStatus()">Test Connection</button>
 
   <h3 style="margin-top:12px">&#x1F4C1; Built Files</h3>
   <div id="fileList" style="font-size:10px;color:var(--t3);max-height:150px;overflow-y:auto"></div>
@@ -276,7 +272,31 @@ async function send(){
   // Context
   let projCtx='';
   try{const x=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');if(x.target)projCtx=`\nPROJECT: ${x.target} | ${x.lang||'auto'} | Endpoint: ${x.env||'none'} | Auth: ${x.user?'configured':'none'}`}catch{}
-  const sys={role:'system',content:`You are a full-stack developer AI.${projCtx}\nALWAYS output COMPLETE runnable code. For web: single HTML file. For backend: all files with deps. Each file in \`\`\` blocks with filename.`};
+  // Handle /joule command
+  let actualContent=c;
+  if(c.startsWith('/joule ')){
+    const q=c.slice(7);
+    const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
+    prog('Routing to SAP Joule...','ac');
+    try{
+      const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_chat',params:{query:q,config:{jouleURL:ctx.env||'',clientId:ctx.user||'',clientSecret:ctx.pass||'',tokenURL:(ctx.env||'').replace(/\/api.*$/,'/oauth/token')}}})});
+      const d=await r.json();
+      if(d.ok)addMsg('ai','## SAP Joule\n\n'+d.answer);
+      else addMsg('ai','Joule unavailable: '+(d.error||'No response'));
+      prog(d.ok?'Joule responded':'Joule error','good');saveConvs();renderMessages();
+    }catch(e){addMsg('ai','Joule error: '+e.message);prog('Error','bad')}
+    sending=false;$('sendBtn').disabled=false;$('input').value='';
+    return;
+  }
+
+  const sys={role:'system',content:`You are a full-stack developer AI.${projCtx}
+RULES:
+- ALWAYS output COMPLETE runnable code.
+- For SAP business queries (sales orders, customers, inventory), use the joule_sales_order, joule_business_data, or joule_chat tools via MCP.
+- For web apps: single HTML file with all CSS+JS inline. For backend: all files with deps.
+- Each file in \`\`\` blocks with filename.
+- If user asks SAP business questions, respond conversationally based on data available.
+`};
   const apiMsgs=[sys];
   for(const m of conversations[activeConv].messages){apiMsgs.push({role:m.role==='ai'?'assistant':m.role,content:m.text||''})}
 
@@ -303,44 +323,15 @@ function startMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecogn
 function stopMic(){if(recognition){try{recognition.stop()}catch{};recognition=null}micOn=false;$('micBtn').classList.remove('btn-rec')}
 
 // ====== SAP JOULE (A2A) ======
-function getJouleConfig(){
-  try{const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');return{jouleURL:ctx.env||'',clientId:ctx.user||'',clientSecret:ctx.pass||'',tokenURL:(ctx.env||'').replace(/\/api.*$/,'/oauth/token')}}catch{return{}}
-}
-async function askJoule(){
-  const q=$('jouleQuery').value.trim();
-  if(!q){toast('Enter a question for Joule');return}
-  const cfg=getJouleConfig();
-  if(!cfg.jouleURL){toast('Set Joule endpoint in Project Context');return}
-  prog('Asking SAP Joule...','ac');
-  try{
-    const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_chat',params:{query:q,config:cfg}})});
-    const d=await r.json();
-    if(d.ok)addMsg('ai','## SAP Joule Response\n\n'+d.answer);
-    else addMsg('ai','Joule: '+(d.error||'No response'));
-    prog(d.ok?'Response received':'Failed','good');saveConvs();renderMessages();
-  }catch(e){prog('Error','bad')}
-}
-async function askJouleSO(){
-  const q=$('jouleQuery').value.trim()||'Show me recent sales orders';
-  const cfg=getJouleConfig();
-  if(!cfg.jouleURL){toast('Set Joule endpoint in Project Context');return}
-  prog('Querying Joule for sales orders...','ac');
-  try{
-    const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_sales_order',params:{query:q,config:cfg}})});
-    const d=await r.json();
-    if(d.ok)addMsg('ai','## Joule Sales Orders\n\n'+d.answer);
-    else addMsg('ai','Joule: '+(d.error||'No response'));
-    prog('OK','good');saveConvs();renderMessages();
-  }catch(e){prog('Error','bad')}
-}
 async function checkJouleStatus(){
-  const cfg=getJouleConfig();
-  if(!cfg.jouleURL){toast('Set Joule endpoint');return}
-  prog('Testing Joule A2A connection...','ac');
+  let cfg={};
+  try{const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');cfg={jouleURL:ctx.env||'',clientId:ctx.user||'',clientSecret:ctx.pass||'',tokenURL:(ctx.env||'').replace(/\/api.*$/,'/oauth/token')}}catch{}
+  if(!cfg.jouleURL){toast('Set Joule endpoint in Project Context');return}
+  prog('Testing Joule A2A...','ac');
   try{
     const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_status',params:{config:cfg}})});
     const d=await r.json();
-    addMsg('ai',d.connected?'## SAP Joule: Connected\n\nA2A endpoint: '+cfg.jouleURL:'## SAP Joule: Not Connected\n\n'+d.message);
+    addMsg('ai',d.connected?'## SAP Joule: Connected\n\n'+cfg.jouleURL:'## SAP Joule: Not Connected\n\n'+d.message);
     prog(d.connected?'Connected':'Failed','good');saveConvs();renderMessages();
   }catch(e){prog('Error','bad')}
 }

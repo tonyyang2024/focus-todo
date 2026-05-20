@@ -25,10 +25,10 @@
     -webkit-text-fill-color: transparent; background-clip: text;
   }
   .sub { color: var(--text2); font-size: 1.05rem; margin-bottom: 40px; }
-  .cards { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; max-width: 700px; margin: 0 auto; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; max-width: 800px; margin: 0 auto; padding: 0 16px; }
   .card {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: 16px; padding: 24px 20px; width: 200px; text-decoration: none;
+    border-radius: 16px; padding: 24px 16px; text-decoration: none;
     transition: all 0.2s; text-align: center; color: var(--text);
   }
   .card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
@@ -56,6 +56,11 @@
       <div class="icon">&#x1F4E6;</div>
       <h3>附件管理</h3>
       <p>Fiori 风格批量上传 + SFTP 文件服务器</p>
+    </a>
+    <a href="/inventory-upload.html" class="card">
+      <div class="icon">&#x1F3ED;</div>
+      <h3>库存上传</h3>
+      <p>SAP S/4HANA 批量库存 Excel 上传 + 台账</p>
     </a>
   </div>
 </div>

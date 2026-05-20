@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAP Inventory Bulk Upload</title>
+<style>
+  :root {
+    --bg: #f5f6f7; --surface: #fff; --border: #d9d9d9;
+    --text: #1d2d3e; --text2: #556b82; --brand: #0070f2;
+    --good: #188918; --bad: #d20a0a; --radius: 10px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+  }
+  .shell { background: #354a5f; color: #fff; padding: 0 24px; height: 48px; display: flex; align-items: center; font-weight: 600; font-size: 15px; }
+  .container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+  .card { background: var(--surface); border-radius: var(--radius); box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; overflow: hidden; }
+  .card-header { padding: 16px 24px; border-bottom: 1px solid var(--border); font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .card-body { padding: 20px 24px; }
+
+  .drop-zone {
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 50px 24px; text-align: center; cursor: pointer; transition: all 0.2s;
+  }
+  .drop-zone:hover, .drop-zone.active { border-color: var(--brand); background: #e8f2ff; }
+  .drop-zone .icon { font-size: 48px; margin-bottom: 12px; }
+  .drop-zone p { color: var(--text2); font-size: 14px; }
+  .drop-zone b { color: var(--brand); }
+
+  .form-row { display: flex; gap: 12px; align-items: flex-end; margin-top: 16px; flex-wrap: wrap; }
+  .form-row label { font-size: 12px; color: var(--text2); display: flex; flex-direction: column; gap: 4px; }
+  .form-row input, .form-row select {
+    padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 13px; outline: none; font-family: inherit;
+  }
+  .form-row input:focus { border-color: var(--brand); }
+
+  .btn {
+    padding: 10px 22px; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 500; font-family: inherit; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--brand); color: #fff; }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary { background: #e5e5e5; color: var(--text); }
+
+  .progress { margin-top: 16px; }
+  .progress-bar { height: 4px; background: #e5e5e5; border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--brand); border-radius: 2px; width: 0; transition: width 0.3s; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 14px; background: #fafbfc; border-bottom: 2px solid var(--border); font-size: 11px; color: var(--text2); text-transform: uppercase; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .badge { padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+  .badge-ok { background: #ecfdf5; color: var(--good); }
+  .badge-err { background: #fef2f2; color: var(--bad); }
+
+  .result { margin-top: 16px; padding: 16px; background: #fafbfc; border-radius: 8px; font-size: 13px; line-height: 1.8; }
+  .result strong { color: var(--good); }
+
+  .toast {
+    position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+    background: #1d2d3e; color: #fff; padding: 10px 24px; border-radius: 20px;
+    font-size: 13px; z-index: 99; opacity: 0; transition: all 0.3s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  input[type="file"] { display: none; }
+  @media (max-width: 768px) {
+    .container { padding: 12px 8px; }
+    .card-body { padding: 12px; }
+    th:nth-child(3), td:nth-child(3) { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">&#x1F4E6; SAP Inventory Bulk Upload</div>
+
+<div class="container">
+  <div class="card">
+    <div class="card-header">&#x1F4E4; Upload Excel File</div>
+    <div class="card-body">
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div class="icon">&#x1F4C2;</div>
+        <p>Drop Excel file here or <b>click to browse</b></p>
+        <p style="font-size:11px;margin-top:6px">Required columns: DocumentDate, PostingDate, Material, Plant, etc.</p>
+      </div>
+      <div class="form-row">
+        <label>Sheet Name <input type="text" id="sheetName" value="InventoryUploadTemplate" style="width:200px"></label>
+        <button class="btn btn-primary" id="btnUpload" onclick="startUpload()" disabled>&#x1F680; Start Upload</button>
+      </div>
+      <div id="uploadStatus" style="margin-top:12px;font-size:13px;color:var(--text2)"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">&#x1F4CA; Upload History</div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr><th>Time</th><th>File</th><th>Rows</th><th>Success</th><th>Failed</th><th>Download</th></tr>
+        </thead>
+        <tbody id="historyBody"><tr><td colspan="6" style="text-align:center;color:var(--text2);padding:40px">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFile(this)">
+
+<script>
+let selectedFile = null;
+
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('active'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('active');
+  if (e.dataTransfer.files[0]) selectFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(input) { if (input.files[0]) selectFile(input.files[0]); }
+
+function selectFile(file) {
+  selectedFile = file;
+  document.getElementById('btnUpload').disabled = false;
+  document.getElementById('uploadStatus').innerHTML = 'Selected: <b>' + file.name + '</b> (' + (file.size/1024).toFixed(0) + ' KB)';
+}
+
+async function startUpload() {
+  if (!selectedFile) return;
+  const btn = document.getElementById('btnUpload');
+  btn.disabled = true; btn.textContent = 'Uploading...';
+  const status = document.getElementById('uploadStatus');
+
+  const fd = new FormData();
+  fd.append('file', selectedFile);
+  fd.append('sheetName', document.getElementById('sheetName').value || 'InventoryUploadTemplate');
+
+  try {
+    status.innerHTML = 'Uploading to SAP S/4HANA... <div class="progress"><div class="progress-bar"><div class="progress-fill" style="width:50%"></div></div></div>';
+    const res = await fetch('/api/inventory/upload', { method: 'POST', body: fd });
+    const data = await res.json();
+
+    if (data.ok) {
+      const s = data.summary;
+      status.innerHTML = `<div class="result">
+        <strong>&#x2713; Upload Complete!</strong><br>
+        Total Rows: ${s.total_rows} | Batches: ${s.total_batches}<br>
+        Success: <span style="color:var(--good)">${s.success_batches}</span> | Failed: <span style="color:var(--bad)">${s.failed_batches}</span>
+        ${data.success ? '<br><br>Material Documents:<br>' + data.success.map(d => 'Batch '+d.batch_no+': '+d.material_document+' / '+d.material_document_year+' (rows '+d.excel_row_start+'-'+d.excel_row_end+')').join('<br>') : ''}
+      </div>`;
+    } else {
+      status.innerHTML = `<div class="result" style="background:#fef2f2"><span style="color:var(--bad)">&#x2717; Error:</span> ${data.error || 'Unknown error'}</div>`;
+    }
+    loadHistory();
+  } catch (e) {
+    status.innerHTML = `<span style="color:var(--bad)">Network error: ${e.message}</span>`;
+  }
+  btn.disabled = false; btn.textContent = 'Start Upload';
+}
+
+async function loadHistory() {
+  try {
+    const res = await fetch('/api/inventory/history');
+    const items = await res.json();
+    const tbody = document.getElementById('historyBody');
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:40px">No upload history</td></tr>';
+      return;
+    }
+    tbody.innerHTML = items.slice(0, 20).map(item => `
+      <tr>
+        <td>${new Date(item._time).toLocaleString('zh-CN')}</td>
+        <td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.summary?.excel_file?.split('/').pop()||'-'}</td>
+        <td>${item.summary?.total_rows||'-'}</td>
+        <td><span class="badge badge-ok">${item.summary?.success_batches||0}</span></td>
+        <td><span class="badge ${(item.summary?.failed_batches||0)>0?'badge-err':'badge-ok'}">${item.summary?.failed_batches||0}</span></td>
+        <td><a href="/api/inventory/download/${item._id}" class="btn btn-secondary" style="text-decoration:none;display:inline-block;font-size:11px;padding:4px 10px">Download</a></td>
+      </tr>
+    `).join('');
+  } catch { document.getElementById('historyBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:40px">Failed to load</td></tr>'; }
+}
+
+loadHistory();
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

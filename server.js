@@ -326,6 +326,67 @@ app.patch('/api/tasks/queue/:id', express.json(), (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- SAP Inventory Upload ---
+const { spawn } = require('child_process');
+const INVENTORY_UPLOAD_DIR = path.join(__dirname, 'data', 'inventory-uploads');
+
+app.post('/api/inventory/upload', upload.single('file'), (req, res) => {
+  try {
+    if (!fs.existsSync(INVENTORY_UPLOAD_DIR)) fs.mkdirSync(INVENTORY_UPLOAD_DIR, { recursive: true });
+    const ts = Date.now();
+    const excelPath = path.join(INVENTORY_UPLOAD_DIR, `upload_${ts}_${req.file.originalname}`);
+    fs.writeFileSync(excelPath, req.file.buffer);
+
+    const sheetName = req.body.sheetName || 'InventoryUploadTemplate';
+    const jsonOutput = path.join(INVENTORY_UPLOAD_DIR, `result_${ts}.json`);
+
+    const py = spawn('python', [path.join(__dirname, 'inventory-upload.py'), excelPath, sheetName, INVENTORY_UPLOAD_DIR, jsonOutput], { timeout: 300000 });
+    let stdout = '', stderr = '';
+
+    py.stdout.on('data', d => { stdout += d.toString(); console.log('[PY]', d.toString().slice(0, 200)); });
+    py.stderr.on('data', d => { stderr += d.toString(); });
+
+    py.on('close', (code) => {
+      if (code === 0 && fs.existsSync(jsonOutput)) {
+        const result = JSON.parse(fs.readFileSync(jsonOutput, 'utf8'));
+        res.json({ ok: true, ...result });
+      } else {
+        res.json({ ok: false, error: stderr || stdout || 'Python process failed with code ' + code });
+      }
+    });
+
+    py.on('error', (e) => {
+      res.status(500).json({ ok: false, error: 'Python execution error: ' + e.message });
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/inventory/history', (req, res) => {
+  try {
+    if (!fs.existsSync(INVENTORY_UPLOAD_DIR)) return res.json([]);
+    const files = fs.readdirSync(INVENTORY_UPLOAD_DIR)
+      .filter(f => f.startsWith('result_') && f.endsWith('.json'))
+      .map(f => {
+        const data = JSON.parse(fs.readFileSync(path.join(INVENTORY_UPLOAD_DIR, f), 'utf8'));
+        data._id = f.replace('result_', '').replace('.json', '');
+        data._time = new Date(parseInt(data._id)).toISOString();
+        return data;
+      })
+      .sort((a, b) => b._id.localeCompare(a._id));
+    res.json(files);
+  } catch (e) { res.json([]); }
+});
+
+app.get('/api/inventory/download/:id', (req, res) => {
+  const xlsxFile = path.join(INVENTORY_UPLOAD_DIR, `inventory_upload_result_${req.params.id}.xlsx`);
+  const jsonFile = path.join(INVENTORY_UPLOAD_DIR, `result_${req.params.id}.json`);
+  if (fs.existsSync(xlsxFile)) res.download(xlsxFile);
+  else if (fs.existsSync(jsonFile)) res.download(jsonFile);
+  else res.status(404).json({ error: 'File not found' });
+});
+
 // --- Route fallbacks ---
 app.get('/todolist', (req, res) => res.redirect('/todolist/'));
 app.get('/todolist/*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'todolist', 'index.html')));

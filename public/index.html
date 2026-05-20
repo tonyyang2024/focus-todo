@@ -177,7 +177,12 @@ function sSave(){
 }
 
 // Chat
-let msgs=[];
+let msgs=JSON.parse(localStorage.getItem('hub_current')||'[]');
+let hist=JSON.parse(localStorage.getItem('hub_hist')||'[]');
+
+// Restore last session on load
+if(msgs.length){$('chatMsgs').innerHTML=msgs.map(m=>`<div class="msg ${m.role}">${esc(m.content)}</div>`).join('');const e=$('chatMsgs').querySelector('.empty');if(e)e.remove()}
+
 async function chatSend(){
   const t=$('chatInput').value.trim();
   if(!t)return;
@@ -201,16 +206,28 @@ function addMsg(role,txt){
   $('chatMsgs').appendChild(d);$('chatMsgs').scrollTop=$('chatMsgs').scrollHeight;
 }
 function saveHist(){
-  const h=JSON.parse(localStorage.getItem('hub_hist')||'[]');
-  if(msgs.length>1)h.unshift({time:Date.now(),preview:msgs[0]?.content?.slice(0,50),n:msgs.length,msgs:msgs});
-  if(h.length>30)h.length=30;
-  localStorage.setItem('hub_hist',JSON.stringify(h));
+  if(!msgs.length)return;
+  localStorage.setItem('hub_current',JSON.stringify(msgs));
+  // Save to history list (deduplicate by merging with last entry if same session)
+  if(msgs.length>1){
+    let h=JSON.parse(localStorage.getItem('hub_hist')||'[]');
+    // If last entry is from recent (<5min), update it instead of creating new
+    const now=Date.now();
+    if(h.length&&(now-h[0].time)<300000&&h[0].msgs.length===msgs.length-2){
+      h[0]={time:now,preview:msgs[0]?.content?.slice(0,60),n:msgs.length,msgs:[...msgs]};
+    }else{
+      h.unshift({time:now,preview:msgs[0]?.content?.slice(0,60),n:msgs.length,msgs:[...msgs]});
+    }
+    if(h.length>50)h.length=50;
+    localStorage.setItem('hub_hist',JSON.stringify(h));
+  }
 }
 function renderHistory(){
-  const h=JSON.parse(localStorage.getItem('hub_hist')||'[]');
-  $('historyList').innerHTML=h.length?h.map((x,i)=>`<div class="h-item" onclick="loadHist(${i})"><div class="h-title">${esc(x.preview||'Chat')}</div><div class="h-meta"><span class="h-count">${x.n} msgs</span>${new Date(x.time).toLocaleString()}</div></div>`).join(''):'<div class="empty">No conversations</div>';
+  hist=JSON.parse(localStorage.getItem('hub_hist')||'[]');
+  $('historyList').innerHTML=(hist.length?hist.map((x,i)=>`<div class="h-item" onclick="loadHist(${i})"><div class="h-title">${esc(x.preview||'Chat')}</div><div class="h-meta"><span class="h-count">${x.n||0} msgs</span>${new Date(x.time).toLocaleString()}</div></div>`).join(''):'<div class="empty">No conversations yet</div>')+`<button class="h-item" onclick="newChat()" style="text-align:center;color:var(--ac);font-weight:500">+ New Conversation</button>`;
 }
-function loadHist(i){const h=JSON.parse(localStorage.getItem('hub_hist')||'[]');if(h[i]){msgs=h[i].msgs;$('chatMsgs').innerHTML=msgs.map(m=>`<div class="msg ${m.role}">${esc(m.content)}</div>`).join('');switchTab('chat')}}
+function loadHist(i){const h=JSON.parse(localStorage.getItem('hub_hist')||'[]');if(h[i]){msgs=h[i].msgs;$('chatMsgs').innerHTML=msgs.map(m=>`<div class="msg ${m.role}">${esc(m.content)}</div>`).join('');localStorage.setItem('hub_current',JSON.stringify(msgs));switchTab('chat')}}
+function newChat(){msgs=[];localStorage.setItem('hub_current','[]');$('chatMsgs').innerHTML='<div class="empty"><span style="font-size:24px">&#x1F4AC;</span><br>New conversation</div>';switchTab('chat')}
 
 // Voice
 let micOn=false,rec=null;

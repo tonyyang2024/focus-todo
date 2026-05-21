@@ -131,10 +131,9 @@ input[type=file]{display:none}
     <select id="model" onchange="onModelChange()"><option value="deepseek-chat">DeepSeek V3</option><option value="deepseek-reasoner">DeepSeek R1</option></select>
     <span class="sep"></span>
     <span class="key-dot off" id="keyDot"></span>
-    <span id="keyLabel" style="font-size:10px;color:var(--t3)">No Key</span>
-    <input type="password" id="keyInline" placeholder="Paste API Key..." style="display:none;width:180px;padding:4px 8px;border:1px solid var(--bdr);border-radius:4px;font-size:10px;font-family:inherit;outline:none;background:var(--bg)" oninput="saveKeyInline()">
-    <button id="keySaveBtn" onclick="toggleKeyInput()" style="font-size:10px;padding:4px 8px;border-radius:4px;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;font-family:inherit">Set Key</button>
-    <a href="/settings.html" style="font-size:10px;color:var(--t3);text-decoration:none;margin-left:4px">Settings</a>
+    <input type="password" id="keyInline" placeholder="Paste API Key here then press Enter" style="width:200px;padding:3px 8px;border:1px solid var(--ac);border-radius:4px;font-size:10px;font-family:inherit;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter'){saveKeyInline();$('input').focus()}">
+    <button onclick="saveKeyInline()" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap">Save Key</button>
+    <a href="/settings.html" style="font-size:10px;color:var(--t3);text-decoration:none;margin-left:2px">Settings</a>
     <span class="sep" style="flex:1"></span>
     <button id="toolsToggleBtn" onclick="var p=document.getElementById('toolsPanel');var o=document.getElementById('panelOverlay');p.classList.toggle('show');o.classList.toggle('show')">&#x2699; Tools</button>
   </div>
@@ -196,82 +195,65 @@ function getProvider(){
   try{
     const p=JSON.parse(localStorage.getItem('ccw_providers')||'[]');
     const d=localStorage.getItem('ccw_default_provider')||'ds';
-    const fallbackKey=localStorage.getItem('ccw_key')||'';
     let found=p.find(x=>x.key&&x.id===d)||p.find(x=>x.key)||null;
     if(found) return {type:found.type||'deepseek',key:found.key,model:found.model||'deepseek-chat'};
-    if(fallbackKey) return {type:'deepseek',key:fallbackKey,model:'deepseek-chat'};
   }catch(e){}
   return {type:'deepseek',key:'',model:'deepseek-chat'};
 }
-async function loadProviderFromServer(){
+function getActiveKey(){
+  const inline=$('keyInline').value.trim();
+  return inline||getProvider().key;
+}
+function saveKeyInline(){
+  const key=$('keyInline').value.trim(),model=$('model').value;
+  if(!key){toast('Enter an API key first');return}
+  localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type:'deepseek',key,model,active:true}]));
+  localStorage.setItem('ccw_default_provider','ds');
+  fetch('/api/config/key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'deepseek',key,model})}).catch(()=>{});
+  $('keyDot').className='key-dot on';
+  toast('Key saved');
+}
+async function loadFromServer(){
   try{
-    const r=await fetch('/api/config/key');
-    if(!r.ok)return null;
+    const r=await fetch('/api/config/key');if(!r.ok)return;
     const d=await r.json();
     if(d.key){
-      // Sync to localStorage
-      const cfg={id:'ds',type:d.type||'deepseek',key:d.key,model:d.model||'deepseek-chat',active:true};
-      localStorage.setItem('ccw_providers',JSON.stringify([cfg]));
+      $('keyInline').value=d.key;
+      $('model').value=d.model||'deepseek-chat';
+      localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type:d.type||'deepseek',key:d.key,model:d.model||'deepseek-chat',active:true}]));
       localStorage.setItem('ccw_default_provider','ds');
-      return cfg;
     }
-    return null;
-  }catch(e){return null;}
+  }catch(e){}
+}
+function onModelChange(){
+  const k=getActiveKey();if(!k)return;
+  localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type:'deepseek',key:k,model:$('model').value,active:true}]));
 }
 
 // ====== INIT ======
 (async function(){
   const p=getProvider();
-  if(!p.key){
-    const serverCfg=await loadProviderFromServer();
-    if(serverCfg)toast('Key loaded from server');
+  if(p.key){
+    $('keyInline').value=p.key;$('keyDot').className='key-dot on';$('model').value=p.model||'deepseek-chat';
+  }else{
+    await loadFromServer();
+    if(getProvider().key)$('keyDot').className='key-dot on';
   }
-  refreshProviderUI();
   loadProjCtx();renderSidebar();renderMessages();
 })();
 
-// Listen for settings changes from other tabs (e.g. /settings.html)
-window.addEventListener('storage', (e) => {
-  if (e.key === 'ccw_providers' || e.key === 'ccw_key' || e.key === 'ccw_default_provider') {
-    refreshProviderUI();
+window.addEventListener('storage',(e)=>{
+  if(e.key==='ccw_providers'||e.key==='ccw_default_provider'){
+    const p=getProvider();
+    if(p.key){$('keyInline').value=p.key;$('keyDot').className='key-dot on';$('model').value=p.model||'deepseek-chat';}
   }
 });
-// Handle bfcache restore (back button navigation)
-window.addEventListener('pageshow', (e) => {
-  if (e.persisted) refreshProviderUI();
+window.addEventListener('pageshow',(e)=>{
+  if(e.persisted){
+    const p=getProvider();
+    if(p.key){$('keyInline').value=p.key;$('keyDot').className='key-dot on';$('model').value=p.model||'deepseek-chat';}
+  }
 });
-function refreshProviderUI(){
-  const p = getProvider();
-  $('keyDot').className = 'key-dot' + (p.key ? ' on' : ' off');
-  $('keyLabel').textContent = p.key ? p.type + ' configured' : 'No Key';
-  $('model').value = p.model || 'deepseek-chat';
-  if(p.key){
-    $('keyLabel').style.display='';$('keyInline').style.display='none';$('keySaveBtn').textContent='Set Key';
-  }
-}
-function toggleKeyInput(){
-  const inp=$('keyInline');
-  if(inp.style.display==='none'){
-    inp.style.display='';inp.focus();$('keySaveBtn').textContent='Save';
-  }else{
-    saveKeyInline();
-    inp.style.display='none';$('keySaveBtn').textContent='Set Key';
-  }
-}
-function saveKeyInline(){
-  const key=$('keyInline').value.trim(),model=$('model').value;
-  if(!key)return;
-  const cfg={id:'ds',type:'deepseek',key,model,active:true};
-  localStorage.setItem('ccw_providers',JSON.stringify([cfg]));
-  localStorage.setItem('ccw_default_provider','ds');
-  fetch('/api/config/key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'deepseek',key,model})}).catch(()=>{});
-  $('keyInline').value='';refreshProviderUI();toast('Key saved');
-}
-function onModelChange(){
-  const p=getProvider();if(!p.key)return;
-  localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type:p.type,key:p.key,model:$('model').value,active:true}]));
-  localStorage.setItem('ccw_default_provider','ds');
-}
 
 // ====== SIDEBAR ======
 function renderSidebar(){
@@ -359,12 +341,9 @@ function previewFile(url){showPreview(url)}
 function prog(m,c){const p=$('progress');p.classList.add('show');$('progressLog').innerHTML+=`<div style="color:var(--${c||'t2'});padding:1px 0">${m}</div>`}
 async function send(){
   const t=$('input').value.trim();
-  // Auto-detect key from inline input
-  const inlineKey=$('keyInline').value.trim();
-  if(inlineKey)saveKeyInline();
-  const provider=getProvider();
+  const key=getActiveKey(),model=$('model').value;
   if((!t&&!pendingFiles.length)||sending)return;
-  if(!provider.key){toast('Set API Key above or in Settings');toggleKeyInput();return}
+  if(!key){toast('Paste your API key in the top bar and click Save Key');$('keyInline').focus();return}
   sending=true;$('sendBtn').disabled=true;
   const files=[...pendingFiles];pendingFiles=[];updateFiles();
 
@@ -409,7 +388,7 @@ async function send(){
   addMsg('ai','...');
   let aiResponse='',modifiedFiles=[];
   try{
-    const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:c,conversationId:activeConv,apiKey:provider.key,model:provider.model||'deepseek-chat'})});
+    const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:c,conversationId:activeConv,apiKey:key,model})});
     const reader=response.body.getReader();
     const decoder=new TextDecoder();
     let buf='',ev='';
@@ -466,7 +445,7 @@ async function checkJouleStatus(){
 
 // ====== SELF-REFLECT ======
 async function selfReflect(){
-  const p=getProvider();if(!p.key){toast('Set API Key first');return}
+  const key=getActiveKey();if(!key){toast('Set API Key first');return}
   prog('Self-reflecting... reading codebase...','ac');
   const all=Object.values(conversations).flatMap(c=>c.messages||[]).slice(-20);
   const summary=all.map(m=>`[${m.role}]: ${(m.text||'').slice(0,150)}`).join('\n');
@@ -484,7 +463,7 @@ async function selfReflect(){
   addMsg('ai','...');
   let aiResponse='',modifiedFiles=[];
   try{
-    const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:prompt,apiKey:p.key,model:p.model||'deepseek-chat'})});
+    const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:prompt,apiKey:key,model:$('model').value||'deepseek-chat'})});
     const reader=response.body.getReader();
     const decoder=new TextDecoder();
     let buf='',ev='';

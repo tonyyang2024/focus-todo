@@ -377,74 +377,47 @@ app.patch('/api/tasks/queue/:id', express.json(), (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- Chat SSE Endpoint ---
+// --- Chat Endpoint ---
 app.post('/api/chat', (req, res) => {
   const { message, apiKey, model } = req.body || {};
   if (!message) return res.status(400).json({ error: 'message required' });
   if (!apiKey) return res.status(400).json({ error: 'apiKey required' });
 
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'X-Accel-Buffering': 'no'
-  });
-
-  // Direct API call — simplest possible path
   const https = require('https');
   const apiBase = process.env.AI_API_BASE || 'https://api.deepseek.com/v1';
   const url = new URL(apiBase.replace(/\/+$/, '') + '/chat/completions');
   const body = JSON.stringify({
     model: model || 'deepseek-chat',
     messages: [{ role: 'user', content: message }],
-    stream: true,
+    stream: false,
     max_tokens: 8192
   });
 
-  let buffer = '';
-  let ended = false;
-  function end(data) { if (!ended) { ended = true; try { if (data) res.write(data); res.end(); } catch {} } }
-
-  const req2 = https.request({
+  const apiReq = https.request({
     hostname: url.hostname, port: url.port || 443, path: url.pathname + url.search,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'Content-Length': Buffer.byteLength(body) },
-    rejectUnauthorized: false, timeout: 120000
+    rejectUnauthorized: false, timeout: 60000
   }, (apiRes) => {
-    if (apiRes.statusCode !== 200) {
-      let d = ''; apiRes.on('data', c => d += c);
-      apiRes.on('end', () => end(`event: error\ndata: ${JSON.stringify({ code: 'api_' + apiRes.statusCode, message: d.slice(0,500) })}\n\n`));
-      return;
-    }
-    let buf = '';
-    apiRes.on('data', (chunk) => {
-      buf += chunk.toString('utf8');
-      const lines = buf.split('\n'); buf = lines.pop() || '';
-      for (const line of lines) {
-        const t = line.trim();
-        if (!t || !t.startsWith('data: ')) continue;
-        const s = t.slice(6);
-        if (s === '[DONE]') { end(); return; }
-        try {
-          const d = JSON.parse(s);
-          const delta = d.choices?.[0]?.delta;
-          if (delta?.content) {
-            buffer += delta.content;
-            res.write(`event: token\ndata: ${JSON.stringify({ text: delta.content })}\n\n`);
-          }
-        } catch {}
+    let data = '';
+    apiRes.on('data', c => data += c);
+    apiRes.on('end', () => {
+      try {
+        const j = JSON.parse(data);
+        const text = j.choices?.[0]?.message?.content || '';
+        if (text) {
+          res.json({ text, model: j.model });
+        } else {
+          res.status(500).json({ error: 'Empty response from AI', raw: data.slice(0,300) });
+        }
+      } catch(e) {
+        res.status(500).json({ error: 'Failed to parse AI response', raw: data.slice(0,300) });
       }
     });
-    apiRes.on('end', () => {
-      res.write(`event: done\ndata: ${JSON.stringify({ text: buffer })}\n\n`);
-      end();
-    });
   });
-  req2.on('error', (e) => end(`event: error\ndata: ${JSON.stringify({ code: 'network', message: e.message })}\n\n`));
-  req2.on('timeout', () => { req2.destroy(); end(`event: error\ndata: ${JSON.stringify({ code: 'timeout', message: 'Request timed out' })}\n\n`); });
-  req2.write(body); req2.end();
-
-  req.on('close', () => { try { req2.destroy(); } catch {} });
+  apiReq.on('error', (e) => res.status(502).json({ error: e.message }));
+  apiReq.on('timeout', () => { apiReq.destroy(); res.status(504).json({ error: 'AI request timed out' }); });
+  apiReq.write(body); apiReq.end();
 });
 
 // --- Conversation CRUD ---

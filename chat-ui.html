@@ -389,33 +389,16 @@ async function send(){
   }
 
   prog('Calling AI...','ac');
-  addMsg('ai','...');
-  let aiResponse='',modifiedFiles=[];
+  addMsg('ai','Thinking...');
   try{
-    const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:c,conversationId:activeConv,apiKey:key,model})});
-    if(!response.ok){const err=await response.text();throw new Error('Server error: '+response.status+' '+err.slice(0,200))}
-    const reader=response.body.getReader();
-    const decoder=new TextDecoder();
-    let buf='',ev='';
-    while(true){
-      const{done,value}=await reader.read();if(done)break;
-      buf+=decoder.decode(value,{stream:true});
-      const lns=buf.split('\n');buf=lns.pop()||'';
-      for(const line of lns){
-        if(line.startsWith('event: ')){ev=line.slice(7).trim();continue}
-        if(!line.startsWith('data: '))continue;
-        try{
-          const d=JSON.parse(line.slice(6));
-          if(ev==='token'){aiResponse+=d.text;updateLastAi(aiResponse)}
-          else if(ev==='tool_call'){prog(d.tool+'...','warn')}
-          else if(ev==='tool_result'){prog(d.tool+': '+(d.result?.ok?'OK':'Failed'),d.result?.ok?'good':'bad');if(d.result?.ok&&(d.tool==='write_file'||d.tool==='edit_file'))modifiedFiles.push(d.result.path||'file')}
-          else if(ev==='meta'&&d.conversationId){activeConv=d.conversationId}
-          else if(ev==='done'){const finalText=d.text||aiResponse;const extra=modifiedFiles.length?`\n\n<div style="margin-top:8px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:11px"><b>Files modified:</b><br>${modifiedFiles.map(f=>'&#x2705; '+esc(f)).join('<br>')}<br><button onclick="location.reload()" style="margin-top:6px;padding:4px 12px;border-radius:6px;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;font-size:11px">Reload to apply changes</button></div>`:'';updateLastAi(finalText+extra);prog('Done','good')}
-          else if(ev==='error'){prog(d.message||d.code,'bad');if(!aiResponse)updateLastAi('Error: '+d.message)}
-        }catch(e){}
-      }
+    const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:c,apiKey:key,model})});
+    const d=await response.json();
+    if(d.text){
+      updateLastAi(d.text);prog('Done','good');
+    }else{
+      updateLastAi('Error: '+(d.error||'Unknown error'));prog(d.error||'Failed','bad');
     }
-  }catch(e){updateLastAi('Error: '+e.message);prog('Failed','bad')}
+  }catch(e){updateLastAi('Connection error: '+e.message);prog('Failed','bad')}
   sending=false;if(sb)sb.disabled=false;saveConvs();renderSidebar();
   }catch(e){toast('Error: '+e.message);sending=false;const sb=$('sendBtn');if(sb)sb.disabled=false}
 }
@@ -466,30 +449,13 @@ async function selfReflect(){
     'Step 4: After making changes, explain what you changed and why.\n\n'+
     (summary?'Recent conversation context:\n'+summary+'\n\n':'')+
     'IMPORTANT: Actually USE the tools. Make REAL code changes. Be specific.';
-  addMsg('ai','...');
-  let aiResponse='',modifiedFiles=[];
+  addMsg('ai','Thinking...');
   try{
     const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:prompt,apiKey:key,model:$('model').value||'deepseek-chat'})});
-    const reader=response.body.getReader();
-    const decoder=new TextDecoder();
-    let buf='',ev='';
-    while(true){
-      const{done,value}=await reader.read();if(done)break;
-      buf+=decoder.decode(value,{stream:true});
-      const lns=buf.split('\n');buf=lns.pop()||'';
-      for(const line of lns){
-        if(line.startsWith('event: ')){ev=line.slice(7).trim();continue}
-        if(!line.startsWith('data: '))continue;
-        try{const d=JSON.parse(line.slice(6));
-          if(ev==='token'){aiResponse+=d.text;updateLastAi(aiResponse)}
-          else if(ev==='tool_call'){prog(d.tool+'...','warn')}
-          else if(ev==='tool_result'){prog(d.tool+': '+(d.result?.ok?'OK':'Failed'),d.result?.ok?'good':'bad');if(d.result?.ok&&(d.tool==='write_file'||d.tool==='edit_file'))modifiedFiles.push(d.result.path||'file')}
-          else if(ev==='done'){const finalText=d.text||aiResponse;const extra=modifiedFiles.length?`\n\n<div style="margin-top:8px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:11px"><b>Files modified:</b><br>${modifiedFiles.map(f=>'&#x2705; '+esc(f)).join('<br>')}<br><button onclick="location.reload()" style="margin-top:6px;padding:4px 12px;border-radius:6px;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;font-size:11px">Reload to apply changes</button></div>`:'';updateLastAi('## Self-Reflection\n\n'+finalText+extra);prog('Done'+(modifiedFiles.length?' ('+modifiedFiles.length+' files modified)':''),'good')}
-          else if(ev==='error'){prog(d.message||d.code,'bad');if(!aiResponse)updateLastAi('Error: '+d.message)}
-        }catch(e){}
-      }
-    }
-  }catch(e){updateLastAi('Connection error: '+e.message);prog('Failed','bad')}
+    const d=await response.json();
+    if(d.text){updateLastAi('## Self-Reflection\n\n'+d.text);prog('Done','good')}
+    else{updateLastAi('Error: '+(d.error||'Unknown'));prog(d.error||'Failed','bad')}
+  }catch(e){updateLastAi('Error: '+e.message);prog('Failed','bad')}
   saveConvs();renderSidebar();
 }
 

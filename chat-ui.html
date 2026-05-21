@@ -184,12 +184,14 @@ input[type=file]{display:none}
 
 <script>
 const $=id=>document.getElementById(id);
-let conversations=JSON.parse(localStorage.getItem('wb_convs')||'{}');
-let activeConv=localStorage.getItem('wb_active')||'default';
-let pendingFiles=[],sending=false,micOn=false,recognition=null,micRetries=0;
-let builtFiles=JSON.parse(localStorage.getItem('wb_files')||'[]');
+let conversations,activeConv,pendingFiles=[],sending=false,micOn=false,recognition=null,micRetries=0,builtFiles=[];
+try{
+  conversations=JSON.parse(localStorage.getItem('wb_convs')||'{}');
+}catch(e){conversations={}}
+try{activeConv=localStorage.getItem('wb_active')||'default'}catch(e){activeConv='default'}
+try{builtFiles=JSON.parse(localStorage.getItem('wb_files')||'[]')}catch(e){builtFiles=[]}
 const bf={};
-if(!conversations[activeConv]) conversations[activeConv]={name:'New Chat',messages:[],created:Date.now()};
+try{if(!conversations[activeConv]) conversations[activeConv]={name:'New Chat',messages:[],created:Date.now()}}catch(e){}
 
 function getProvider(){
   try{
@@ -338,16 +340,18 @@ function showPreview(url){const p=$('previewPanel');p.innerHTML=`<div class="pp-
 function previewFile(url){showPreview(url)}
 
 // ====== SEND ======
-function prog(m,c){const p=$('progress');p.classList.add('show');$('progressLog').innerHTML+=`<div style="color:var(--${c||'t2'});padding:1px 0">${m}</div>`}
+function prog(m,c){const p=$('progress');if(!p)return;p.classList.add('show');const pl=$('progressLog');if(pl)pl.innerHTML+=`<div style="color:var(--${c||'t2'});padding:1px 0">${m}</div>`}
 async function send(){
-  const t=$('input').value.trim();
-  const key=getActiveKey(),model=$('model').value;
+  try{
+  const inputEl=$('input');if(!inputEl)return;
+  const t=inputEl.value.trim();
+  const key=getActiveKey(),model=$('model')?$('model').value:'deepseek-chat';
   if((!t&&!pendingFiles.length)||sending)return;
-  if(!key){toast('Paste your API key in the top bar and click Save Key');$('keyInline').focus();return}
-  sending=true;$('sendBtn').disabled=true;
+  if(!key){toast('Paste your API key in the top bar and click Save Key');const ki=$('keyInline');if(ki)ki.focus();return}
+  sending=true;const sb=$('sendBtn');if(sb)sb.disabled=true;
   const files=[...pendingFiles];pendingFiles=[];updateFiles();
 
-  $('progressLog').innerHTML='';prog('Thinking...','ac');
+  const pl=$('progressLog');if(pl)pl.innerHTML='';prog('Thinking...','ac');
   const docIds=[];
   for(const f of files){
     if(f.blob){const form=new FormData();form.append('file',f.blob,f.name);try{const r=await fetch('/api/documents/upload',{method:'POST',body:form});const d=await r.json();if(d.docId)docIds.push({id:d.docId,name:f.name,type:d.metadata?.type||'unknown'});f.docId=d.docId}catch(e){}}
@@ -368,7 +372,7 @@ async function send(){
   }
   if(t)c+=t;
   const preview=t||(files.length?'Sent '+files.length+' file(s)':'');
-  addMsg('user',preview,files);$('input').value='';$('input').style.height='auto';
+  addMsg('user',preview,files);inputEl.value='';inputEl.style.height='auto';
 
   if(workbenchMode==='joule'){
     const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
@@ -380,7 +384,7 @@ async function send(){
       else addMsg('ai','Joule unavailable: '+(d.error||'No response'));
       prog(d.ok?'Joule responded':'Joule error','good');saveConvs();renderMessages();
     }catch(e){addMsg('ai','Joule error: '+e.message);prog('Error','bad')}
-    sending=false;$('sendBtn').disabled=false;$('input').value='';
+    sending=false;if(sb)sb.disabled=false;inputEl.value='';
     return;
   }
 
@@ -389,6 +393,7 @@ async function send(){
   let aiResponse='',modifiedFiles=[];
   try{
     const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:c,conversationId:activeConv,apiKey:key,model})});
+    if(!response.ok){const err=await response.text();throw new Error('Server error: '+response.status+' '+err.slice(0,200))}
     const reader=response.body.getReader();
     const decoder=new TextDecoder();
     let buf='',ev='';
@@ -410,8 +415,9 @@ async function send(){
         }catch(e){}
       }
     }
-  }catch(e){updateLastAi('Connection error: '+e.message);prog('Failed','bad')}
-  sending=false;$('sendBtn').disabled=false;saveConvs();renderSidebar();
+  }catch(e){updateLastAi('Error: '+e.message);prog('Failed','bad')}
+  sending=false;if(sb)sb.disabled=false;saveConvs();renderSidebar();
+  }catch(e){toast('Error: '+e.message);sending=false;const sb=$('sendBtn');if(sb)sb.disabled=false}
 }
 function updateLastAi(text){
   const msgs=conversations[activeConv].messages;

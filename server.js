@@ -27,6 +27,15 @@ function logError(msg) {
 }
 
 const app = express();
+
+// Global error handlers — prevent crashes from taking down the server
+process.on('unhandledRejection', (reason) => {
+  logError('Unhandled rejection: ' + (reason?.message || reason));
+});
+process.on('uncaughtException', (err) => {
+  logError('Uncaught exception: ' + err.message + '\n' + (err.stack||'').slice(0,500));
+});
+
 app.use(compression());
 app.use(express.json());
 
@@ -370,9 +379,10 @@ app.patch('/api/tasks/queue/:id', express.json(), (req, res) => {
 
 // --- Chat SSE Endpoint ---
 app.post('/api/chat', (req, res) => {
+  try {
   const { message, conversationId, apiKey, model } = req.body;
   if (!message) return res.status(400).json({ error: 'message required' });
-  if (!apiKey) return res.status(400).json({ error: 'apiKey required — set in Settings panel' });
+  if (!apiKey) return res.status(400).json({ error: 'apiKey required' });
 
   // SSE headers
   res.writeHead(200, {
@@ -382,53 +392,53 @@ app.post('/api/chat', (req, res) => {
     'X-Accel-Buffering': 'no'
   });
 
-  let convId = conversationId;
-  if (!convId) {
-    convId = db.createConversation('default', message.slice(0, 30));
-    res.write(`event: meta\ndata: ${JSON.stringify({ conversationId: convId })}\n\n`);
+  let convId = conversationId || ('conv_' + Date.now());
+  try {
+    const history = db.getConversationMessages(convId).map(m => ({ role: m.role, content: m.content }));
+    db.saveConversationMessage(convId, 'user', message);
+  } catch(e) {
+    // If DB fails, still try to respond
+    logError('Chat DB error: ' + e.message);
   }
 
-  // Load history
-  const history = db.getConversationMessages(convId).map(m => ({
-    role: m.role,
-    content: m.content
-  }));
-
-  // Save user message
-  db.saveConversationMessage(convId, 'user', message);
-
   let buffer = '';
+  let responded = false;
+  function safeEnd(data) {
+    if (responded) return;
+    responded = true;
+    try { if (data) res.write(data); res.end(); } catch {}
+  }
 
-  aiClient.runAgent(message, history, apiKey, {
+  aiClient.runAgent(message, [], apiKey, {
     onToken: ({ text }) => {
       buffer += text;
-      res.write(`event: token\ndata: ${JSON.stringify({ text })}\n\n`);
+      try { res.write(`event: token\ndata: ${JSON.stringify({ text })}\n\n`); } catch {}
     },
     onToolCall: (data) => {
-      res.write(`event: tool_call\ndata: ${JSON.stringify(data)}\n\n`);
+      try { res.write(`event: tool_call\ndata: ${JSON.stringify(data)}\n\n`); } catch {}
     },
     onToolResult: (data) => {
-      res.write(`event: tool_result\ndata: ${JSON.stringify(data)}\n\n`);
+      try { res.write(`event: tool_result\ndata: ${JSON.stringify(data)}\n\n`); } catch {}
     },
     onDone: ({ text }) => {
       const final = text || buffer;
-      db.saveConversationMessage(convId, 'assistant', final);
-      res.write(`event: done\ndata: ${JSON.stringify({ text: final, conversationId: convId })}\n\n`);
-      res.end();
+      try { db.saveConversationMessage(convId, 'assistant', final); } catch {}
+      safeEnd(`event: done\ndata: ${JSON.stringify({ text: final, conversationId: convId })}\n\n`);
     },
     onError: ({ code, message }) => {
-      db.saveConversationMessage(convId, 'assistant', `[Error: ${code}] ${message}`);
-      res.write(`event: error\ndata: ${JSON.stringify({ code, message })}\n\n`);
-      res.end();
+      try { db.saveConversationMessage(convId, 'assistant', `[Error: ${code}] ${message}`); } catch {}
+      safeEnd(`event: error\ndata: ${JSON.stringify({ code, message })}\n\n`);
     }
   }, { model }).catch(err => {
-    logError('Chat agent crashed: ' + err.message);
-    try { res.write(`event: error\ndata: ${JSON.stringify({ code: 'agent_crash', message: err.message })}\n\n`); res.end(); } catch {}
+    logError('Chat agent crashed: ' + err.message + ' ' + (err.stack||'').slice(0,300));
+    safeEnd(`event: error\ndata: ${JSON.stringify({ code: 'crash', message: err.message })}\n\n`);
   });
 
-  req.on('close', () => {
-    // Client disconnected — clean up if needed
-  });
+  req.on('close', () => { safeEnd(); });
+  } catch(e) {
+    logError('Chat endpoint error: ' + e.message);
+    try { res.status(500).json({ error: e.message }); } catch {}
+  }
 });
 
 // --- Conversation CRUD ---

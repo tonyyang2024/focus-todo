@@ -283,6 +283,28 @@ app.post('/api/memory/save', express.json(), (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- API Key Config (server-side persistence) ---
+app.get('/api/config/key', (req, res) => {
+  try {
+    const rows = db.searchMemory('ccw_provider_config');
+    if (rows.length) {
+      const cfg = JSON.parse(rows[0].value);
+      res.json(cfg);
+    } else {
+      res.json({ type: 'deepseek', key: '', model: 'deepseek-chat' });
+    }
+  } catch (e) { res.json({ type: 'deepseek', key: '', model: 'deepseek-chat' }); }
+});
+
+app.post('/api/config/key', express.json(), (req, res) => {
+  try {
+    const { type, key, model } = req.body;
+    if (!key) return res.status(400).json({ error: 'key required' });
+    db.saveMemory('ccw_provider_config', { type: type || 'deepseek', key, model: model || 'deepseek-chat', updatedAt: new Date().toISOString() }, ['config', 'provider']);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/memory/search', (req, res) => {
   try {
     const rows = db.searchMemory(req.query.q || '');

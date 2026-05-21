@@ -193,20 +193,39 @@ const bf={};
 if(!conversations[activeConv]) conversations[activeConv]={name:'New Chat',messages:[],created:Date.now()};
 
 function getProvider(){
-  // Primary: try ccw_providers array
-  const p=JSON.parse(localStorage.getItem('ccw_providers')||'[]');
-  const d=localStorage.getItem('ccw_default_provider')||'ds';
-  // Also check ccw_key as fallback
-  const fallbackKey=localStorage.getItem('ccw_key')||'';
-  // Find active provider — be forgiving: any provider with a key is "active"
-  let found=p.find(x=>x.key&&x.id===d)||p.find(x=>x.key)||null;
-  if(found) return {type:found.type||'deepseek',key:found.key,model:found.model||'deepseek-chat'};
-  if(fallbackKey) return {type:'deepseek',key:fallbackKey,model:'deepseek-chat'};
+  try{
+    const p=JSON.parse(localStorage.getItem('ccw_providers')||'[]');
+    const d=localStorage.getItem('ccw_default_provider')||'ds';
+    const fallbackKey=localStorage.getItem('ccw_key')||'';
+    let found=p.find(x=>x.key&&x.id===d)||p.find(x=>x.key)||null;
+    if(found) return {type:found.type||'deepseek',key:found.key,model:found.model||'deepseek-chat'};
+    if(fallbackKey) return {type:'deepseek',key:fallbackKey,model:'deepseek-chat'};
+  }catch(e){}
   return {type:'deepseek',key:'',model:'deepseek-chat'};
+}
+async function loadProviderFromServer(){
+  try{
+    const r=await fetch('/api/config/key');
+    if(!r.ok)return null;
+    const d=await r.json();
+    if(d.key){
+      // Sync to localStorage
+      const cfg={id:'ds',type:d.type||'deepseek',key:d.key,model:d.model||'deepseek-chat',active:true};
+      localStorage.setItem('ccw_providers',JSON.stringify([cfg]));
+      localStorage.setItem('ccw_default_provider','ds');
+      return cfg;
+    }
+    return null;
+  }catch(e){return null;}
 }
 
 // ====== INIT ======
-(function(){
+(async function(){
+  const p=getProvider();
+  if(!p.key){
+    const serverCfg=await loadProviderFromServer();
+    if(serverCfg)toast('Key loaded from server');
+  }
   refreshProviderUI();
   loadProjCtx();renderSidebar();renderMessages();
 })();
@@ -242,9 +261,11 @@ function toggleKeyInput(){
 function saveKeyInline(){
   const key=$('keyInline').value.trim(),model=$('model').value;
   if(!key)return;
-  localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type:'deepseek',key,model,active:true}]));
+  const cfg={id:'ds',type:'deepseek',key,model,active:true};
+  localStorage.setItem('ccw_providers',JSON.stringify([cfg]));
   localStorage.setItem('ccw_default_provider','ds');
-  refreshProviderUI();toast('Key saved');
+  fetch('/api/config/key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'deepseek',key,model})}).catch(()=>{});
+  $('keyInline').value='';refreshProviderUI();toast('Key saved');
 }
 function onModelChange(){
   const p=getProvider();if(!p.key)return;

@@ -118,6 +118,7 @@ function saveKey(){
   const model=document.getElementById('sModel').value;
   localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type,key,model,active:!!key}]));
   localStorage.setItem('ccw_default_provider','ds');
+  if(key) fetch('/api/config/key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,key,model})}).catch(()=>{});
   document.getElementById('keyDot').className='dot'+(key?' on':'');
   if(key) toast('API Key 已保存');
 }

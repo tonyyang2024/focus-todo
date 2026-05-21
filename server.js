@@ -42,7 +42,7 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
-      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('Cache-Control', 'no-cache');
     } else if (filePath.match(/\.(js|css|png|jpg|svg|ico|json)$/)) {
       res.setHeader('Cache-Control', 'public, max-age=604800');
     }
@@ -734,6 +734,8 @@ app.post('/api/workbench/apply', express.json(), (req, res) => {
   }
 });
 
+const JOULE_CONFIG_FILE = path.join(__dirname, 'data', 'joule-config.json');
+
 // --- Joule Config ---
 app.post('/api/joule/config', express.json(), (req, res) => {
   try {
@@ -758,8 +760,6 @@ app.get('/api/joule/config', (req, res) => {
     } else res.json({ baseURL: '', username: '', password: '' });
   } catch (e) { res.json({ baseURL: '', username: '', password: '' }); }
 });
-
-const JOULE_CONFIG_FILE = path.join(__dirname, 'data', 'joule-config.json');
 
 // --- BTP Deploy ---
 const BTP_BUILDS_DIR = path.join(__dirname, 'data', 'btp-builds');
@@ -872,9 +872,9 @@ app.get('/api/health', (req, res) => {
     memory: Math.floor(process.memoryUsage().rss / 1024 / 1024) + ' MB',
     node: process.version,
     platform: process.platform,
-    endpoints: ['/todolist/', '/skill-copilot/', '/chat-ui.html', '/fiori-upload.html', '/inventory-upload.html', '/docs.html', '/settings.html'],
-    mcpTools: ['web_fetch', 'file_info', 'list_files', 'system_info', 'search_kb', 'document_parse', 'task_queue_manage', 'joule_chat', 'joule_sales_order', 'joule_business_data', 'joule_status', 'joule_agent_invoke'],
-    endpoints: ['/api/chat', '/api/conversations', '/api/documents/upload', '/api/health', '/api/tasks/queue', '/todolist/', '/skill-copilot/', '/chat-ui.html', '/docs.html', '/settings.html']
+    pages: ['/todolist/', '/skill-copilot/', '/chat-ui.html', '/fiori-upload.html', '/inventory-upload.html', '/docs.html', '/settings.html'],
+    apiEndpoints: ['/api/chat', '/api/conversations', '/api/documents/upload', '/api/config/key', '/api/workbench/apply', '/api/workbench/build', '/api/health', '/api/tasks/queue', '/api/memory/save', '/api/memory/search', '/api/kb/search'],
+    mcpTools: ['web_fetch', 'file_info', 'list_files', 'system_info', 'search_kb', 'document_parse', 'task_queue_manage', 'joule_chat', 'joule_sales_order', 'joule_business_data', 'joule_status', 'joule_agent_invoke']
   });
 });
 

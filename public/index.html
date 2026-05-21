@@ -198,6 +198,19 @@ function sSave(){
   $('sDot').className='s-dot'+(key?' on':'');
   updateKeyUI();if(key)toast('Key saved');
 }
+function sLoad(){
+  const k=getKey();
+  $('sProv').value=k.type||'deepseek';
+  $('sKey').value=k.key||'';
+  sModelUpdate();
+  setTimeout(()=>{if(k.model)$('sMod').value=k.model},50);
+  $('sDot').className='s-dot'+(k.key?' on':'');
+}
+window.addEventListener('storage',(e)=>{
+  if(e.key==='ccw_providers'||e.key==='ccw_default_provider'){
+    updateKeyUI();sLoad();
+  }
+});
 
 // Chat
 let msgs=JSON.parse(localStorage.getItem('hub_current')||'[]');
@@ -333,7 +346,7 @@ function renderMcpStatus(){
   $('mcpStatus').innerHTML=servers.length?servers.map(s=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px"><span style="color:var(--good)">&#x25CF;</span> ${esc(s.name)} <span style="color:var(--t3);font-size:10px">${esc(s.url)}</span></div>`).join(''):'<span style="color:var(--t3)">No MCP servers configured</span>';
 }
 
-updateKeyUI();sModelUpdate();
+updateKeyUI();sLoad();
 // Pre-configure local MCP server
 (function(){
   const servers=JSON.parse(localStorage.getItem('mcp_servers')||'[]');
@@ -343,7 +356,6 @@ updateKeyUI();sModelUpdate();
   }
 })();
 renderMcpStatus();
-const k=getKey();if(k.key){$('sKey').value=k.key;$('sProv').value=k.type;sModelUpdate();setTimeout(()=>$('sMod').value=k.model,100)}
 $('chatInput').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'});
 </script>
 </body>

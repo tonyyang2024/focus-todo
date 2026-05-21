@@ -6,6 +6,8 @@ const multer = require('multer');
 const compression = require('compression');
 const SftpClient = require('ssh2-sftp-client');
 const db = require('./db');
+const aiClient = require('./lib/ai-client');
+const documentParser = require('./lib/document-parser');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 const SFTP_CONFIG_FILE = path.join(__dirname, 'data', 'sftp-config.json');
@@ -344,6 +346,221 @@ app.patch('/api/tasks/queue/:id', express.json(), (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// --- Chat SSE Endpoint ---
+app.post('/api/chat', (req, res) => {
+  const { message, conversationId, apiKey, model } = req.body;
+  if (!message) return res.status(400).json({ error: 'message required' });
+  if (!apiKey) return res.status(400).json({ error: 'apiKey required — set in Settings panel' });
+
+  // SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+
+  let convId = conversationId;
+  if (!convId) {
+    convId = db.createConversation('default', message.slice(0, 30));
+    res.write(`event: meta\ndata: ${JSON.stringify({ conversationId: convId })}\n\n`);
+  }
+
+  // Load history
+  const history = db.getConversationMessages(convId).map(m => ({
+    role: m.role,
+    content: m.content
+  }));
+
+  // Save user message
+  db.saveConversationMessage(convId, 'user', message);
+
+  let buffer = '';
+
+  aiClient.runAgent(message, history, apiKey, {
+    onToken: ({ text }) => {
+      buffer += text;
+      res.write(`event: token\ndata: ${JSON.stringify({ text })}\n\n`);
+    },
+    onToolCall: (data) => {
+      res.write(`event: tool_call\ndata: ${JSON.stringify(data)}\n\n`);
+    },
+    onToolResult: (data) => {
+      res.write(`event: tool_result\ndata: ${JSON.stringify(data)}\n\n`);
+    },
+    onDone: ({ text }) => {
+      const final = text || buffer;
+      db.saveConversationMessage(convId, 'assistant', final);
+      res.write(`event: done\ndata: ${JSON.stringify({ text: final, conversationId: convId })}\n\n`);
+      res.end();
+    },
+    onError: ({ code, message }) => {
+      db.saveConversationMessage(convId, 'assistant', `[Error: ${code}] ${message}`);
+      res.write(`event: error\ndata: ${JSON.stringify({ code, message })}\n\n`);
+      res.end();
+    }
+  }, { model });
+
+  req.on('close', () => {
+    // Client disconnected — clean up if needed
+  });
+});
+
+// --- Conversation CRUD ---
+app.get('/api/conversations', (req, res) => {
+  const convs = db.listConversations(null);
+  // Return simplified list
+  res.json(convs.map(c => ({
+    id: c.convId,
+    title: c.title || 'New Chat',
+    messageCount: c.messageCount || 0,
+    createdAt: c.createdAt,
+    userId: c.userId
+  })));
+});
+
+app.get('/api/conversations/:id', (req, res) => {
+  const convs = db.listConversations(null).filter(c => c.convId === req.params.id);
+  if (!convs.length) return res.status(404).json({ error: 'Conversation not found' });
+  const msgs = db.getConversationMessages(req.params.id);
+  res.json({ ...convs[0], id: convs[0].convId, messages: msgs });
+});
+
+app.delete('/api/conversations/:id', (req, res) => {
+  db.deleteConversation(req.params.id);
+  res.json({ ok: true });
+});
+
+// --- Document Upload & Parsing ---
+const DOCUMENTS_DIR = path.join(__dirname, 'data', 'documents');
+
+app.post('/api/documents/upload', upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  try {
+    const result = await documentParser.detectAndParse(req.file.buffer, req.file.originalname);
+    if (result.error) return res.status(400).json({ error: result.error });
+
+    const docId = 'doc:' + Date.now() + ':' + Math.random().toString(36).slice(2, 8);
+    if (!fs.existsSync(DOCUMENTS_DIR)) fs.mkdirSync(DOCUMENTS_DIR, { recursive: true });
+    const meta = { ...result.metadata, textLength: result.text?.length || 0 };
+    fs.writeFileSync(path.join(DOCUMENTS_DIR, docId + '.json'), JSON.stringify({
+      docId, fileName: req.file.originalname, text: result.text, metadata: meta,
+      imageData: result.imageData || null,
+      createdAt: new Date().toISOString()
+    }));
+
+    res.json({ docId, fileName: req.file.originalname, text: result.text?.slice(0, 2000) || '', metadata: meta });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/documents/:docId', (req, res) => {
+  const filePath = path.join(DOCUMENTS_DIR, req.params.docId + '.json');
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Document not found or expired' });
+  res.json(JSON.parse(fs.readFileSync(filePath, 'utf8')));
+});
+
+// URL fetch and parse
+app.post('/api/documents/fetch-url', express.json(), async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'url required' });
+  try {
+    const result = await documentParser.fetchUrl(url);
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Document cleanup (1 hour TTL)
+function cleanDocuments() {
+  const dir = DOCUMENTS_DIR;
+  if (!fs.existsSync(dir)) return;
+  fs.readdirSync(dir).forEach(f => {
+    const fp = path.join(dir, f);
+    try {
+      if (Date.now() - fs.statSync(fp).mtimeMs > 3600000) fs.unlinkSync(fp);
+    } catch {}
+  });
+}
+setInterval(cleanDocuments, 3600000);
+cleanDocuments();
+
+// --- Task Queue Auto Consumer ---
+const TASK_POLL_INTERVAL = 30000; // 30 seconds
+
+async function consumeTaskQueue() {
+  try {
+    const rows = db.searchMemory('task:');
+    const pendingTasks = rows
+      .map(r => {
+        try { return { key: r.key, ...JSON.parse(r.value) }; }
+        catch { return null; }
+      })
+      .filter(t => t && t.status === 'pending')
+      .sort((a, b) => {
+        const priority = { high: 0, normal: 1, low: 2 };
+        return (priority[a.priority] || 1) - (priority[b.priority] || 1);
+      });
+
+    if (pendingTasks.length === 0) return;
+
+    const apiKey = process.env.AI_API_KEY;
+    if (!apiKey) {
+      console.log('[TaskConsumer] AI_API_KEY not set — skipping auto-consume. Set AI_API_KEY env var to enable.');
+      return;
+    }
+
+    const task = pendingTasks[0];
+    logError(`TaskConsumer: processing ${task.key} (${task.title})`);
+
+    db.saveMemory(task.key, { ...task, status: 'processing', startedAt: new Date().toISOString() }, ['task', 'processing']);
+
+    await aiClient.runAgent(
+      `Execute this task:\n\nTitle: ${task.title}\nDescription: ${task.description || 'No description'}${task.skill ? '\nUse skill: ' + task.skill : ''}\n\nWhen done, save results to knowledge base using save_memory.`,
+      [],
+      apiKey,
+      {
+        onToken: () => {},
+        onToolCall: (data) => { logError(`TaskConsumer tool: ${data.tool}`); },
+        onToolResult: (data) => { if (!data.result?.ok) logError(`TaskConsumer tool ${data.tool} failed`); },
+        onDone: ({ text }) => {
+          db.saveMemory(task.key, {
+            ...task,
+            status: 'completed',
+            result: text?.slice(0, 5000) || '',
+            completedAt: new Date().toISOString()
+          }, ['task', 'completed']);
+          logError(`TaskConsumer: ${task.key} completed`);
+        },
+        onError: ({ code, message }) => {
+          db.saveMemory(task.key, {
+            ...task,
+            status: 'failed',
+            error: `${code}: ${message}`,
+            failedAt: new Date().toISOString()
+          }, ['task', 'failed']);
+          logError(`TaskConsumer: ${task.key} failed — ${message}`);
+        }
+      },
+      { maxIterations: 15 }
+    );
+  } catch (e) {
+    logError('TaskConsumer error: ' + e.message);
+  }
+}
+
+// Start consumer if server-side API key is configured
+if (process.env.AI_API_KEY) {
+  setInterval(consumeTaskQueue, TASK_POLL_INTERVAL);
+  setTimeout(consumeTaskQueue, 5000); // First run after 5s
+  console.log('[TaskConsumer] Started — polling every ' + (TASK_POLL_INTERVAL / 1000) + 's');
+} else {
+  console.log('[TaskConsumer] Not started — set AI_API_KEY env var to enable auto task processing');
+}
+
 // --- SAP Inventory Upload (Node.js, zero Python) ---
 const inventoryUpload = require('./inventory-upload');
 const INVENTORY_UPLOAD_DIR = path.join(__dirname, 'data', 'inventory-uploads');
@@ -442,6 +659,54 @@ app.post('/api/workbench/build', express.json(), (req, res) => {
     const url = '/builds/' + safeName;
     res.json({ ok: true, url, path: filePath });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// --- Workbench: Apply code to project files ---
+const BACKUP_DIR = path.join(__dirname, 'data', 'backups');
+
+app.post('/api/workbench/apply', express.json(), (req, res) => {
+  try {
+    const { filePath, code } = req.body;
+    if (!filePath || code === undefined) return res.status(400).json({ ok: false, error: 'filePath and code required' });
+
+    // Normalize and sanitize path
+    const safePath = filePath.replace(/^[\\/]+/, '').replace(/\.\./g, '');
+    const absolutePath = path.resolve(path.join(__dirname, safePath));
+
+    // Security: ensure path stays within workspace
+    if (!absolutePath.startsWith(path.resolve(__dirname) + path.sep)) {
+      return res.json({ ok: false, error: 'Path outside workspace' });
+    }
+
+    // Auto-backup existing files
+    let wasBackedUp = false;
+    if (fs.existsSync(absolutePath)) {
+      const stat = fs.statSync(absolutePath);
+      if (stat.size < 10 * 1024 * 1024) {
+        if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+        const backupName = path.basename(safePath).replace(/[^a-zA-Z0-9._-]/g, '_') + '.' + Date.now() + '.bak';
+        fs.copyFileSync(absolutePath, path.join(BACKUP_DIR, backupName));
+        wasBackedUp = true;
+      }
+    }
+
+    // Create parent directories if needed
+    const dir = path.dirname(absolutePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+    // Write file
+    fs.writeFileSync(absolutePath, code, 'utf8');
+
+    res.json({
+      ok: true,
+      path: safePath,
+      existed: wasBackedUp,
+      backup: wasBackedUp ? 'saved to data/backups/' : 'none',
+      size: Buffer.byteLength(code, 'utf8')
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // --- Joule Config ---
@@ -583,7 +848,8 @@ app.get('/api/health', (req, res) => {
     node: process.version,
     platform: process.platform,
     endpoints: ['/todolist/', '/skill-copilot/', '/chat-ui.html', '/fiori-upload.html', '/inventory-upload.html', '/docs.html', '/settings.html'],
-    mcpTools: ['web_fetch', 'file_info', 'list_files', 'system_info', 'search_kb', 'joule_chat', 'joule_sales_order', 'joule_business_data', 'joule_status', 'joule_agent_invoke']
+    mcpTools: ['web_fetch', 'file_info', 'list_files', 'system_info', 'search_kb', 'document_parse', 'task_queue_manage', 'joule_chat', 'joule_sales_order', 'joule_business_data', 'joule_status', 'joule_agent_invoke'],
+    endpoints: ['/api/chat', '/api/conversations', '/api/documents/upload', '/api/health', '/api/tasks/queue', '/todolist/', '/skill-copilot/', '/chat-ui.html', '/docs.html', '/settings.html']
   });
 });
 
@@ -614,6 +880,9 @@ cleanOldBuilds();
 // --- Route fallbacks ---
 app.get('/todolist', (req, res) => res.redirect('/todolist/'));
 app.get('/todolist/*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'todolist', 'index.html')));
+
+// Specific routes for files also available in repo root
+app.get('/chat-ui.html', (req, res) => res.sendFile(path.join(__dirname, 'chat-ui.html')));
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

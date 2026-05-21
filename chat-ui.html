@@ -59,6 +59,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-
 .pre-btns button:hover{border-color:var(--ac);color:var(--ac)}
 .pre-btns .deploy{color:var(--good);border-color:var(--good)}
 .pre-btns .btp{color:var(--ac);border-color:var(--ac)}
+.pre-btns .apply{color:#7c3aed;border-color:#7c3aed}
 .refine-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
 .refine-row button{padding:3px 10px;border-radius:12px;border:1px solid var(--bdr);background:var(--card);color:var(--t2);cursor:pointer;font-size:10px;font-family:inherit}
 .refine-row button:hover{border-color:var(--ac);color:var(--ac)}
@@ -188,16 +189,41 @@ let builtFiles=JSON.parse(localStorage.getItem('wb_files')||'[]');
 const bf={};
 if(!conversations[activeConv]) conversations[activeConv]={name:'New Chat',messages:[],created:Date.now()};
 
-function getProvider(){const p=JSON.parse(localStorage.getItem('ccw_providers')||'[]');const d=localStorage.getItem('ccw_default_provider')||'ds';return p.find(x=>x.active&&x.id===d)||p.find(x=>x.active)||{type:'deepseek',key:localStorage.getItem('ccw_key')||'',model:'deepseek-chat'};}
+function getProvider(){
+  // Primary: try ccw_providers array
+  const p=JSON.parse(localStorage.getItem('ccw_providers')||'[]');
+  const d=localStorage.getItem('ccw_default_provider')||'ds';
+  // Also check ccw_key as fallback
+  const fallbackKey=localStorage.getItem('ccw_key')||'';
+  // Find active provider — be forgiving: any provider with a key is "active"
+  let found=p.find(x=>x.key&&x.id===d)||p.find(x=>x.key)||null;
+  if(found) return {type:found.type||'deepseek',key:found.key,model:found.model||'deepseek-chat'};
+  if(fallbackKey) return {type:'deepseek',key:fallbackKey,model:'deepseek-chat'};
+  return {type:'deepseek',key:'',model:'deepseek-chat'};
+}
 
 // ====== INIT ======
 (function(){
-  const p=getProvider();
-  $('keyDot').className='key-dot'+(p.key?' on':' off');
-  $('keyLabel').textContent=p.key?p.type+' configured':'No API Key';
-  $('model').value=p.model||'deepseek-chat';
+  refreshProviderUI();
   loadProjCtx();renderSidebar();renderMessages();
 })();
+
+// Listen for settings changes from other tabs (e.g. /settings.html)
+window.addEventListener('storage', (e) => {
+  if (e.key === 'ccw_providers' || e.key === 'ccw_key' || e.key === 'ccw_default_provider') {
+    refreshProviderUI();
+  }
+});
+// Handle bfcache restore (back button navigation)
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) refreshProviderUI();
+});
+function refreshProviderUI(){
+  const p = getProvider();
+  $('keyDot').className = 'key-dot' + (p.key ? ' on' : ' off');
+  $('keyLabel').textContent = p.key ? p.type + ' configured' : 'No API Key';
+  $('model').value = p.model || 'deepseek-chat';
+}
 
 // ====== SIDEBAR ======
 function renderSidebar(){
@@ -234,7 +260,7 @@ function addMsg(role,text,files){
 }
 
 // ====== FORMAT AI ======
-function fmtAI(t){return esc(t||'').replace(/```(\w*)\n([\s\S]*?)```/g,(_,l,c)=>{const code=c.trim(),ext=l==='html'?'html':l==='javascript'?'js':l==='python'?'py':l||'txt';const isHTML=l==='html'||code.includes('<!DOCTYPE');const fid='f'+Date.now()+Math.random().toString(36).slice(2,6);bf[fid]={code,ext,lang:l};let btp='';try{if(JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}').target?.includes('BTP')&&isHTML)btp=`<button class="btp" onclick="deployBTP('${fid}')">&#x1F310; BTP</button>`}catch{}return`<div class="code-block"><div class="pre-btns"><button onclick="copyBlock(this)">Copy</button><button onclick="editBlock(this,'${fid}')">Edit</button>${isHTML?`<button class="deploy" onclick="deployBlock('${fid}')">&#x25B6; Preview</button>`:`<button class="deploy" onclick="deployBlock('${fid}')">&#x1F4C1; Deploy</button>`}${btp}<button onclick="downloadBlock(this,'${ext}')">Save</button></div><pre><code contenteditable="false" id="${fid}">${esc(code)}</code></pre></div>`}).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')}
+function fmtAI(t){return esc(t||'').replace(/```(\w+(?::[^\n]*)?)\n([\s\S]*?)```/g,(_,l,c)=>{const code=c.trim();let lang=l,filePath='';const ci=l.indexOf(':');if(ci>0){lang=l.slice(0,ci);filePath=l.slice(ci+1).trim();}const ext=lang==='html'?'html':lang==='javascript'?'js':lang==='python'?'py':lang||'txt';const isHTML=lang==='html'||code.includes('<!DOCTYPE');const fid='f'+Date.now()+Math.random().toString(36).slice(2,6);bf[fid]={code,ext,lang,filePath};let btp='';try{if(JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}').target?.includes('BTP')&&isHTML)btp=`<button class="btp" onclick="deployBTP('${fid}')">&#x1F310; BTP</button>`}catch{}return`<div class="code-block"><div class="pre-btns"><button onclick="copyBlock(this)">Copy</button><button onclick="editBlock(this,'${fid}')">Edit</button>${isHTML?`<button class="deploy" onclick="deployBlock('${fid}')">&#x25B6; Preview</button>`:`<button class="deploy" onclick="deployBlock('${fid}')">&#x1F4C1; Deploy</button>`}${btp}<button class="apply" onclick="applyBlock('${fid}')">Apply</button><button onclick="downloadBlock(this,'${ext}')">Save</button></div><pre><code contenteditable="false" id="${fid}">${esc(code)}</code></pre></div>`}).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')}
 
 // ====== CODE ACTIONS ======
 function copyBlock(b){navigator.clipboard.writeText(b.closest('.code-block').querySelector('code').textContent);toast('Copied')}
@@ -247,6 +273,18 @@ async function deployCode(code,fn){
     const d=await r.json();
     if(d.ok){builtFiles.unshift({name:fn,url:d.url,time:Date.now()});saveFiles();renderSidebar();showPreview(d.url);toast('Deployed')}else toast('Failed: '+d.error)
   }catch(e){toast('Error')}
+}
+async function applyBlock(fid){
+  const data=bf[fid];if(!data?.code)return toast('No code');
+  let fp=data.filePath;
+  if(!fp){fp=prompt('Save to file path (relative to project):',fp||'src/newfile.'+data.ext);if(!fp)return}
+  prog('Writing '+fp+'...','ac');
+  try{
+    const r=await fetch('/api/workbench/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filePath:fp,code:data.code})});
+    const d=await r.json();
+    if(d.ok){prog('Saved: '+d.path+' ('+d.size+' bytes)',d.existed?'warn':'good');toast('Saved to '+d.path);builtFiles.unshift({name:d.path,url:'',time:Date.now()});saveFiles();renderSidebar()}
+    else{prog('Failed: '+d.error,'bad');toast(d.error)}
+  }catch(e){prog('Error','bad')}
 }
 async function deployBTP(fid){
   const code=bf[fid]?.code;if(!code)return;
@@ -278,17 +316,29 @@ async function send(){
   sending=true;$('sendBtn').disabled=true;
   const files=[...pendingFiles];pendingFiles=[];updateFiles();
 
-  $('progressLog').innerHTML='';prog('Building...','ac');
+  $('progressLog').innerHTML='';prog('Thinking...','ac');
+  const docIds=[];
+  for(const f of files){
+    if(f.blob){const form=new FormData();form.append('file',f.blob,f.name);try{const r=await fetch('/api/documents/upload',{method:'POST',body:form});const d=await r.json();if(d.docId)docIds.push({id:d.docId,name:f.name,type:d.metadata?.type||'unknown'});f.docId=d.docId}catch(e){}}
+  }
   let c='';
-  for(const f of files){if(!f.isImage)c+=`[File: ${f.name}]\n\`\`\`\n${f.text?.slice(0,4000)||'[Binary]'}\n\`\`\`\n`}
+  if(docIds.length){
+    c+='[SYSTEM] The user uploaded '+docIds.length+' document(s). These may contain requirements, specifications, or reference material.\n';
+    c+='Use document_parse tool to read the FULL content of each document before generating code.\n';
+    c+='When generating code, use file path in language tag: ```javascript:path/to/file.js\n';
+    c+='Available documents:\n';
+    for(const d of docIds)c+=`  docId: ${d.id} — ${d.name} (${d.type})\n`;
+  }
+  for(const f of files){
+    if(!f.isImage){
+      const previewLen=f.docId?2000:8000;
+      c+=`\n[File: ${f.name}]${f.docId?' (full content via document_parse: '+f.docId+')':''}\n\`\`\`\n${(f.text||'[Binary]').slice(0,previewLen)}\n\`\`\`\n`;
+    }
+  }
   if(t)c+=t;
   const preview=t||(files.length?'Sent '+files.length+' file(s)':'');
   addMsg('user',preview,files);$('input').value='';$('input').style.height='auto';
 
-  // Context
-  let projCtx='';
-  try{const x=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');if(x.target)projCtx=`\nPROJECT: ${x.target} | ${x.lang||'auto'} | Endpoint: ${x.env||'none'} | Auth: ${x.user?'configured':'none'}`}catch{}
-  // Joule mode: route to SAP Joule directly
   if(workbenchMode==='joule'){
     const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
     prog('Asking SAP Joule...','ac');
@@ -303,32 +353,44 @@ async function send(){
     return;
   }
 
-  const sys={role:'system',content:`You are a full-stack developer AI.${projCtx}
-RULES:
-- ALWAYS output COMPLETE runnable code.
-- For SAP business queries (sales orders, customers, inventory), use the joule_sales_order, joule_business_data, or joule_chat tools via MCP.
-- For web apps: single HTML file with all CSS+JS inline. For backend: all files with deps.
-- Each file in \`\`\` blocks with filename.
-- If user asks SAP business questions, respond conversationally based on data available.
-`};
-  const apiMsgs=[sys];
-  for(const m of conversations[activeConv].messages){apiMsgs.push({role:m.role==='ai'?'assistant':m.role,content:m.text||''})}
-
   prog('Calling AI...','ac');
+  addMsg('ai','...');
+  let aiResponse='',modifiedFiles=[];
   try{
-    const r=await fetch('https://api.deepseek.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+provider.key},body:JSON.stringify({model:provider.model||'deepseek-chat',messages:apiMsgs,max_tokens:8192})});
-    const d=await r.json();
-    const reply=d.choices?.[0]?.message?.content||'Error';
-    prog('Response received','good');addMsg('ai',reply);
-    const m=reply.match(/```(?:html)?\n([\s\S]*?)```/);
-    if(m&&(m[1].includes('<!DOCTYPE')||m[1].includes('<html'))){setTimeout(()=>deployCode(m[1],'app_'+Date.now()+'.html'),300)}
-  }catch(e){addMsg('ai','Error: '+e.message);prog('Failed','bad')}
-  sending=false;$('sendBtn').disabled=false;
+    const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:c,conversationId:activeConv,apiKey:provider.key,model:provider.model||'deepseek-chat'})});
+    const reader=response.body.getReader();
+    const decoder=new TextDecoder();
+    let buf='',ev='';
+    while(true){
+      const{done,value}=await reader.read();if(done)break;
+      buf+=decoder.decode(value,{stream:true});
+      const lns=buf.split('\n');buf=lns.pop()||'';
+      for(const line of lns){
+        if(line.startsWith('event: ')){ev=line.slice(7).trim();continue}
+        if(!line.startsWith('data: '))continue;
+        try{
+          const d=JSON.parse(line.slice(6));
+          if(ev==='token'){aiResponse+=d.text;updateLastAi(aiResponse)}
+          else if(ev==='tool_call'){prog(d.tool+'...','warn')}
+          else if(ev==='tool_result'){prog(d.tool+': '+(d.result?.ok?'OK':'Failed'),d.result?.ok?'good':'bad');if(d.result?.ok&&(d.tool==='write_file'||d.tool==='edit_file'))modifiedFiles.push(d.result.path||'file')}
+          else if(ev==='meta'&&d.conversationId){activeConv=d.conversationId}
+          else if(ev==='done'){const finalText=d.text||aiResponse;const extra=modifiedFiles.length?`\n\n<div style="margin-top:8px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:11px"><b>Files modified:</b><br>${modifiedFiles.map(f=>'&#x2705; '+esc(f)).join('<br>')}<br><button onclick="location.reload()" style="margin-top:6px;padding:4px 12px;border-radius:6px;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;font-size:11px">Reload to apply changes</button></div>`:'';updateLastAi(finalText+extra);prog('Done','good')}
+          else if(ev==='error'){prog(d.message||d.code,'bad');if(!aiResponse)updateLastAi('Error: '+d.message)}
+        }catch(e){}
+      }
+    }
+  }catch(e){updateLastAi('Connection error: '+e.message);prog('Failed','bad')}
+  sending=false;$('sendBtn').disabled=false;saveConvs();renderSidebar();
+}
+function updateLastAi(text){
+  const msgs=conversations[activeConv].messages;
+  if(msgs.length&&msgs[msgs.length-1].role==='ai')msgs[msgs.length-1].text=text;
+  renderMessages();
 }
 
 // ====== FILES ======
 function addFiles(){$('fileInput').click()}
-function onFiles(i){for(const f of i.files){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:f.name,content:r.result,isImage:f.type.startsWith('image/'),text:f.type.startsWith('image/')?null:r.result});updateFiles()};f.type.startsWith('image/')?r.readAsDataURL(f):r.readAsText(f)}i.value=''}
+function onFiles(i){for(const f of i.files){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:f.name,content:r.result,isImage:f.type.startsWith('image/'),text:f.type.startsWith('image/')?null:r.result,blob:f});updateFiles()};f.type.startsWith('image/')?r.readAsDataURL(f):r.readAsText(f)}i.value=''}
 function updateFiles(){$('attachBar').innerHTML=pendingFiles.map((f,i)=>`<span class="file-chip">${f.isImage?'&#x1F5BC;':'&#x1F4C4;'} ${esc(f.name.slice(0,15))} <span class="x" onclick="pendingFiles.splice(${i},1);updateFiles()">x</span></span>`).join('')}
 
 // ====== VOICE ======
@@ -353,16 +415,45 @@ async function checkJouleStatus(){
 // ====== SELF-REFLECT ======
 async function selfReflect(){
   const p=getProvider();if(!p.key){toast('Set API Key first');return}
-  prog('Analyzing conversations...','ac');
+  prog('Self-reflecting... reading codebase...','ac');
   const all=Object.values(conversations).flatMap(c=>c.messages||[]).slice(-20);
   const summary=all.map(m=>`[${m.role}]: ${(m.text||'').slice(0,150)}`).join('\n');
-  if(!summary){prog('Nothing to analyze','t3');return}
+  const prompt='[SELF-UPGRADE MODE]\n\n'+
+    'You have access to the project workspace. Your goal: improve the Workbench app.\n\n'+
+    'Step 1: Use read_file to understand the current codebase:\n'+
+    '  - chat-ui.html (the main Workbench frontend)\n'+
+    '  - server.js (Express backend)\n'+
+    '  - lib/ai-client.js, lib/tool-registry.js, lib/document-parser.js\n\n'+
+    'Step 2: Identify ONE concrete improvement (bug fix, UI enhancement, performance, or new feature)\n\n'+
+    'Step 3: Use write_file or edit_file to APPLY the change. Do NOT just describe it — actually modify the code.\n\n'+
+    'Step 4: After making changes, explain what you changed and why.\n\n'+
+    (summary?'Recent conversation context:\n'+summary+'\n\n':'')+
+    'IMPORTANT: Actually USE the tools. Make REAL code changes. Be specific.';
+  addMsg('ai','...');
+  let aiResponse='',modifiedFiles=[];
   try{
-    const r=await fetch('https://api.deepseek.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+p.key},body:JSON.stringify({model:p.model||'deepseek-chat',messages:[{role:'system',content:'Analyze these conversations. Suggest 1 concrete code improvement for the Workbench app. Output the improved HTML code block.'},{role:'user',content:summary}],max_tokens:4096})});
-    const d=await r.json();
-    addMsg('ai','## Self-Reflection\n\n'+d.choices?.[0]?.message?.content);
-    prog('Analysis complete','good');saveConvs();renderMessages();
-  }catch(e){prog('Failed','bad')}
+    const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:prompt,apiKey:p.key,model:p.model||'deepseek-chat'})});
+    const reader=response.body.getReader();
+    const decoder=new TextDecoder();
+    let buf='',ev='';
+    while(true){
+      const{done,value}=await reader.read();if(done)break;
+      buf+=decoder.decode(value,{stream:true});
+      const lns=buf.split('\n');buf=lns.pop()||'';
+      for(const line of lns){
+        if(line.startsWith('event: ')){ev=line.slice(7).trim();continue}
+        if(!line.startsWith('data: '))continue;
+        try{const d=JSON.parse(line.slice(6));
+          if(ev==='token'){aiResponse+=d.text;updateLastAi(aiResponse)}
+          else if(ev==='tool_call'){prog(d.tool+'...','warn')}
+          else if(ev==='tool_result'){prog(d.tool+': '+(d.result?.ok?'OK':'Failed'),d.result?.ok?'good':'bad');if(d.result?.ok&&(d.tool==='write_file'||d.tool==='edit_file'))modifiedFiles.push(d.result.path||'file')}
+          else if(ev==='done'){const finalText=d.text||aiResponse;const extra=modifiedFiles.length?`\n\n<div style="margin-top:8px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:11px"><b>Files modified:</b><br>${modifiedFiles.map(f=>'&#x2705; '+esc(f)).join('<br>')}<br><button onclick="location.reload()" style="margin-top:6px;padding:4px 12px;border-radius:6px;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;font-size:11px">Reload to apply changes</button></div>`:'';updateLastAi('## Self-Reflection\n\n'+finalText+extra);prog('Done'+(modifiedFiles.length?' ('+modifiedFiles.length+' files modified)':''),'good')}
+          else if(ev==='error'){prog(d.message||d.code,'bad');if(!aiResponse)updateLastAi('Error: '+d.message)}
+        }catch(e){}
+      }
+    }
+  }catch(e){updateLastAi('Connection error: '+e.message);prog('Failed','bad')}
+  saveConvs();renderSidebar();
 }
 
 function newChat(){const id='c_'+Date.now();conversations[id]={name:'New Chat',messages:[],created:Date.now()};activeConv=id;saveConvs();renderSidebar();renderMessages()}
@@ -370,8 +461,8 @@ function esc(s){const d=document.createElement('div');d.textContent=s;return d.i
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
 
 document.addEventListener('dragover',e=>{e.preventDefault()});
-document.addEventListener('drop',e=>{e.preventDefault();for(const f of e.dataTransfer.files){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:f.name,content:r.result,isImage:f.type.startsWith('image/'),text:f.type.startsWith('image/')?null:r.result});updateFiles()};f.type.startsWith('image/')?r.readAsDataURL(f):r.readAsText(f)}});
-document.addEventListener('paste',e=>{for(const it of e.clipboardData?.items||[]){if(it.type.startsWith('image/')){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:'paste-'+Date.now()+'.png',content:r.result,isImage:true});updateFiles()};r.readAsDataURL(it.getAsFile())}}});
+document.addEventListener('drop',e=>{e.preventDefault();for(const f of e.dataTransfer.files){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:f.name,content:r.result,isImage:f.type.startsWith('image/'),text:f.type.startsWith('image/')?null:r.result,blob:f});updateFiles()};f.type.startsWith('image/')?r.readAsDataURL(f):r.readAsText(f)}});
+document.addEventListener('paste',e=>{for(const it of e.clipboardData?.items||[]){if(it.type.startsWith('image/')){const f=it.getAsFile();const r=new FileReader();r.onload=()=>{pendingFiles.push({name:'paste-'+Date.now()+'.png',content:r.result,isImage:true,blob:f});updateFiles()};r.readAsDataURL(f)}}});
 $('input').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'});
 </script>
 </body>

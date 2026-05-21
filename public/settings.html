@@ -55,18 +55,18 @@ nav h1{font-size:14px;font-weight:600}
     <div class="row">
       <span class="dot on" id="keyDot"></span>
       <span class="lbl">Provider</span>
-      <select id="sProvider" onchange="onProviderChange()">
+      <select id="sProvider" onchange="onProviderChange();onSettingChange()">
         <option value="deepseek">DeepSeek</option>
         <option value="openai">OpenAI</option>
         <option value="anthropic">Anthropic</option>
       </select>
-      <select id="sModel" onchange="saveKey()">
+      <select id="sModel" onchange="onSettingChange()">
         <option>deepseek-chat</option>
       </select>
     </div>
     <div class="row">
       <span class="lbl">API Key</span>
-      <input type="password" id="sKey" placeholder="Paste API key here..." oninput="saveKey()">
+      <input type="password" id="sKey" placeholder="Paste API key here..." oninput="saveKey()" onchange="onSettingChange()">
     </div>
   </div>
 
@@ -110,6 +110,7 @@ function onProviderChange(model){
   const m=document.getElementById('sModel');
   m.innerHTML=(models[t]||['custom']).map(x=>`<option${x===model?' selected':''}>${x}</option>`).join('');
 }
+function onSettingChange(){saveKey();}
 
 function saveKey(){
   const type=document.getElementById('sProvider').value;
@@ -118,6 +119,7 @@ function saveKey(){
   localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type,key,model,active:!!key}]));
   localStorage.setItem('ccw_default_provider','ds');
   document.getElementById('keyDot').className='dot'+(key?' on':'');
+  if(key) toast('API Key 已保存');
 }
 
 function renderMcp(){

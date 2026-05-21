@@ -388,7 +388,10 @@ app.post('/api/chat', (req, res) => {
   const url = new URL(apiBase.replace(/\/+$/, '') + '/chat/completions');
   const body = JSON.stringify({
     model: model || 'deepseek-chat',
-    messages: [{ role: 'user', content: message }],
+    messages: [
+      { role: 'system', content: 'You are a coding assistant in a web Workbench. Generate complete, runnable code. For HTML/CSS/JS, include everything in a single file. For each code block, use the format ```lang:relative/path\ncode\n``` so the UI knows where to save it. When the user asks for a web app or UI, always generate a complete HTML file with inline CSS and JS. Explain briefly what you built and how to use it.' },
+      { role: 'user', content: message }
+    ],
     stream: false,
     max_tokens: 8192
   });

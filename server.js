@@ -13,10 +13,28 @@ const SFTP_CONFIG_FILE = path.join(__dirname, 'data', 'sftp-config.json');
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'focus-todo-secret-change-in-production';
 const JWT_EXPIRY = '7d';
+const startTime = Date.now();
+
+// Error logging
+const LOG_FILE = path.join(__dirname, 'data', 'server.log');
+function logError(msg) {
+  try {
+    const ts = new Date().toISOString();
+    fs.appendFileSync(LOG_FILE, `[${ts}] ${msg}\n`);
+  } catch {}
+}
 
 const app = express();
 app.use(compression());
 app.use(express.json());
+
+// Request logging
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    if (res.statusCode >= 400) logError(`${req.method} ${req.path} → ${res.statusCode}`);
+  });
+  next();
+});
 
 // Cache static assets (1 hour for HTML, 1 week for others)
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -554,6 +572,44 @@ app.get('/api/btp/download/:name', (req, res) => {
   if (fs.existsSync(zip)) return res.download(zip);
   res.status(404).json({ error: 'Package not found' });
 });
+
+// --- Health & Status ---
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    uptime: Math.floor((Date.now() - startTime) / 1000),
+    uptimeFormatted: formatUptime(Math.floor((Date.now() - startTime) / 1000)),
+    memory: Math.floor(process.memoryUsage().rss / 1024 / 1024) + ' MB',
+    node: process.version,
+    platform: process.platform,
+    endpoints: ['/todolist/', '/skill-copilot/', '/chat-ui.html', '/fiori-upload.html', '/inventory-upload.html', '/docs.html', '/settings.html'],
+    mcpTools: ['web_fetch', 'file_info', 'list_files', 'system_info', 'search_kb', 'joule_chat', 'joule_sales_order', 'joule_business_data', 'joule_status', 'joule_agent_invoke']
+  });
+});
+
+function formatUptime(seconds) {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `${d}d ${h}h ${m}m`;
+}
+
+// Clean old builds (>24h)
+function cleanOldBuilds() {
+  const dirs = [path.join(__dirname, 'data', 'inventory-uploads'), path.join(__dirname, 'data', 'btp-builds'), path.join(__dirname, 'public', 'builds')];
+  dirs.forEach(dir => {
+    if (!fs.existsSync(dir)) return;
+    fs.readdirSync(dir).forEach(f => {
+      const fp = path.join(dir, f);
+      try {
+        const stat = fs.statSync(fp);
+        if (Date.now() - stat.mtimeMs > 86400000) fs.unlinkSync(fp);
+      } catch {}
+    });
+  });
+}
+setInterval(cleanOldBuilds, 3600000); // Every hour
+cleanOldBuilds();
 
 // --- Route fallbacks ---
 app.get('/todolist', (req, res) => res.redirect('/todolist/'));

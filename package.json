@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "postinstall": "pip3 install --break-system-packages pandas requests openpyxl 2>/dev/null; pip3 install --user pandas requests openpyxl 2>/dev/null; pip install --user pandas requests openpyxl 2>/dev/null; python3 -m pip install --user pandas requests openpyxl 2>/dev/null; exit 0",
+    "dev": "nodemon server.js",
     "sftp": "node sftp-server.js",
     "sftp-add-user": "node sftp-server.js --add-user",
     "sftp-list-users": "node sftp-server.js --list-users"
@@ -16,6 +16,7 @@
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.1.1",
+    "nodemon": "^3.1.14",
     "sftp-server": "^1.0.6",
     "sql.js": "^1.12.0",
     "ssh2-sftp-client": "^12.1.1",

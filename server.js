@@ -421,7 +421,10 @@ app.post('/api/chat', (req, res) => {
       res.write(`event: error\ndata: ${JSON.stringify({ code, message })}\n\n`);
       res.end();
     }
-  }, { model });
+  }, { model }).catch(err => {
+    logError('Chat agent crashed: ' + err.message);
+    try { res.write(`event: error\ndata: ${JSON.stringify({ code: 'agent_crash', message: err.message })}\n\n`); res.end(); } catch {}
+  });
 
   req.on('close', () => {
     // Client disconnected — clean up if needed

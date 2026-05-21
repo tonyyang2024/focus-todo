@@ -379,12 +379,10 @@ app.patch('/api/tasks/queue/:id', express.json(), (req, res) => {
 
 // --- Chat SSE Endpoint ---
 app.post('/api/chat', (req, res) => {
-  try {
-  const { message, conversationId, apiKey, model } = req.body;
+  const { message, apiKey, model } = req.body || {};
   if (!message) return res.status(400).json({ error: 'message required' });
   if (!apiKey) return res.status(400).json({ error: 'apiKey required' });
 
-  // SSE headers
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -392,53 +390,61 @@ app.post('/api/chat', (req, res) => {
     'X-Accel-Buffering': 'no'
   });
 
-  let convId = conversationId || ('conv_' + Date.now());
-  try {
-    const history = db.getConversationMessages(convId).map(m => ({ role: m.role, content: m.content }));
-    db.saveConversationMessage(convId, 'user', message);
-  } catch(e) {
-    // If DB fails, still try to respond
-    logError('Chat DB error: ' + e.message);
-  }
-
-  let buffer = '';
-  let responded = false;
-  function safeEnd(data) {
-    if (responded) return;
-    responded = true;
-    try { if (data) res.write(data); res.end(); } catch {}
-  }
-
-  aiClient.runAgent(message, [], apiKey, {
-    onToken: ({ text }) => {
-      buffer += text;
-      try { res.write(`event: token\ndata: ${JSON.stringify({ text })}\n\n`); } catch {}
-    },
-    onToolCall: (data) => {
-      try { res.write(`event: tool_call\ndata: ${JSON.stringify(data)}\n\n`); } catch {}
-    },
-    onToolResult: (data) => {
-      try { res.write(`event: tool_result\ndata: ${JSON.stringify(data)}\n\n`); } catch {}
-    },
-    onDone: ({ text }) => {
-      const final = text || buffer;
-      try { db.saveConversationMessage(convId, 'assistant', final); } catch {}
-      safeEnd(`event: done\ndata: ${JSON.stringify({ text: final, conversationId: convId })}\n\n`);
-    },
-    onError: ({ code, message }) => {
-      try { db.saveConversationMessage(convId, 'assistant', `[Error: ${code}] ${message}`); } catch {}
-      safeEnd(`event: error\ndata: ${JSON.stringify({ code, message })}\n\n`);
-    }
-  }, { model }).catch(err => {
-    logError('Chat agent crashed: ' + err.message + ' ' + (err.stack||'').slice(0,300));
-    safeEnd(`event: error\ndata: ${JSON.stringify({ code: 'crash', message: err.message })}\n\n`);
+  // Direct API call — simplest possible path
+  const https = require('https');
+  const apiBase = process.env.AI_API_BASE || 'https://api.deepseek.com/v1';
+  const url = new URL(apiBase.replace(/\/+$/, '') + '/chat/completions');
+  const body = JSON.stringify({
+    model: model || 'deepseek-chat',
+    messages: [{ role: 'user', content: message }],
+    stream: true,
+    max_tokens: 8192
   });
 
-  req.on('close', () => { safeEnd(); });
-  } catch(e) {
-    logError('Chat endpoint error: ' + e.message);
-    try { res.status(500).json({ error: e.message }); } catch {}
-  }
+  let buffer = '';
+  let ended = false;
+  function end(data) { if (!ended) { ended = true; try { if (data) res.write(data); res.end(); } catch {} } }
+
+  const req2 = https.request({
+    hostname: url.hostname, port: url.port || 443, path: url.pathname + url.search,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'Content-Length': Buffer.byteLength(body) },
+    rejectUnauthorized: false, timeout: 120000
+  }, (apiRes) => {
+    if (apiRes.statusCode !== 200) {
+      let d = ''; apiRes.on('data', c => d += c);
+      apiRes.on('end', () => end(`event: error\ndata: ${JSON.stringify({ code: 'api_' + apiRes.statusCode, message: d.slice(0,500) })}\n\n`));
+      return;
+    }
+    let buf = '';
+    apiRes.on('data', (chunk) => {
+      buf += chunk.toString('utf8');
+      const lines = buf.split('\n'); buf = lines.pop() || '';
+      for (const line of lines) {
+        const t = line.trim();
+        if (!t || !t.startsWith('data: ')) continue;
+        const s = t.slice(6);
+        if (s === '[DONE]') { end(); return; }
+        try {
+          const d = JSON.parse(s);
+          const delta = d.choices?.[0]?.delta;
+          if (delta?.content) {
+            buffer += delta.content;
+            res.write(`event: token\ndata: ${JSON.stringify({ text: delta.content })}\n\n`);
+          }
+        } catch {}
+      }
+    });
+    apiRes.on('end', () => {
+      res.write(`event: done\ndata: ${JSON.stringify({ text: buffer })}\n\n`);
+      end();
+    });
+  });
+  req2.on('error', (e) => end(`event: error\ndata: ${JSON.stringify({ code: 'network', message: e.message })}\n\n`));
+  req2.on('timeout', () => { req2.destroy(); end(`event: error\ndata: ${JSON.stringify({ code: 'timeout', message: 'Request timed out' })}\n\n`); });
+  req2.write(body); req2.end();
+
+  req.on('close', () => { try { req2.destroy(); } catch {} });
 });
 
 // --- Conversation CRUD ---

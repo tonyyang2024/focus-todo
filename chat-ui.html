@@ -128,11 +128,14 @@ input[type=file]{display:none}
 
 <div class="main">
   <div class="topbar">
-    <select id="model"><option value="deepseek-chat">DeepSeek V3</option><option value="deepseek-reasoner">DeepSeek R1</option></select>
+    <select id="model" onchange="onModelChange()"><option value="deepseek-chat">DeepSeek V3</option><option value="deepseek-reasoner">DeepSeek R1</option></select>
     <span class="sep"></span>
     <span class="key-dot off" id="keyDot"></span>
     <span id="keyLabel" style="font-size:10px;color:var(--t3)">No Key</span>
-    <a href="/settings.html">Config</a>
+    <input type="password" id="keyInline" placeholder="Paste API Key..." style="display:none;width:180px;padding:4px 8px;border:1px solid var(--bdr);border-radius:4px;font-size:10px;font-family:inherit;outline:none;background:var(--bg)" oninput="saveKeyInline()">
+    <button id="keySaveBtn" onclick="toggleKeyInput()" style="font-size:10px;padding:4px 8px;border-radius:4px;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;font-family:inherit">Set Key</button>
+    <a href="/settings.html" style="font-size:10px;color:var(--t3);text-decoration:none;margin-left:4px">Settings</a>
+    <span class="sep" style="flex:1"></span>
     <button id="toolsToggleBtn" onclick="var p=document.getElementById('toolsPanel');var o=document.getElementById('panelOverlay');p.classList.toggle('show');o.classList.toggle('show')">&#x2699; Tools</button>
   </div>
 
@@ -221,8 +224,32 @@ window.addEventListener('pageshow', (e) => {
 function refreshProviderUI(){
   const p = getProvider();
   $('keyDot').className = 'key-dot' + (p.key ? ' on' : ' off');
-  $('keyLabel').textContent = p.key ? p.type + ' configured' : 'No API Key';
+  $('keyLabel').textContent = p.key ? p.type + ' configured' : 'No Key';
   $('model').value = p.model || 'deepseek-chat';
+  if(p.key){
+    $('keyLabel').style.display='';$('keyInline').style.display='none';$('keySaveBtn').textContent='Set Key';
+  }
+}
+function toggleKeyInput(){
+  const inp=$('keyInline');
+  if(inp.style.display==='none'){
+    inp.style.display='';inp.focus();$('keySaveBtn').textContent='Save';
+  }else{
+    saveKeyInline();
+    inp.style.display='none';$('keySaveBtn').textContent='Set Key';
+  }
+}
+function saveKeyInline(){
+  const key=$('keyInline').value.trim(),model=$('model').value;
+  if(!key)return;
+  localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type:'deepseek',key,model,active:true}]));
+  localStorage.setItem('ccw_default_provider','ds');
+  refreshProviderUI();toast('Key saved');
+}
+function onModelChange(){
+  const p=getProvider();if(!p.key)return;
+  localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type:p.type,key:p.key,model:$('model').value,active:true}]));
+  localStorage.setItem('ccw_default_provider','ds');
 }
 
 // ====== SIDEBAR ======
@@ -310,9 +337,13 @@ function previewFile(url){showPreview(url)}
 // ====== SEND ======
 function prog(m,c){const p=$('progress');p.classList.add('show');$('progressLog').innerHTML+=`<div style="color:var(--${c||'t2'});padding:1px 0">${m}</div>`}
 async function send(){
-  const t=$('input').value.trim(),provider=getProvider();
+  const t=$('input').value.trim();
+  // Auto-detect key from inline input
+  const inlineKey=$('keyInline').value.trim();
+  if(inlineKey)saveKeyInline();
+  const provider=getProvider();
   if((!t&&!pendingFiles.length)||sending)return;
-  if(!provider.key){toast('Set API Key in Settings');return}
+  if(!provider.key){toast('Set API Key above or in Settings');toggleKeyInput();return}
   sending=true;$('sendBtn').disabled=true;
   const files=[...pendingFiles];pendingFiles=[];updateFiles();
 

@@ -364,10 +364,10 @@ function scrollToBottom() {
 
 // ---- Tool call cards ----
 
-function addToolCallCard(parentEl, tool, params, id) {
+function addToolCallCard(parentEl, tool, params, toolCallId) {
   const card = document.createElement('div');
   card.className = 'tool-call-card';
-  card.id = 'tool-' + id;
+  card.id = 'tool-' + (toolCallId || (++msgCounter));
   const summary = JSON.stringify(params || {}).slice(0, 60);
 
   const iconMap = {
@@ -528,17 +528,18 @@ function handleError(id, message) {
   setSending(false);
 }
 
-function handleToolCall(id, tool, params) {
+function handleToolCall(id, tool, params, toolCallId) {
   if (id !== activeRequestId || !currentAssistantEl) return;
-  const card = addToolCallCard(currentAssistantEl.querySelector('.content'), tool, params, id + '-' + tool);
+  const card = addToolCallCard(currentAssistantEl.querySelector('.content'), tool, params, toolCallId);
+  // Store toolCallId on the card for result matching
+  card.setAttribute('data-tool-call-id', toolCallId);
 }
 
-function handleToolResult(id, tool, result) {
+function handleToolResult(id, tool, result, toolCallId) {
   if (id !== activeRequestId || !currentAssistantEl) return;
-  // Find the matching tool call card
   const cards = currentAssistantEl.querySelectorAll('.tool-call-card');
   for (const card of cards) {
-    if (card.id === 'tool-' + id + '-' + tool) {
+    if (card.getAttribute('data-tool-call-id') === String(toolCallId)) {
       updateToolResult(card, result);
       break;
     }
@@ -580,10 +581,10 @@ window.addEventListener('message', (e) => {
       }
       break;
     case 'toolCall':
-      handleToolCall(msg.id, msg.tool, msg.params);
+      handleToolCall(msg.id, msg.tool, msg.params, msg.toolCallId);
       break;
     case 'toolResult':
-      handleToolResult(msg.id, msg.tool, msg.result);
+      handleToolResult(msg.id, msg.tool, msg.result, msg.toolCallId);
       break;
   }
 });

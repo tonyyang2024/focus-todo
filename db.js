@@ -233,7 +233,7 @@ function searchMemory(q) {
 
 function listMemoryKeys() {
   initMemory();
-  return queryAll('SELECT key, tags, updated_at FROM agent_memory ORDER BY updated_at DESC LIMIT 100');
+  return queryAll('SELECT key, value, tags, updated_at FROM agent_memory ORDER BY updated_at DESC LIMIT 100');
 }
 
 function deleteMemory(key) {

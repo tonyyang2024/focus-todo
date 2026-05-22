@@ -106,12 +106,12 @@ class ChatViewProvider {
             } else if (data.type === 'tool_call') {
               webviewView.webview.postMessage({
                 type: 'toolCall', id,
-                tool: data.tool, params: data.params
+                toolCallId: data.id, tool: data.tool, params: data.params
               });
             } else if (data.type === 'tool_result') {
               webviewView.webview.postMessage({
                 type: 'toolResult', id,
-                tool: data.tool, result: data.result
+                toolCallId: data.id, tool: data.tool, result: data.result
               });
             }
           } catch {}

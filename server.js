@@ -37,7 +37,17 @@ process.on('uncaughtException', (err) => {
 });
 
 app.use(compression());
-app.use(express.json());
+
+// CORS — allow VS Code webview and local dev
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
+app.use(express.json({ limit: '10mb' }));
 
 // Request logging
 app.use((req, res, next) => {
@@ -455,12 +465,25 @@ app.post('/api/chat/stream', (req, res) => {
   res.flushHeaders();
 
   let aborted = false;
+  let doneSent = false;
   let toolCallCounter = 0;
+
+  // Set timeout (5 minutes)
+  req.setTimeout(300000, () => {
+    aborted = true;
+    if (!doneSent) {
+      doneSent = true;
+      try { res.write(`data: ${JSON.stringify({ type: 'error', message: 'Request timeout (5 min)' })}\n\n`); } catch {}
+      try { res.end(); } catch {}
+    }
+  });
+
   req.on('close', () => { aborted = true; });
 
   function sendSSE(data) {
-    if (aborted) return;
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (aborted || doneSent) return;
+    if (data.type === 'done' || data.type === 'error') doneSent = true;
+    try { res.write(`data: ${JSON.stringify(data)}\n\n`); } catch {}
   }
 
   // Extract the last user message and history for runAgent
@@ -475,73 +498,52 @@ app.post('/api/chat/stream', (req, res) => {
 
   if (useTools) {
     // --- Agent mode with tool support ---
-    try {
-      aiClient.runAgent(
-        userMessage,
-        history,
-        apiKey,
-        {
-          onToken: ({ text }) => { sendSSE({ type: 'token', text }); },
-          onToolCall: ({ id, tool, params }) => {
-            toolCallCounter++;
-            sendSSE({ type: 'tool_call', id: `${toolCallCounter}`, tool, params });
-          },
-          onToolResult: ({ id, tool, result }) => {
-            sendSSE({ type: 'tool_result', id: `${toolCallCounter}`, tool, result });
-          },
-          onDone: ({ text }) => {
-            if (aborted) return;
-            sendSSE({ type: 'done', content: text });
-            res.end();
-          },
-          onError: ({ code, message }) => {
-            if (aborted) return;
-            sendSSE({ type: 'error', message: `[${code}] ${message}` });
-            res.end();
-          }
+    aiClient.runAgent(
+      userMessage,
+      history,
+      apiKey,
+      {
+        onToken: ({ text }) => { sendSSE({ type: 'token', text }); },
+        onToolCall: ({ id, tool, params }) => {
+          toolCallCounter++;
+          sendSSE({ type: 'tool_call', id: `${toolCallCounter}`, tool, params });
         },
-        { model: useModel, maxIterations: 8 }
-      ).catch(err => {
-        if (!aborted) {
-          sendSSE({ type: 'error', message: err.message || 'Unknown error' });
+        onToolResult: ({ tool, result }) => {
+          sendSSE({ type: 'tool_result', id: `${toolCallCounter}`, tool, result });
+        },
+        onDone: ({ text }) => {
+          sendSSE({ type: 'done', content: text });
+          res.end();
+        },
+        onError: ({ code, message }) => {
+          sendSSE({ type: 'error', message: `[${code}] ${message}` });
           res.end();
         }
-      });
-    } catch (e) {
-      if (!aborted) {
-        sendSSE({ type: 'error', message: e.message });
-        res.end();
-      }
-    }
+      },
+      { model: useModel, maxIterations: 8 }
+    ).catch(err => {
+      sendSSE({ type: 'error', message: err.message || 'Agent error' });
+      try { res.end(); } catch {}
+    });
   } else {
     // --- Simple chat mode (no tools) ---
-    try {
-      aiClient.callLLM(
-        messages,
-        [],
-        apiKey,
-        useModel,
-        (token) => { sendSSE({ type: 'token', text: token }); }
-      ).then(result => {
-        if (aborted) return;
-        if (result.error) {
-          sendSSE({ type: 'error', message: result.error });
-        } else {
-          sendSSE({ type: 'done', content: result.content });
-        }
-        res.end();
-      }).catch(err => {
-        if (!aborted) {
-          sendSSE({ type: 'error', message: err.message || 'Unknown error' });
-          res.end();
-        }
-      });
-    } catch (e) {
-      if (!aborted) {
-        sendSSE({ type: 'error', message: e.message });
-        res.end();
+    aiClient.callLLM(
+      messages,
+      [],
+      apiKey,
+      useModel,
+      (token) => { sendSSE({ type: 'token', text: token }); }
+    ).then(result => {
+      if (result.error) {
+        sendSSE({ type: 'error', message: result.error });
+      } else {
+        sendSSE({ type: 'done', content: result.content });
       }
-    }
+      res.end();
+    }).catch(err => {
+      sendSSE({ type: 'error', message: err.message || 'Chat error' });
+      try { res.end(); } catch {}
+    });
   }
 });
 

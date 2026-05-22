@@ -981,6 +981,7 @@ app.get('/api/btp/download/:name', (req, res) => {
 
 // --- Health & Status ---
 app.get('/api/health', (req, res) => {
+  const usage = aiClient.getUsage();
   res.json({
     ok: true,
     uptime: Math.floor((Date.now() - startTime) / 1000),
@@ -988,6 +989,7 @@ app.get('/api/health', (req, res) => {
     memory: Math.floor(process.memoryUsage().rss / 1024 / 1024) + ' MB',
     node: process.version,
     platform: process.platform,
+    usage: { tokensIn: usage.tokensIn, tokensOut: usage.tokensOut, requests: usage.requests },
     pages: ['/todolist/', '/skill-copilot/', '/chat-ui.html', '/fiori-upload.html', '/inventory-upload.html', '/docs.html', '/settings.html'],
     apiEndpoints: ['/api/chat', '/api/conversations', '/api/documents/upload', '/api/config/key', '/api/workbench/apply', '/api/workbench/build', '/api/health', '/api/tasks/queue', '/api/memory/save', '/api/memory/search', '/api/kb/search'],
     mcpTools: ['web_fetch', 'file_info', 'list_files', 'system_info', 'search_kb', 'document_parse', 'task_queue_manage', 'joule_chat', 'joule_sales_order', 'joule_business_data', 'joule_status', 'joule_agent_invoke']

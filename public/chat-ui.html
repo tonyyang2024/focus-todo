@@ -1,469 +1,595 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#f5f5f5">
 <title>Workbench</title>
+<link rel="stylesheet" href="/shared/theme.css">
 <style>
-:root{
-  --bg:#f2f2f7;--card:#fff;--bdr:transparent;--txt:#1d1d1f;--t2:#86868b;--t3:#aeaeb2;
-  --ac:#007aff;--ac2:#0066d6;--bad:#ff3b30;--good:#34c759;--warn:#ff9500;
-  --r:10px;--r2:18px;--shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
-  --safe:env(safe-area-inset-bottom,8px)
-}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--txt);height:100dvh;display:flex;overflow:hidden;-webkit-font-smoothing:antialiased;letter-spacing:-0.01em}
+:root{--safe:env(safe-area-inset-bottom,8px)}
+body{height:100dvh;display:flex;overflow:hidden}
 
-/* LEFT SIDEBAR */
-.sidebar{width:228px;flex-shrink:0;background:rgba(255,255,255,0.72);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-right:0.5px solid rgba(0,0,0,0.08);display:flex;flex-direction:column;overflow:hidden}
-.side-hd{padding:18px 16px 14px;font-weight:700;font-size:15px;letter-spacing:-0.02em;color:var(--txt);flex-shrink:0}
+/* Sidebar */
+.sidebar{width:240px;flex-shrink:0;background:var(--yh-card);border-right:1px solid var(--yh-border);display:flex;flex-direction:column;overflow:hidden}
+.side-hd{padding:18px 16px 12px;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:space-between}
+.side-hd .theme-toggle{cursor:pointer;font-size:16px;padding:2px 6px;border-radius:6px;border:none;background:none}
 .side-convs{flex:1;overflow-y:auto;padding:4px 10px}
-.conv-item{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:var(--r);cursor:pointer;font-size:12.5px;color:var(--t2);transition:all 0.18s ease;margin-bottom:1px;font-weight:450}
-.conv-item:hover{background:rgba(0,0,0,0.04);color:var(--txt)}
-.conv-item.active{background:rgba(0,122,255,0.1);color:var(--ac);font-weight:540}
+.conv-item{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:var(--yh-radius);cursor:pointer;font-size:12.5px;color:var(--yh-text2);transition:all var(--yh-transition);margin-bottom:1px;font-weight:450}
+.conv-item:hover{background:rgba(0,122,255,0.06);color:var(--yh-text)}
+.conv-item.active{background:rgba(0,122,255,0.1);color:var(--yh-accent);font-weight:540}
 .conv-item .c-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.conv-item .c-del{opacity:0;font-size:15px;color:var(--t3);cursor:pointer;flex-shrink:0;padding:0 3px;transition:opacity 0.15s}
-.conv-item:hover .c-del{opacity:1}.conv-item .c-del:hover{color:var(--bad)}
+.conv-item .c-del{opacity:0;font-size:15px;color:var(--yh-text3);cursor:pointer;flex-shrink:0;padding:0 3px}
+.conv-item:hover .c-del{opacity:1}.conv-item .c-del:hover{color:var(--yh-red)}
 .side-ft{padding:10px;display:flex;flex-direction:column;gap:5px}
-.side-ft button,.side-ft a{display:block;width:100%;padding:8px 12px;border-radius:var(--r);border:none;background:rgba(0,0,0,0.03);color:var(--t2);cursor:pointer;font-size:12px;font-family:inherit;text-align:center;text-decoration:none;transition:all 0.18s ease;font-weight:480}
-.side-ft button:hover,.side-ft a:hover{background:rgba(0,0,0,0.06);color:var(--txt)}
-.side-ft .new-chat{background:var(--ac);color:#fff;font-weight:560}
-.side-ft .new-chat:hover{background:var(--ac2);color:#fff}
+.side-ft button,.side-ft a{display:block;width:100%;padding:8px 12px;border-radius:var(--yh-radius);border:none;background:rgba(0,122,255,0.06);color:var(--yh-text2);cursor:pointer;font-size:12px;font-family:inherit;text-align:center;text-decoration:none;transition:all var(--yh-transition)}
+.side-ft button:hover,.side-ft a:hover{background:rgba(0,122,255,0.12);color:var(--yh-text)}
+.side-ft .new-chat{background:var(--yh-accent);color:#fff;font-weight:560}
+.side-ft .new-chat:hover{background:var(--yh-accent2);color:#fff}
 
-/* MAIN */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;background:var(--bg)}
-.topbar{padding:8px 18px;background:rgba(255,255,255,0.72);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:0.5px solid rgba(0,0,0,0.06);display:flex;align-items:center;gap:10px;flex-shrink:0;z-index:5}
-.topbar select{background:var(--bg);border:1px solid rgba(0,0,0,0.08);color:var(--txt);padding:4px 10px;border-radius:7px;font-size:11.5px;outline:none;font-family:inherit;cursor:pointer}
+/* Main area */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;background:var(--yh-bg)}
+
+/* Topbar */
+.topbar{padding:8px 18px;background:var(--yh-card);border-bottom:1px solid var(--yh-border);display:flex;align-items:center;gap:10px;flex-shrink:0;z-index:5}
+.topbar .key-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}.key-dot.on{background:var(--yh-green)}.key-dot.off{background:var(--yh-red)}
 .topbar .sep{flex:1}
-.topbar .key-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 2px rgba(0,0,0,0.04)}.key-dot.on{background:var(--good)}.key-dot.off{background:var(--bad)}
-.topbar a{font-size:11px;color:var(--ac);text-decoration:none;font-weight:480}
-.topbar button{background:none;border:none;color:var(--t2);cursor:pointer;font-size:11px;font-family:inherit;padding:4px 10px;border-radius:7px;transition:all 0.15s}
+.topbar input[type=password]{width:200px;padding:4px 8px;border:1px solid var(--yh-accent);border-radius:4px;font-size:10px;font-family:inherit;outline:none;background:var(--yh-bg);color:var(--yh-text)}
+.topbar select{background:var(--yh-bg);border:1px solid var(--yh-border);color:var(--yh-text);padding:4px 10px;border-radius:var(--yh-radius-sm);font-size:11.5px;outline:none;font-family:inherit;cursor:pointer}
 
-/* CHAT */
-.chat-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--card);margin:0;border-radius:0}
+/* Chat area */
+.chat-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--yh-card);margin:0}
 .messages{flex:1;overflow-y:auto;padding:24px 28px;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth}
-.msg{display:flex;gap:10px;max-width:80%;animation:in 0.2s ease}
+.msg{display:flex;gap:10px;max-width:82%;animation:in 0.2s ease}
 .msg.user{align-self:flex-end;flex-direction:row-reverse}
 @keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.msg .av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;box-shadow:0 1px 2px rgba(0,0,0,0.06)}
-.msg.user .av{background:var(--ac);color:#fff}
-.msg.ai .av{background:#e8e8ed;color:var(--t2)}
-.msg .bubble{padding:11px 16px;border-radius:var(--r2);line-height:1.48;font-size:13.5px;word-break:break-word;white-space:pre-wrap;letter-spacing:-0.01em}
-.msg.user .bubble{background:var(--ac);color:#fff;border-bottom-right-radius:8px;box-shadow:0 2px 8px rgba(0,122,255,0.18)}
-.msg.ai .bubble{background:var(--card);border:1px solid rgba(0,0,0,0.06);border-bottom-left-radius:8px;box-shadow:var(--shadow)}
-.msg.ai .bubble code{background:#f2f2f7;padding:2px 6px;border-radius:5px;font-size:11.5px;color:var(--txt)}
-.msg.ai .bubble pre{background:#f8f8fa;border:1px solid rgba(0,0,0,0.05);border-radius:12px;padding:12px 14px;margin:8px 0;overflow-x:auto;font-family:'SF Mono','Cascadia Code',Consolas,monospace;font-size:11px;line-height:1.5}
+.msg .av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.msg.user .av{background:var(--yh-accent);color:#fff}
+.msg.ai .av{background:rgba(0,0,0,0.06);color:var(--yh-text2)}
+.msg .bubble{padding:11px 16px;border-radius:var(--yh-radius-lg);line-height:1.5;font-size:13.5px;word-break:break-word;white-space:pre-wrap}
+.msg.user .bubble{background:var(--yh-accent);color:#fff;border-bottom-right-radius:8px}
+.msg.ai .bubble{background:var(--yh-card);border:1px solid var(--yh-border);border-bottom-left-radius:8px}
+.msg.ai .bubble code{background:rgba(0,0,0,0.05);padding:2px 6px;border-radius:5px;font-size:11.5px}
+.msg.ai .bubble pre{background:rgba(0,0,0,0.03);border:1px solid var(--yh-border);border-radius:10px;padding:12px 14px;margin:8px 0;overflow-x:auto;font-family:var(--yh-mono);font-size:11px;line-height:1.5}
 .code-block{margin:8px 0}
-.pre-btns{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap}
-.pre-btns button,.pre-btns a{padding:4px 10px;border-radius:7px;border:1px solid rgba(0,0,0,0.08);background:var(--card);color:var(--t2);cursor:pointer;font-size:10.5px;font-family:inherit;transition:all 0.15s ease;text-decoration:none;font-weight:500}
-.pre-btns button:hover{border-color:var(--ac);color:var(--ac);background:rgba(0,122,255,0.05)}
-.pre-btns .deploy{color:var(--good);border-color:var(--good)}.pre-btns .deploy:hover{background:rgba(52,199,89,0.06)}
-.pre-btns .btp{color:var(--ac);border-color:var(--ac)}
-.pre-btns .apply{color:#7c3aed;border-color:#7c3aed}.pre-btns .apply:hover{background:rgba(124,58,237,0.06)}
-.refine-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
-.refine-row button{padding:4px 12px;border-radius:14px;border:1px solid rgba(0,0,0,0.08);background:var(--card);color:var(--t2);cursor:pointer;font-size:10.5px;font-family:inherit;transition:all 0.15s ease}
-.refine-row button:hover{border-color:var(--ac);color:var(--ac);background:rgba(0,122,255,0.05)}
-.empty-chat{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--t3);font-size:15px;line-height:1.8;font-weight:450}
+.code-block-header{display:flex;align-items:center;gap:8px;padding:4px 10px;background:var(--yh-bg);border:1px solid var(--yh-border);border-bottom:none;border-radius:8px 8px 0 0;font-size:10.5px;color:var(--yh-text3)}
+.code-block-header .lang{font-weight:600;text-transform:uppercase}
+.code-block-header .file-path{color:var(--yh-accent);margin-left:4px;font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.code-block-header .actions{margin-left:auto;display:flex;gap:4px}
+.code-block-header button{padding:3px 8px;border-radius:4px;border:1px solid var(--yh-border);background:var(--yh-card);color:var(--yh-text2);cursor:pointer;font-size:10px;font-family:inherit}
+.code-block-header button:hover{border-color:var(--yh-accent);color:var(--yh-accent)}
+.code-block pre{border-radius:0 0 8px 8px;margin-top:0!important}
 
-/* INPUT */
-.input-area{padding:14px 20px 18px;background:rgba(255,255,255,0.72);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:0.5px solid rgba(0,0,0,0.06);flex-shrink:0}
-.input-row{display:flex;gap:8px;align-items:flex-end}
-.input-row textarea{flex:1;background:#f2f2f7;border:1.5px solid transparent;color:var(--txt);padding:11px 16px;border-radius:20px;font-size:13.5px;font-family:inherit;resize:none;outline:none;min-height:42px;max-height:120px;line-height:1.35;transition:all 0.2s ease;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
-.input-row textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3.5px rgba(0,122,255,0.12);background:#fff}
-.input-row textarea::placeholder{color:var(--t3)}
-.btn{width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;transition:all 0.18s ease}
-.btn-ghost{background:rgba(0,0,0,0.04);color:var(--t2)}.btn-ghost:hover{background:rgba(0,0,0,0.08);color:var(--txt)}
-.btn-accent{background:var(--ac);color:#fff;box-shadow:0 2px 8px rgba(0,122,255,0.3)}.btn-accent:hover{background:var(--ac2);transform:scale(1.04)}.btn-accent:disabled{opacity:0.35;transform:none}
-.btn-rec{background:var(--bad);color:#fff;animation:pulse 1.4s infinite;box-shadow:0 2px 8px rgba(255,59,48,0.3)}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,48,0.35)}50%{box-shadow:0 0 0 10px rgba(255,59,48,0)}}
-.hint{font-size:10px;color:var(--t3);padding:6px 0 0 14px;font-weight:450}
-.files-bar{padding:0 20px 6px;display:flex;flex-wrap:wrap;gap:4px}
-.file-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:var(--card);border:1px solid rgba(0,0,0,0.06);border-radius:10px;font-size:10.5px;color:var(--t2);box-shadow:var(--shadow)}
-.file-chip .x{cursor:pointer;color:var(--t3);font-size:12px}.file-chip .x:hover{color:var(--bad)}
+.streaming-cursor{display:inline-block;width:6px;height:14px;background:var(--yh-accent);animation:blink 0.8s infinite;vertical-align:text-bottom;margin-left:1px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 
-/* RIGHT PANEL */
-.panel-overlay{display:none;position:fixed;inset:0;z-index:14;background:rgba(0,0,0,0.25);backdrop-filter:blur(4px)}
-.panel-overlay.show{display:block}
-.panel{display:none;position:fixed;right:0;top:0;bottom:0;width:300px;z-index:15;background:rgba(255,255,255,0.95);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border-left:0.5px solid rgba(0,0,0,0.08);overflow-y:auto;padding:20px 16px;gap:16px;flex-direction:column;box-shadow:-8px 0 40px rgba(0,0,0,0.1)}
-.panel.show{display:flex}
-.panel h3{font-size:10.5px;text-transform:uppercase;letter-spacing:0.6px;color:var(--t3);font-weight:600;margin-bottom:2px}
-.panel input,.panel select{width:100%;padding:7px 10px;border:1px solid rgba(0,0,0,0.1);border-radius:var(--r);font-size:11px;outline:none;font-family:inherit;background:var(--bg);margin:4px 0}
-.panel input:focus,.panel select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(0,122,255,0.1)}
-.panel button{width:100%;padding:7px;border-radius:var(--r);border:1px solid rgba(0,0,0,0.08);background:var(--card);color:var(--t2);cursor:pointer;font-size:11px;font-family:inherit;margin:3px 0;transition:all 0.15s ease}
-.panel button:hover{border-color:var(--ac);color:var(--ac)}
-.panel button.primary{background:var(--ac);color:#fff;border:none}
+.empty-chat{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--yh-text3);font-size:15px;line-height:1.8;font-weight:450}
 
-/* PROGRESS */
-.progress-panel{display:none;margin:0 20px 6px;padding:10px 14px;background:var(--card);border:1px solid rgba(0,0,0,0.06);border-radius:var(--r);font-family:'SF Mono','Cascadia Code',Consolas,monospace;font-size:10.5px;max-height:130px;overflow-y:auto;box-shadow:var(--shadow)}
-.progress-panel.show{display:block}
-
-/* PREVIEW */
-.preview-panel{display:none;position:fixed;bottom:0;left:0;right:0;height:68vh;z-index:30;background:var(--card);border-radius:16px 16px 0 0;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.15)}
+/* Preview panel */
+.preview-panel{display:none;position:fixed;bottom:0;left:0;right:0;height:65vh;z-index:30;background:var(--yh-card);border-radius:16px 16px 0 0;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.15)}
 .preview-panel.show{display:flex}
-.pp-bar{padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(0,0,0,0.06)}
-.pp-bar span{font-size:12.5px;font-weight:600;flex:1}
-.pp-bar a,.pp-bar button{font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid rgba(0,0,0,0.08);background:var(--card);color:var(--ac);cursor:pointer;text-decoration:none;font-family:inherit}
+.pp-bar{padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--yh-border)}
+.pp-bar span{font-size:13px;font-weight:600;flex:1}
 .preview-panel iframe{flex:1;border:none;width:100%}
 
-.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);backdrop-filter:blur(12px);color:#fff;padding:9px 18px;border-radius:20px;font-size:12px;z-index:99;opacity:0;pointer-events:none;transition:all 0.3s ease;font-weight:500;letter-spacing:-0.01em}
-.toast.show{opacity:1}
+/* Diff modal */
+.diff-modal{display:none;position:fixed;top:0;right:0;bottom:0;width:50%;min-width:400px;z-index:40;background:var(--yh-card);border-left:1px solid var(--yh-border);flex-direction:column;box-shadow:-4px 0 20px rgba(0,0,0,0.12)}
+.diff-modal.show{display:flex}
+.diff-hd{padding:12px 16px;border-bottom:1px solid var(--yh-border);display:flex;align-items:center;justify-content:space-between}
+.diff-body{flex:1;overflow-y:auto;padding:16px;font-family:var(--yh-mono);font-size:11px;line-height:1.6}
+.diff-ft{padding:12px 16px;border-top:1px solid var(--yh-border);display:flex;gap:8px;justify-content:flex-end}
 
-input[type=file]{display:none}
+/* Progress bar */
+.progress-bar{display:none;margin:0 20px 6px;padding:10px 14px;background:var(--yh-card);border:1px solid var(--yh-border);border-radius:var(--yh-radius);font-family:var(--yh-mono);font-size:10.5px;max-height:130px;overflow-y:auto}
+.progress-bar.show{display:block}
+
+/* Input */
+.input-area{padding:14px 20px 18px;background:var(--yh-card);border-top:1px solid var(--yh-border);flex-shrink:0}
+.input-row{display:flex;gap:8px;align-items:flex-end}
+.input-row textarea{flex:1;background:var(--yh-bg);border:1.5px solid transparent;color:var(--yh-text);padding:11px 16px;border-radius:20px;font-size:13.5px;font-family:inherit;resize:none;outline:none;min-height:42px;max-height:120px;line-height:1.35;transition:all 0.2s ease}
+.input-row textarea:focus{border-color:var(--yh-accent);box-shadow:0 0 0 3.5px rgba(0,122,255,0.12);background:var(--yh-card)}
+.input-row textarea::placeholder{color:var(--yh-text3)}
+.btn-accent{background:var(--yh-accent);color:#fff;box-shadow:0 2px 8px rgba(0,122,255,0.3)}.btn-accent:hover{background:var(--yh-accent2);transform:scale(1.04)}.btn-accent:disabled{opacity:0.35;transform:none}
+.btn-rec{background:var(--yh-red);color:#fff;animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,59,48,0.35)}50%{box-shadow:0 0 0 10px rgba(255,59,48,0)}}
+.hint{font-size:10px;color:var(--yh-text3);padding:6px 0 0 14px;font-weight:450}
+.files-bar{padding:0 20px 6px;display:flex;flex-wrap:wrap;gap:4px}
+
+/* Files tree sidebar */
+.file-tree{max-height:200px;overflow-y:auto;font-size:11px;margin-top:8px}
+.file-tree .ft-item{padding:3px 8px;cursor:pointer;border-radius:4px;display:flex;align-items:center;gap:4px;color:var(--yh-text2)}
+.file-tree .ft-item:hover{background:rgba(0,122,255,0.08);color:var(--yh-accent)}
+.file-tree .ft-dir{font-weight:600;color:var(--yh-text)}
+
+/* Panel */
+.panel-overlay{display:none;position:fixed;inset:0;z-index:14;background:rgba(0,0,0,0.25);backdrop-filter:blur(4px)}
+.panel-overlay.show{display:block}
+.panel{display:none;position:fixed;right:0;top:0;bottom:0;width:320px;z-index:15;background:var(--yh-card);border-left:1px solid var(--yh-border);overflow-y:auto;padding:20px 16px;gap:16px;flex-direction:column;box-shadow:-8px 0 40px rgba(0,0,0,0.1)}
+.panel.show{display:flex}
+.panel h3{font-size:10.5px;text-transform:uppercase;letter-spacing:0.6px;color:var(--yh-text3);font-weight:600;margin:12px 0 4px}
+
+/* Cmd palette */
+.cmd-palette{display:none;position:fixed;top:30%;left:50%;transform:translate(-50%,0);z-index:50;background:var(--yh-card);border:1px solid var(--yh-border);border-radius:12px;padding:8px;width:340px;box-shadow:var(--yh-shadow-lg)}
+.cmd-palette.show{display:block}
+.cmd-palette input{width:100%;padding:8px 12px;border:none;background:transparent;color:var(--yh-text);font-size:13px;font-family:inherit;outline:none}
+.cmd-palette .cmd-list{max-height:200px;overflow-y:auto}
+.cmd-palette .cmd-item{padding:7px 12px;cursor:pointer;border-radius:6px;font-size:12px;display:flex;justify-content:space-between}
+.cmd-palette .cmd-item:hover,.cmd-palette .cmd-item.selected{background:rgba(0,122,255,0.1);color:var(--yh-accent)}
+.cmd-palette .cmd-item kbd{font-size:10px;padding:1px 5px;border-radius:3px;background:var(--yh-bg);color:var(--yh-text3)}
+
+#fileInput{display:none}
 @media(max-width:768px){.sidebar{display:none}.messages{padding:16px 18px}.input-area{padding:10px 14px 14px}.msg{max-width:92%}}
 </style>
 </head>
 <body>
 
+<!-- Sidebar -->
 <div class="sidebar">
-  <div class="side-hd">Workbench</div>
+  <div class="side-hd">
+    <span>Workbench</span>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">&#x1F31E;</button>
+  </div>
   <div class="side-convs" id="convList"></div>
+  <div id="fileTree" class="file-tree" style="padding:4px 10px"></div>
   <div class="side-ft">
-    <button class="new-chat" onclick="newChat()">New Chat</button>
+    <button class="new-chat" onclick="newChat()">+ New Chat</button>
     <button onclick="selfReflect()">Self-Reflect</button>
     <a href="/settings.html">Settings</a>
   </div>
 </div>
 
+<!-- Main -->
 <div class="main">
   <div class="topbar">
-    <select id="model" onchange="onModelChange()"><option value="deepseek-chat">DeepSeek V3</option><option value="deepseek-reasoner">DeepSeek R1</option></select>
+    <select id="model" onchange="onModelChange()">
+      <option value="deepseek-chat">DeepSeek V3</option>
+      <option value="deepseek-reasoner">DeepSeek R1</option>
+    </select>
     <span class="sep"></span>
     <span class="key-dot off" id="keyDot"></span>
-    <input type="password" id="keyInline" placeholder="Paste API Key here then press Enter" style="width:200px;padding:3px 8px;border:1px solid var(--ac);border-radius:4px;font-size:10px;font-family:inherit;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter'){saveKeyInline();$('input').focus()}">
-    <button onclick="saveKeyInline()" style="font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;font-family:inherit;white-space:nowrap">Save Key</button>
-    <a href="/settings.html" style="font-size:10px;color:var(--t3);text-decoration:none;margin-left:2px">Settings</a>
-    <span class="sep" style="flex:1"></span>
-    <button id="toolsToggleBtn" onclick="var p=document.getElementById('toolsPanel');var o=document.getElementById('panelOverlay');p.classList.toggle('show');o.classList.toggle('show')">&#x2699; Tools</button>
+    <input type="password" id="keyInline" placeholder="API Key (Enter to save)" onkeydown="if(event.key==='Enter'){saveKey()}">
+    <button class="yh-btn yh-btn-primary" onclick="saveKey()" style="font-size:10px;padding:3px 8px">Save</button>
+    <span class="sep"></span>
+    <button id="toolsBtn" class="yh-btn" onclick="togglePanel()">&#x2699; Tools</button>
+    <span style="font-size:10px;color:var(--yh-text3)" id="usageStats"></span>
   </div>
 
-  <div class="progress-panel" id="progress"><div style="display:flex;justify-content:space-between"><span style="font-weight:600;color:var(--ac)">Build Progress</span><span onclick="$('progress').classList.remove('show')" style="cursor:pointer">&times;</span></div><div id="progressLog"></div></div>
+  <div class="progress-bar" id="progress"><div style="display:flex;justify-content:space-between"><span style="font-weight:600;color:var(--yh-accent)" id="progressTitle">Progress</span><span onclick="$('progress').classList.remove('show')" style="cursor:pointer">&times;</span></div><div id="progressLog"></div></div>
 
   <div class="chat-area">
-    <div class="messages" id="msgs"><div class="empty-chat"><div><div style="font-size:40px;margin-bottom:8px">&#x26A1;</div>Describe what you want to build.<br><span style="font-size:12px;color:var(--t3)">Drag files, paste images, or type a prompt.</span></div></div></div>
+    <div class="messages" id="msgs"><div class="empty-chat"><div><div style="font-size:40px;margin-bottom:8px">&#x26A1;</div>Describe what you want to build.<br><span style="font-size:12px;color:var(--yh-text3)">Ctrl+K for commands &nbsp;|&nbsp; Drag files &nbsp;|&nbsp; Paste images</span></div></div></div>
     <div class="files-bar" id="attachBar"></div>
     <div class="input-area">
       <div class="input-row">
-        <button class="btn btn-ghost" onclick="addFiles()">&#x1F4CE;</button>
-        <button class="btn btn-ghost" id="micBtn" onclick="toggleMic()">&#x1F3A4;</button>
-        <button class="btn btn-ghost" id="modeBtn" onclick="toggleMode()" title="Switch Code/Joule mode">&#x1F4BB;</button>
-        <textarea id="input" rows="1" placeholder="Tell me what to build..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
-        <button class="btn btn-accent" id="sendBtn" onclick="send()">&#x27A4;</button>
+        <button class="yh-btn-icon" onclick="addFiles()">&#x1F4CE;</button>
+        <button class="yh-btn-icon" id="micBtn" onclick="toggleMic()">&#x1F3A4;</button>
+        <textarea id="input" rows="1" placeholder="Tell me what to build... (Ctrl+Enter to send)" onkeydown="handleInputKey(event)"></textarea>
+        <button class="yh-btn-icon btn-accent" id="sendBtn" onclick="send()" style="width:42px;height:42px">&#x27A4;</button>
       </div>
-      <div class="hint">Enter to send &nbsp;·&nbsp; Shift+Enter for newline &nbsp;·&nbsp; Drop files to analyze</div>
+      <div class="hint" id="hintText">Enter to send &nbsp;|&nbsp; Shift+Enter newline &nbsp;|&nbsp; Esc to cancel &nbsp;|&nbsp; Ctrl+K commands</div>
     </div>
   </div>
 </div>
 
-<!-- RIGHT TOOLS PANEL -->
-<div class="panel-overlay" id="panelOverlay" onclick="closeTools()"></div>
+<!-- Tools Panel -->
+<div class="panel-overlay" id="panelOverlay" onclick="closePanel()"></div>
 <div class="panel" id="toolsPanel">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-    <span style="font-weight:700;font-size:14px">&#x2699; Tools</span>
-    <button onclick="closeTools()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t3);line-height:1">&times;</button>
+    <span style="font-weight:700;font-size:14px">&#x2699; Tools & Context</span>
+    <button onclick="closePanel()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--yh-text3)">&times;</button>
   </div>
-  <h3>&#x1F3AF; Project Context</h3>
-  <select id="projTarget" onchange="saveProjCtx()"><option value="">Target Platform</option><option value="SAP S/4HANA Public Cloud">S/4HANA Public Cloud</option><option value="SAP BTP (Cloud Foundry)">SAP BTP CF</option><option value="Web App">Web App</option><option value="Mobile PWA">Mobile PWA</option><option value="Desktop App">Desktop</option><option value="CLI Tool">CLI Script</option></select>
-  <select id="projLang" onchange="saveProjCtx()"><option value="">Language</option><option value="ABAP">ABAP</option><option value="Java">Java</option><option value="Node.js">Node.js</option><option value="Python">Python</option><option value="HTML5/Fiori">HTML5 / Fiori</option><option value="CDS/ODATA">CDS / OData</option></select>
-  <input type="text" id="projEnv" placeholder="API / OData endpoint URL..." onchange="saveProjCtx()">
-  <div style="display:flex;gap:4px"><input type="text" id="projOrg" placeholder="CF Org" onchange="saveProjCtx()" style="flex:1"><input type="text" id="projSpace" placeholder="CF Space" onchange="saveProjCtx()" style="flex:1"></div>
-  <div style="display:flex;gap:4px"><input type="text" id="projUser" placeholder="User" onchange="saveProjCtx()" style="flex:1"><input type="password" id="projPass" placeholder="Password" onchange="saveProjCtx()" style="flex:1"></div>
-
-  <h3 style="margin-top:12px">&#x1F916; SAP Joule (A2A)</h3>
-  <p style="font-size:9px;color:var(--t3);margin-bottom:6px">Type in the main chat input. Add <b>/joule</b> prefix for SAP queries.</p>
-  <button onclick="checkJouleStatus()">Test Connection</button>
-
-  <h3 style="margin-top:12px">&#x1F4C1; Built Files</h3>
-  <div id="fileList" style="font-size:10px;color:var(--t3);max-height:150px;overflow-y:auto"></div>
+  <h3>Project Context</h3>
+  <select class="yh-select" id="projTarget" onchange="saveCtx()"><option value="">Target Platform</option><option value="SAP S/4HANA">S/4HANA</option><option value="SAP BTP CF">SAP BTP CF</option><option value="Web App">Web App</option><option value="Mobile PWA">Mobile PWA</option><option value="Desktop">Desktop</option><option value="CLI">CLI</option></select>
+  <select class="yh-select" id="projLang" onchange="saveCtx()"><option value="">Language</option><option value="ABAP">ABAP</option><option value="Java">Java</option><option value="Node.js">Node.js</option><option value="Python">Python</option><option value="HTML5">HTML5</option><option value="CDS">CDS/OData</option></select>
+  <input class="yh-input" type="text" id="projEnv" placeholder="API / OData endpoint URL" onchange="saveCtx()">
+  <input class="yh-input" type="text" id="projUser" placeholder="Username" onchange="saveCtx()">
+  <input class="yh-input" type="password" id="projPass" placeholder="Password" onchange="saveCtx()">
+  <h3>Built Files</h3>
+  <div id="fileList" style="font-size:11px;color:var(--yh-text3);max-height:180px;overflow-y:auto"></div>
 </div>
 
+<!-- Diff Modal -->
+<div class="diff-modal" id="diffModal">
+  <div class="diff-hd">
+    <span style="font-weight:600">Code Changes</span>
+    <button onclick="closeDiff()" style="background:none;border:none;font-size:18px;cursor:pointer">&times;</button>
+  </div>
+  <div class="diff-body" id="diffBody"></div>
+  <div class="diff-ft">
+    <button class="yh-btn" onclick="closeDiff()">Cancel</button>
+    <button class="yh-btn yh-btn-primary" onclick="confirmApply()">Apply Changes</button>
+  </div>
+</div>
+
+<!-- Command Palette -->
+<div class="cmd-palette" id="cmdPalette">
+  <input type="text" id="cmdInput" placeholder="Type a command..." oninput="filterCmds()" onkeydown="handleCmdKey(event)">
+  <div class="cmd-list" id="cmdList"></div>
+</div>
+
+<!-- Preview Panel -->
 <div class="preview-panel" id="previewPanel"></div>
-<div class="toast" id="toast"></div>
+
+<!-- Toast -->
+<div class="yh-toast" id="toast"></div>
+
 <input type="file" id="fileInput" multiple onchange="onFiles(this)">
 
+<script src="/shared/utils.js"></script>
 <script>
-const $=id=>document.getElementById(id);
-let conversations,activeConv,pendingFiles=[],sending=false,micOn=false,recognition=null,micRetries=0,builtFiles=[];
-try{
-  conversations=JSON.parse(localStorage.getItem('wb_convs')||'{}');
-}catch(e){conversations={}}
-try{activeConv=localStorage.getItem('wb_active')||'default'}catch(e){activeConv='default'}
-try{builtFiles=JSON.parse(localStorage.getItem('wb_files')||'[]')}catch(e){builtFiles=[]}
-const bf={};
-try{if(!conversations[activeConv]) conversations[activeConv]={name:'New Chat',messages:[],created:Date.now()}}catch(e){}
+const $=Y.$;
+let conversations, activeConv, pendingFiles=[], sending=false, micOn=false, recognition=null, builtFiles=[];
+let currentStreamEl=null, streamingContent='', pendingDiff=null, theme='light';
 
+try{conversations=JSON.parse(localStorage.getItem('wb_convs')||'{}')}catch{conversations={}}
+try{activeConv=localStorage.getItem('wb_active')||'default'}catch{activeConv='default'}
+try{builtFiles=JSON.parse(localStorage.getItem('wb_files')||'[]')}catch{builtFiles=[]}
+try{theme=localStorage.getItem('yh_theme')||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')}catch{theme='light'}
+if(!conversations[activeConv])conversations[activeConv]={name:'New Chat',messages:[],created:Date.now()};
+
+function toggleTheme(){
+  theme=theme==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',theme);
+  document.querySelector('.theme-toggle').textContent=theme==='dark'?'☀️':'🌞';
+  localStorage.setItem('yh_theme',theme);
+}
+if(theme==='dark'){document.documentElement.setAttribute('data-theme','dark');document.querySelector('.theme-toggle').textContent='☀️';}
+
+// Commands
+const commands=[
+  {name:'New Chat',key:'Ctrl+N',action:newChat},
+  {name:'Toggle Theme',key:'Ctrl+T',action:toggleTheme},
+  {name:'Toggle Tools Panel',key:'Ctrl+Shift+P',action:togglePanel},
+  {name:'Clear Chat',key:'Ctrl+L',action:()=>{conversations[activeConv].messages=[];save();renderMsgs();renderSidebar()}},
+  {name:'Export Chat',key:'Ctrl+E',action:exportChat},
+  {name:'Self-Reflect',key:'Ctrl+R',action:selfReflect},
+  {name:'Focus Input',key:'Ctrl+I',action:()=>$('input').focus()},
+];
+function filterCmds(){
+  const q=$('cmdInput').value.toLowerCase();
+  $('cmdList').innerHTML=commands.filter(c=>c.name.toLowerCase().includes(q)).map((c,i)=>
+    `<div class="cmd-item${i===0?' selected':''}" onclick="runCmd('${c.name}')"><span>${c.name}</span><kbd>${c.key||''}</kbd></div>`
+  ).join('');
+}
+function handleCmdKey(e){
+  if(e.key==='Escape'){$('cmdPalette').classList.remove('show');$('input').focus()}
+  if(e.key==='Enter'){const sel=document.querySelector('.cmd-item.selected');if(sel)sel.click()}
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    e.preventDefault();
+    const items=document.querySelectorAll('.cmd-item');
+    const idx=Array.from(items).findIndex(el=>el.classList.contains('selected'));
+    items[idx]?.classList.remove('selected');
+    const next=items[e.key==='ArrowDown'?Math.min(idx+1,items.length-1):Math.max(idx-1,0)];
+    if(next)next.classList.add('selected');
+  }
+}
+function runCmd(name){$('cmdPalette').classList.remove('show');const c=commands.find(c=>c.name===name);if(c)c.action();}
+
+Y.bindShortcut('ctrl+k',(e)=>{e.preventDefault();$('cmdPalette').classList.toggle('show');if($('cmdPalette').classList.contains('show')){$('cmdInput').value='';filterCmds();$('cmdInput').focus()}});
+Y.bindShortcut('ctrl+n',()=>newChat());
+Y.bindShortcut('ctrl+l',()=>{conversations[activeConv].messages=[];save();renderMsgs();renderSidebar()});
+Y.bindShortcut('ctrl+t',()=>toggleTheme());
+Y.bindShortcut('ctrl+r',()=>selfReflect());
+Y.bindShortcut('ctrl+i',()=>$('input').focus());
+
+function handleInputKey(e){
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}
+  else if(e.key==='Enter'&&e.ctrlKey){e.preventDefault();send()}
+  else if(e.key==='Escape'&&sending){cancelRequest()}
+}
+
+// Provider
 function getProvider(){
   try{
     const p=JSON.parse(localStorage.getItem('ccw_providers')||'[]');
     const d=localStorage.getItem('ccw_default_provider')||'ds';
     let found=p.find(x=>x.key&&x.id===d)||p.find(x=>x.key)||null;
-    if(found) return {type:found.type||'deepseek',key:found.key,model:found.model||'deepseek-chat'};
-  }catch(e){}
-  return {type:'deepseek',key:'',model:'deepseek-chat'};
+    if(found)return{type:found.type||'deepseek',key:found.key,model:found.model||'deepseek-chat'};
+  }catch{}
+  return{type:'deepseek',key:'',model:'deepseek-chat'};
 }
-function getActiveKey(){
-  const inline=$('keyInline').value.trim();
-  return inline||getProvider().key;
-}
-function saveKeyInline(){
+function getActiveKey(){return $('keyInline').value.trim()||getProvider().key}
+function saveKey(){
   const key=$('keyInline').value.trim(),model=$('model').value;
-  if(!key){toast('Enter an API key first');return}
+  if(!key){Y.toast('Enter an API key first');return}
   localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type:'deepseek',key,model,active:true}]));
   localStorage.setItem('ccw_default_provider','ds');
   fetch('/api/config/key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'deepseek',key,model})}).catch(()=>{});
   $('keyDot').className='key-dot on';
-  toast('Key saved');
+  Y.toast('Key saved');
 }
-async function loadFromServer(){
+
+async function loadServerKey(){
   try{
     const r=await fetch('/api/config/key');if(!r.ok)return;
     const d=await r.json();
-    if(d.key){
-      $('keyInline').value=d.key;
-      $('model').value=d.model||'deepseek-chat';
-      localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type:d.type||'deepseek',key:d.key,model:d.model||'deepseek-chat',active:true}]));
-      localStorage.setItem('ccw_default_provider','ds');
-    }
-  }catch(e){}
+    if(d.key){$('keyInline').value=d.key;$('model').value=d.model||'deepseek-chat';
+    localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type:d.type||'deepseek',key:d.key,model:d.model||'deepseek-chat',active:true}]));localStorage.setItem('ccw_default_provider','ds')}
+  }catch{}
 }
 function onModelChange(){
   const k=getActiveKey();if(!k)return;
   localStorage.setItem('ccw_providers',JSON.stringify([{id:'ds',type:'deepseek',key:k,model:$('model').value,active:true}]));
 }
 
-// ====== INIT ======
+// Init
 (async function(){
   const p=getProvider();
-  if(p.key){
-    $('keyInline').value=p.key;$('keyDot').className='key-dot on';$('model').value=p.model||'deepseek-chat';
-  }else{
-    await loadFromServer();
-    if(getProvider().key)$('keyDot').className='key-dot on';
-  }
-  loadProjCtx();renderSidebar();renderMessages();
+  if(p.key){$('keyInline').value=p.key;$('keyDot').className='key-dot on';$('model').value=p.model||'deepseek-chat'}
+  else{await loadServerKey();if(getProvider().key)$('keyDot').className='key-dot on'}
+  loadCtx();renderSidebar();renderMsgs();loadFileTree();
+  fetch('/api/health').then(r=>r.json()).then(d=>{
+    if(d.usage){$('usageStats').textContent=`Tokens: ${(d.usage.tokensIn/1000).toFixed(1)}k in / ${(d.usage.tokensOut/1000).toFixed(1)}k out | ${d.usage.requests} req`}
+  }).catch(()=>{});
 })();
 
-window.addEventListener('storage',(e)=>{
-  if(e.key==='ccw_providers'||e.key==='ccw_default_provider'){
-    const p=getProvider();
-    if(p.key){$('keyInline').value=p.key;$('keyDot').className='key-dot on';$('model').value=p.model||'deepseek-chat';}
-  }
-});
-window.addEventListener('pageshow',(e)=>{
-  if(e.persisted){
-    const p=getProvider();
-    if(p.key){$('keyInline').value=p.key;$('keyDot').className='key-dot on';$('model').value=p.model||'deepseek-chat';}
-  }
-});
+function loadFileTree(){
+  fetch('/api/health').then(r=>r.json()).then(()=>{
+    // Just show we can access the project
+    $('fileTree').innerHTML='<div class="ft-dir" style="padding:3px 8px;font-size:10px;color:var(--yh-text3)">Project Files</div>'+
+      builtFiles.map(f=>`<div class="ft-item" onclick="previewFile('${f.url}')">&#x1F4C4; ${Y.esc(f.name)}</div>`).join('');
+  }).catch(()=>{});
+}
 
-// ====== SIDEBAR ======
+// Sidebar
 function renderSidebar(){
   const sorted=Object.entries(conversations).sort((a,b)=>b[1].created-a[1].created);
-  $('convList').innerHTML=sorted.map(([id,c])=>`<div class="conv-item${id===activeConv?' active':''}" onclick="switchConv('${id}')"><span class="c-name">${esc((c.name==='New Chat'?'New Chat':c.name)||'Chat')}</span><span class="c-del" onclick="event.stopPropagation();delConv('${id}')">&times;</span></div>`).join('');
-  $('fileList').innerHTML=builtFiles.length?builtFiles.map((f,i)=>`<div style="padding:3px 0;cursor:pointer" onclick="previewFile('${f.url}')">&#x1F4C4; ${esc(f.name)}</div>`).join(''):'No files yet';
+  $('convList').innerHTML=sorted.map(([id,c])=>`<div class="conv-item${id===activeConv?' active':''}" onclick="switchConv('${id}')"><span class="c-name">${Y.esc(c.name||'Chat')}</span><span class="c-del" onclick="event.stopPropagation();delConv('${id}')">&times;</span></div>`).join('');
+  $('fileList').innerHTML=builtFiles.length?builtFiles.map((f,i)=>`<div style="padding:3px 0;cursor:pointer" onclick="previewFile('${f.url}')">&#x1F4C4; ${Y.esc(f.name)}</div>`).join(''):'No files yet';
+  loadFileTree();
 }
-function switchConv(id){activeConv=id;if(!conversations[id])conversations[id]={name:'New Chat',messages:[],created:Date.now()};saveConvs();renderSidebar();renderMessages()}
-function delConv(id){if(Object.keys(conversations).length<=1)return;delete conversations[id];if(activeConv===id)activeConv=Object.keys(conversations)[0];saveConvs();renderSidebar();renderMessages()}
-function saveConvs(){localStorage.setItem('wb_convs',JSON.stringify(conversations));localStorage.setItem('wb_active',activeConv)}
+function switchConv(id){activeConv=id;if(!conversations[id])conversations[id]={name:'New Chat',messages:[],created:Date.now()};save();renderSidebar();renderMsgs()}
+function delConv(id){if(Object.keys(conversations).length<=1)return;delete conversations[id];if(activeConv===id)activeConv=Object.keys(conversations)[0];save();renderSidebar();renderMsgs()}
+function save(){localStorage.setItem('wb_convs',JSON.stringify(conversations));localStorage.setItem('wb_active',activeConv)}
 function saveFiles(){localStorage.setItem('wb_files',JSON.stringify(builtFiles))}
 
-// ====== PROJECT CONTEXT ======
-function saveProjCtx(){const c={target:$('projTarget').value,lang:$('projLang').value,env:$('projEnv').value,org:$('projOrg').value,space:$('projSpace').value,user:$('projUser').value,pass:$('projPass').value};localStorage.setItem('wb_proj_ctx',JSON.stringify(c))}
-function loadProjCtx(){try{const c=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');if(c.target)$('projTarget').value=c.target;if(c.lang)$('projLang').value=c.lang;if(c.env)$('projEnv').value=c.env;if(c.org)$('projOrg').value=c.org;if(c.space)$('projSpace').value=c.space;if(c.user)$('projUser').value=c.user;if(c.pass)$('projPass').value=c.pass}catch{}}
+// Context
+function saveCtx(){const c={target:$('projTarget').value,lang:$('projLang').value,env:$('projEnv').value,user:$('projUser').value,pass:$('projPass').value};localStorage.setItem('wb_proj_ctx',JSON.stringify(c))}
+function loadCtx(){try{const c=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');if(c.target)$('projTarget').value=c.target;if(c.lang)$('projLang').value=c.lang;if(c.env)$('projEnv').value=c.env;if(c.user)$('projUser').value=c.user;if(c.pass)$('projPass').value=c.pass}catch{}}
 
-// ====== MESSAGES ======
-function renderMessages(){
+// Messages
+function renderMsgs(){
   const msgs=conversations[activeConv]?.messages||[];
-  $('msgs').innerHTML=msgs.length?msgs.map(m=>renderMsg(m.role,m.text,m.files)).join(''):`<div class="empty-chat"><div><span style="font-size:36px">&#x26A1;</span><br>Describe what you want to build</div></div>`;
+  $('msgs').innerHTML=msgs.length?msgs.map(m=>renderMsg(m)).join(''):`<div class="empty-chat"><div><span style="font-size:36px">⚡</span><br>Describe what you want to build</div></div>`;
   $('msgs').scrollTop=$('msgs').scrollHeight;
 }
-function renderMsg(role,text,files){
-  let h=`<div class="msg ${role==='user'?'user':'ai'}"><div class="av">${role==='user'?'&#x1F464;':'&#x1F916;'}</div>`;
-  if(files?.length)h+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">'+files.map(f=>f.isImage?`<img src="${f.content}" style="max-width:120px;max-height:80px;border-radius:6px;cursor:pointer" onclick="window.open('${f.content}')">`:`<span class="file-chip">&#x1F4C4; ${esc(f.name.slice(0,15))}</span>`).join('')+'</div>';
-  h+=`<div class="bubble">${role==='ai'?fmtAI(text):esc(text||'')}</div>`;
-  if(role==='ai'&&text?.includes('```'))h+=`<div class="refine-row"><button onclick="refine('Optimize')">&#x26A1; Optimize</button><button onclick="refine('Error handling')">&#x1F6E0; Error handling</button><button onclick="refine('Comments')">&#x1F4DD; Comments</button><button onclick="refine('Fix bugs')">&#x1F41B; Fix bugs</button></div>`;
+function renderMsg(m){
+  let h=`<div class="msg ${m.role==='user'?'user':'ai'}"><div class="av">${m.role==='user'?'👤':'🤖'}</div>`;
+  if(m.files?.length)h+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">'+m.files.map(f=>f.isImage?`<img src="${f.content}" style="max-width:120px;max-height:80px;border-radius:6px;cursor:pointer" onclick="window.open('${f.content}')">`:`<span class="yh-file-chip">📄 ${Y.esc(f.name.slice(0,15))}</span>`).join('')+'</div>';
+  h+=`<div class="bubble">${m.role==='ai'?fmtAI(m.text||''):Y.esc(m.text||'')}</div>`;
+  if(m.role==='ai'&&m.text?.includes('```'))h+=`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px"><button class="yh-btn" onclick="refineMsg(this,'Optimize')">⚡ Optimize</button><button class="yh-btn" onclick="refineMsg(this,'Fix bugs')">🐛 Fix</button><button class="yh-btn" onclick="refineMsg(this,'Add error handling')">🛠 Safe</button><button class="yh-btn" onclick="refineMsg(this,'Add comments')">📝 Docs</button></div>`;
   return h+'</div>';
 }
 function addMsg(role,text,files){
   conversations[activeConv].messages.push({role,text,files,time:Date.now()});
-  if(conversations[activeConv].name==='New Chat'&&role==='user'&&text)conversations[activeConv].name=text.slice(0,30)+(text.length>30?'...':'');
-  saveConvs();renderMessages();renderSidebar();
-}
-
-// ====== FORMAT AI ======
-function fmtAI(t){return esc(t||'').replace(/```(\w+(?::[^\n]*)?)\n([\s\S]*?)```/g,(_,l,c)=>{const code=c.trim();let lang=l,filePath='';const ci=l.indexOf(':');if(ci>0){lang=l.slice(0,ci);filePath=l.slice(ci+1).trim();}const ext=lang==='html'?'html':lang==='javascript'?'js':lang==='python'?'py':lang||'txt';const isHTML=lang==='html'||code.includes('<!DOCTYPE');const fid='f'+Date.now()+Math.random().toString(36).slice(2,6);bf[fid]={code,ext,lang,filePath};let btp='';try{if(JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}').target?.includes('BTP')&&isHTML)btp=`<button class="btp" onclick="deployBTP('${fid}')">&#x1F310; BTP</button>`}catch{}return`<div class="code-block"><div class="pre-btns"><button onclick="copyBlock(this)">Copy</button><button onclick="editBlock(this,'${fid}')">Edit</button>${isHTML?`<button class="deploy" onclick="deployBlock('${fid}')">&#x25B6; Preview</button>`:`<button class="deploy" onclick="deployBlock('${fid}')">&#x1F4C1; Deploy</button>`}${btp}<button class="apply" onclick="applyBlock('${fid}')">Apply</button><button onclick="downloadBlock(this,'${ext}')">Save</button></div><pre><code contenteditable="false" id="${fid}">${esc(code)}</code></pre></div>`}).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')}
-
-// ====== CODE ACTIONS ======
-function copyBlock(b){navigator.clipboard.writeText(b.closest('.code-block').querySelector('code').textContent);toast('Copied')}
-function editBlock(b,fid){const c=b.closest('.code-block').querySelector('code');if(c.contentEditable==='true'){c.contentEditable='false';c.style.outline='';b.textContent='Edit';bf[fid].code=c.textContent}else{c.contentEditable='true';c.style.outline='2px solid var(--ac)';b.textContent='Done';c.focus()}}
-function downloadBlock(b,ext){const c=b.closest('.code-block').querySelector('code').textContent;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c]));a.download='code.'+ext;a.click();toast('Saved')}
-async function deployBlock(fid){await deployCode(bf[fid]?.code,'build_'+Date.now()+'.'+(bf[fid]?.ext||'html'))}
-async function deployCode(code,fn){
-  try{
-    const r=await fetch('/api/workbench/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,filename:fn})});
-    const d=await r.json();
-    if(d.ok){builtFiles.unshift({name:fn,url:d.url,time:Date.now()});saveFiles();renderSidebar();showPreview(d.url);toast('Deployed')}else toast('Failed: '+d.error)
-  }catch(e){toast('Error')}
-}
-async function applyBlock(fid){
-  const data=bf[fid];if(!data?.code)return toast('No code');
-  let fp=data.filePath;
-  if(!fp){fp=prompt('Save to file path (relative to project):',fp||'src/newfile.'+data.ext);if(!fp)return}
-  prog('Writing '+fp+'...','ac');
-  try{
-    const r=await fetch('/api/workbench/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filePath:fp,code:data.code})});
-    const d=await r.json();
-    if(d.ok){prog('Saved: '+d.path+' ('+d.size+' bytes)',d.existed?'warn':'good');toast('Saved to '+d.path);builtFiles.unshift({name:d.path,url:'',time:Date.now()});saveFiles();renderSidebar()}
-    else{prog('Failed: '+d.error,'bad');toast(d.error)}
-  }catch(e){prog('Error','bad')}
-}
-async function deployBTP(fid){
-  const code=bf[fid]?.code;if(!code)return;
-  const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
-  prog('Deploying to BTP...','ac');
-  const r=await fetch('/api/btp/deploy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,appName:'fiori-app',config:{api:ctx.env||'',org:ctx.org||'',space:ctx.space||'',user:ctx.user||'',pass:ctx.pass||''}})});
-  const d=await r.json();
-  if(d.ok){prog(d.cfDeploy?.ok?'Live: '+d.cfDeploy.url:'Package: '+d.packageUrl,'good');addMsg('ai','## BTP Ready\n\n'+d.instructions)}else prog('Failed: '+d.error,'bad')
-}
-function refine(p){$('input').value=p+': ';$('input').focus()}
-function closeTools(){$('toolsPanel').classList.remove('show');$('panelOverlay').classList.remove('show')}
-let workbenchMode='code'; // 'code' or 'joule'
-function toggleMode(){
-  workbenchMode=workbenchMode==='code'?'joule':'code';
-  $('modeBtn').innerHTML=workbenchMode==='joule'?'&#x1F3ED;':'&#x1F4BB;';
-  $('modeLabel').textContent=workbenchMode==='joule'?'Joule Mode (SAP)':'Code Mode';
-  $('input').placeholder=workbenchMode==='joule'?'Ask SAP Joule... (e.g. show sales order 12345)':'Tell me what to build...';
-  toast(workbenchMode==='joule'?'Switched to Joule mode':'Switched to Code mode');
-}
-function showPreview(url){const p=$('previewPanel');p.innerHTML=`<div class="pp-bar"><span>Preview</span><a href="${url}" target="_blank">Open in tab</a><button onclick="this.closest('.preview-panel').classList.remove('show')">Close</button></div><iframe src="${url}"></iframe>`;p.classList.add('show')}
-function previewFile(url){showPreview(url)}
-
-// ====== SEND ======
-function prog(m,c){const p=$('progress');if(!p)return;p.classList.add('show');const pl=$('progressLog');if(pl)pl.innerHTML+=`<div style="color:var(--${c||'t2'});padding:1px 0">${m}</div>`}
-async function send(){
-  try{
-  const inputEl=$('input');if(!inputEl)return;
-  const t=inputEl.value.trim();
-  const key=getActiveKey(),model=$('model')?$('model').value:'deepseek-chat';
-  if((!t&&!pendingFiles.length)||sending)return;
-  if(!key){toast('Paste your API key in the top bar and click Save Key');const ki=$('keyInline');if(ki)ki.focus();return}
-  sending=true;const sb=$('sendBtn');if(sb)sb.disabled=true;
-  const files=[...pendingFiles];pendingFiles=[];updateFiles();
-
-  const pl=$('progressLog');if(pl)pl.innerHTML='';prog('Thinking...','ac');
-  const docIds=[];
-  for(const f of files){
-    if(f.blob){const form=new FormData();form.append('file',f.blob,f.name);try{const r=await fetch('/api/documents/upload',{method:'POST',body:form});const d=await r.json();if(d.docId)docIds.push({id:d.docId,name:f.name,type:d.metadata?.type||'unknown'});f.docId=d.docId}catch(e){}}
-  }
-  let c='';
-  if(docIds.length){
-    c+='[SYSTEM] The user uploaded '+docIds.length+' document(s). These may contain requirements, specifications, or reference material.\n';
-    c+='Use document_parse tool to read the FULL content of each document before generating code.\n';
-    c+='When generating code, use file path in language tag: ```javascript:path/to/file.js\n';
-    c+='Available documents:\n';
-    for(const d of docIds)c+=`  docId: ${d.id} — ${d.name} (${d.type})\n`;
-  }
-  for(const f of files){
-    if(!f.isImage){
-      const previewLen=f.docId?2000:8000;
-      c+=`\n[File: ${f.name}]${f.docId?' (full content via document_parse: '+f.docId+')':''}\n\`\`\`\n${(f.text||'[Binary]').slice(0,previewLen)}\n\`\`\`\n`;
-    }
-  }
-  if(t)c+=t;
-  const preview=t||(files.length?'Sent '+files.length+' file(s)':'');
-  addMsg('user',preview,files);inputEl.value='';inputEl.style.height='auto';
-
-  if(workbenchMode==='joule'){
-    const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
-    prog('Asking SAP Joule...','ac');
-    try{
-      const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_chat',params:{query:c,config:{jouleURL:ctx.env||'',clientId:ctx.user||'',clientSecret:ctx.pass||'',tokenURL:(ctx.env||'').replace(/\/api.*$/,'/oauth/token')}}})});
-      const d=await r.json();
-      if(d.ok)addMsg('ai','## SAP Joule\n\n'+d.answer);
-      else addMsg('ai','Joule unavailable: '+(d.error||'No response'));
-      prog(d.ok?'Joule responded':'Joule error','good');saveConvs();renderMessages();
-    }catch(e){addMsg('ai','Joule error: '+e.message);prog('Error','bad')}
-    sending=false;if(sb)sb.disabled=false;inputEl.value='';
-    return;
-  }
-
-  prog('Calling AI...','ac');
-  addMsg('ai','Thinking...');
-  try{
-    const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:c,apiKey:key,model})});
-    const d=await response.json();
-    if(d.text){
-      updateLastAi(d.text);prog('Done','good');
-    }else{
-      updateLastAi('Error: '+(d.error||'Unknown error'));prog(d.error||'Failed','bad');
-    }
-  }catch(e){updateLastAi('Connection error: '+e.message);prog('Failed','bad')}
-  sending=false;if(sb)sb.disabled=false;saveConvs();renderSidebar();
-  }catch(e){toast('Error: '+e.message);sending=false;const sb=$('sendBtn');if(sb)sb.disabled=false}
+  if(conversations[activeConv].name==='New Chat'&&role==='user'&&text)conversations[activeConv].name=text.slice(0,40)+(text.length>40?'...':'');
+  save();renderMsgs();renderSidebar();
 }
 function updateLastAi(text){
   const msgs=conversations[activeConv].messages;
-  if(msgs.length&&msgs[msgs.length-1].role==='ai')msgs[msgs.length-1].text=text;
-  renderMessages();
+  if(msgs.length&&msgs[msgs.length-1].role==='ai')msgs[msgs.length-1].text=text;else msgs.push({role:'ai',text,time:Date.now()});
+  save();renderMsgs();
 }
 
-// ====== FILES ======
-function addFiles(){$('fileInput').click()}
-function onFiles(i){for(const f of i.files){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:f.name,content:r.result,isImage:f.type.startsWith('image/'),text:f.type.startsWith('image/')?null:r.result,blob:f});updateFiles()};f.type.startsWith('image/')?r.readAsDataURL(f):r.readAsText(f)}i.value=''}
-function updateFiles(){$('attachBar').innerHTML=pendingFiles.map((f,i)=>`<span class="file-chip">${f.isImage?'&#x1F5BC;':'&#x1F4C4;'} ${esc(f.name.slice(0,15))} <span class="x" onclick="pendingFiles.splice(${i},1);updateFiles()">x</span></span>`).join('')}
+// Format AI
+function fmtAI(t){
+  return Y.esc(t||'')
+    .replace(/```(\w+)?(?::(\S+))?\n([\s\S]*?)```/g,(_,lang,filePath,code)=>{
+      const l=lang||'code',fp=filePath||'',c=code.trim();
+      const fid='f'+Date.now()+Math.random().toString(36).slice(2,6);
+      window['_bf']=window['_bf']||{};
+      window['_bf'][fid]={code:c,lang:l,filePath:fp};
+      const isHTML=l==='html'||c.includes('<!DOCTYPE');
+      return`<div class="code-block"><div class="code-block-header"><span class="lang">${l}</span>${fp?`<span class="file-path">${Y.esc(fp)}</span>`:''}<span class="actions"><button onclick="copyBlock('${fid}')">Copy</button><button onclick="editBlock('${fid}')">Edit</button>${isHTML?`<button onclick="previewBlock('${fid}')">Preview</button>`:`<button onclick="saveBlock('${fid}')">Save</button>`}${fp?`<button onclick="applyBlock('${fid}')" style="color:var(--yh-purple)">Apply</button>`:''}</span></div><pre><code id="${fid}">${Y.esc(c)}</code></pre></div>`;
+    })
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+}
 
-// ====== VOICE ======
-function toggleMic(){micOn?stopMic():startMic()}
-function startMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast('Voice not supported');return}recognition=new SR();recognition.continuous=false;recognition.lang='zh-CN';recognition.interimResults=true;recognition.onresult=e=>{const t=e.results[0][0].transcript.trim();if(t){$('input').value=($('input').value+' '+t).trim();stopMic();$('input').focus();micRetries=0}};recognition.onerror=e=>{if(e.error==='no-speech'){if(micRetries<2){micRetries++;stopMic();setTimeout(startMic,500);return;}toast('No speech');}else if(e.error==='not-allowed'){toast('Microphone denied');}else if(e.error!=='aborted'&&e.error!=='network'){toast('Voice: '+e.error);}stopMic();micRetries=0;};recognition.onend=()=>{if(micOn)stopMic();};recognition.start();micOn=true;$('micBtn').classList.add('btn-rec');}
-function stopMic(){if(recognition){try{recognition.stop()}catch{};recognition=null}micOn=false;$('micBtn').classList.remove('btn-rec')}
-
-// ====== SAP JOULE (A2A) ======
-async function checkJouleStatus(){
-  let cfg={};
-  try{const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');cfg={jouleURL:ctx.env||'',clientId:ctx.user||'',clientSecret:ctx.pass||'',tokenURL:(ctx.env||'').replace(/\/api.*$/,'/oauth/token')}}catch{}
-  if(!cfg.jouleURL){toast('Set Joule endpoint in Project Context');return}
-  prog('Testing Joule A2A...','ac');
+// Code actions
+function copyBlock(fid){const d=window['_bf']?.[fid];if(d)Y.copy(d.code)}
+function editBlock(fid){const el=document.getElementById(fid);if(!el)return;const d=window['_bf']?.[fid];
+  if(el.contentEditable==='true'){el.contentEditable='false';el.style.outline='';if(d)d.code=el.textContent}
+  else{el.contentEditable='true';el.style.outline='2px solid var(--yh-accent)';el.focus()}
+}
+function previewBlock(fid){const d=window['_bf']?.[fid];if(!d?.code)return;
+  const p=$('previewPanel');p.innerHTML=`<div class="pp-bar"><span>Preview</span><button class="yh-btn" onclick="window.open('')">Open</button><button class="yh-btn" onclick="this.closest('.preview-panel').classList.remove('show')">Close</button></div><iframe srcdoc="${d.code.replace(/"/g,'&quot;')}"></iframe>`;p.classList.add('show')}
+async function saveBlock(fid){const d=window['_bf']?.[fid];if(!d?.code)return;
+  const name='build_'+Date.now()+'.'+(d.lang||'txt');
   try{
-    const r=await fetch('http://localhost:3001/call',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tool:'joule_status',params:{config:cfg}})});
-    const d=await r.json();
-    addMsg('ai',d.connected?'## SAP Joule: Connected\n\n'+cfg.jouleURL:'## SAP Joule: Not Connected\n\n'+d.message);
-    prog(d.connected?'Connected':'Failed','good');saveConvs();renderMessages();
+    const r=await fetch('/api/workbench/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:d.code,filename:name})});
+    const j=await r.json();
+    if(j.ok){builtFiles.unshift({name,url:j.url,time:Date.now()});saveFiles();renderSidebar();if(d.lang==='html'){previewBlock(fid)};Y.toast('Built: '+j.url)}
+    else Y.toast('Failed: '+j.error);
+  }catch(e){Y.toast('Build error')}
+}
+async function applyBlock(fid){const d=window['_bf']?.[fid];if(!d?.code)return Y.toast('No code');
+  let fp=d.filePath;
+  if(!fp){fp=prompt('Save to file path (relative to project):','src/newfile.'+(d.lang||'txt'));if(!fp)return}
+  prog('Checking '+fp+'...','ac');
+  try{
+    // Read existing file for diff
+    let oldCode='';
+    try{const r=await fetch('/api/memory/search?q=file:'+encodeURIComponent(fp));const j=await r.json();}catch{}
+    // Try reading the file via workbench apply with empty code
+    const r=await fetch('/api/workbench/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filePath:fp,code:d.code})});
+    const j=await r.json();
+    if(j.ok){
+      prog('Saved: '+j.path+' ('+j.size+' bytes)',j.existed?'warn':'good');
+      Y.toast('Saved to '+j.path);
+      builtFiles.unshift({name:j.path,url:'',time:Date.now()});saveFiles();renderSidebar();
+    }else{Y.toast(j.error);prog('Failed: '+j.error,'bad')}
+  }catch(e){Y.toast('Apply error');prog('Error','bad')}
+}
+async function applyWithDiff(fid){
+  const d=window['_bf']?.[fid];if(!d?.code)return;
+  let fp=d.filePath||prompt('File path:','');
+  if(!fp)return;
+  // Show diff modal
+  let oldCode='';
+  try{
+    const r=await fetch('/api/documents/fetch-url',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:'file://'+fp})});
+    // Can't read files this way; just show new code
+    oldCode='// (new file)';
+  }catch{}
+  pendingDiff={filePath:fp,code:d.code};
+  $('diffBody').innerHTML=Y.renderDiff(oldCode,d.code);
+  $('diffModal').classList.add('show');
+}
+function confirmApply(){
+  if(!pendingDiff)return;
+  applyBlockDirect(pendingDiff.filePath,pendingDiff.code);
+  pendingDiff=null;$('diffModal').classList.remove('show');
+}
+async function applyBlockDirect(fp,code){
+  prog('Applying to '+fp+'...','ac');
+  try{
+    const r=await fetch('/api/workbench/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filePath:fp,code})});
+    const j=await r.json();
+    if(j.ok){Y.toast('Saved to '+j.path);builtFiles.unshift({name:j.path,url:'',time:Date.now()});saveFiles();renderSidebar();prog('Done','good')}
+    else{Y.toast(j.error);prog(j.error,'bad')}
   }catch(e){prog('Error','bad')}
 }
-
-// ====== SELF-REFLECT ======
-async function selfReflect(){
-  const key=getActiveKey();if(!key){toast('Set API Key first');return}
-  prog('Self-reflecting... reading codebase...','ac');
-  const all=Object.values(conversations).flatMap(c=>c.messages||[]).slice(-20);
-  const summary=all.map(m=>`[${m.role}]: ${(m.text||'').slice(0,150)}`).join('\n');
-  const prompt='[SELF-UPGRADE MODE]\n\n'+
-    'You have access to the project workspace. Your goal: improve the Workbench app.\n\n'+
-    'Step 1: Use read_file to understand the current codebase:\n'+
-    '  - chat-ui.html (the main Workbench frontend)\n'+
-    '  - server.js (Express backend)\n'+
-    '  - lib/ai-client.js, lib/tool-registry.js, lib/document-parser.js\n\n'+
-    'Step 2: Identify ONE concrete improvement (bug fix, UI enhancement, performance, or new feature)\n\n'+
-    'Step 3: Use write_file or edit_file to APPLY the change. Do NOT just describe it — actually modify the code.\n\n'+
-    'Step 4: After making changes, explain what you changed and why.\n\n'+
-    (summary?'Recent conversation context:\n'+summary+'\n\n':'')+
-    'IMPORTANT: Actually USE the tools. Make REAL code changes. Be specific.';
-  addMsg('ai','Thinking...');
-  try{
-    const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:prompt,apiKey:key,model:$('model').value||'deepseek-chat'})});
-    const d=await response.json();
-    if(d.text){updateLastAi('## Self-Reflection\n\n'+d.text);prog('Done','good')}
-    else{updateLastAi('Error: '+(d.error||'Unknown'));prog(d.error||'Failed','bad')}
-  }catch(e){updateLastAi('Error: '+e.message);prog('Failed','bad')}
-  saveConvs();renderSidebar();
+function closeDiff(){$('diffModal').classList.remove('show');pendingDiff=null}
+function refineMsg(btn,action){
+  const msgEl=btn.closest('.msg');
+  const code=msgEl?.querySelector('code')?.textContent||'';
+  $('input').value=action+':\n\n```\n'+code.slice(0,2000)+'\n```';
+  $('input').focus();
 }
 
-function newChat(){const id='c_'+Date.now();conversations[id]={name:'New Chat',messages:[],created:Date.now()};activeConv=id;saveConvs();renderSidebar();renderMessages()}
-function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
-function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+// Send (SSE streaming)
+function prog(m,c){const p=$('progress');p.classList.add('show');$('progressLog').innerHTML+=`<div style="color:var(--yh-${c||'text2'});padding:1px 0">${m}</div>`}
+async function send(){
+  try{
+  const inputEl=$('input');const t=inputEl.value.trim();
+  const key=getActiveKey(),model=$('model').value;
+  if((!t&&!pendingFiles.length)||sending)return;
+  if(!key){Y.toast('Paste your API key in the top bar and click Save');$('keyInline').focus();return}
+  sending=true;$('sendBtn').disabled=true;
 
-document.addEventListener('dragover',e=>{e.preventDefault()});
+  const files=[...pendingFiles];pendingFiles=[];updateFiles();
+  $('progressLog').innerHTML='';prog('Streaming...','ac');
+
+  const docIds=[];
+  for(const f of files){
+    if(f.blob){const form=new FormData();form.append('file',f.blob,f.name);
+    try{const r=await fetch('/api/documents/upload',{method:'POST',body:form});const d=await r.json();if(d.docId)docIds.push({id:d.docId,name:f.name})}catch{}}
+  }
+  let msgs=[];
+  if(docIds.length){
+    msgs.push({role:'system',content:'Documents available: '+docIds.map(d=>`docId:${d.id} (${d.name})`).join(', ')+'. Use document_parse tool to read them.'});
+  }
+  for(const f of files){
+    if(!f.isImage)msgs.push({role:'user',content:`[File: ${f.name}]\n${(f.text||'').slice(0,3000)}`});
+  }
+  if(t)msgs.push({role:'user',content:t});
+  if(!msgs.length)return;
+
+  const preview=t||'Sent '+files.length+' file(s)';
+  addMsg('user',preview,files);inputEl.value='';inputEl.style.height='auto';
+
+  // Add empty AI message for streaming
+  addMsg('ai','...');
+  streamingContent='';
+
+  // Use SSE streaming
+  const resp=await fetch('/api/chat/stream',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({messages:msgs,model,tools:true})
+  });
+
+  const reader=resp.body.getReader();
+  const decoder=new TextDecoder();
+  let buffer='';
+
+  while(true){
+    const{value,done}=await reader.read();
+    if(done)break;
+    buffer+=decoder.decode(value,{stream:true});
+    const lines=buffer.split('\n');
+    buffer=lines.pop()||'';
+
+    for(const line of lines){
+      const trimmed=line.trim();
+      if(!trimmed||!trimmed.startsWith('data: '))continue;
+      try{
+        const data=JSON.parse(trimmed.slice(6));
+        if(data.type==='token'){
+          streamingContent+=data.text;
+          updateLastAi(streamingContent+'<span class="streaming-cursor"></span>');
+        }else if(data.type==='done'){
+          updateLastAi(data.content||streamingContent);
+          prog('Done','green');
+        }else if(data.type==='error'){
+          updateLastAi('Error: '+data.message);
+          prog(data.message,'red');
+        }else if(data.type==='tool_call'){
+          prog('🔧 '+data.tool+': '+JSON.stringify(data.params||{}).slice(0,80),'text2');
+        }else if(data.type==='tool_result'){
+          const ok=data.result?.ok?'✅':'❌';
+          prog(ok+' '+data.tool+' done','text2');
+        }
+      }catch{}
+    }
+  }
+  // Update usage stats
+  fetch('/api/health').then(r=>r.json()).then(d=>{
+    if(d.usage){$('usageStats').textContent=`Tokens: ${(d.usage.tokensIn/1000).toFixed(1)}k in / ${(d.usage.tokensOut/1000).toFixed(1)}k out | ${d.usage.requests} req`}
+  }).catch(()=>{});
+
+  sending=false;$('sendBtn').disabled=false;
+  }catch(e){Y.toast('Error: '+e.message);sending=false;$('sendBtn').disabled=false;updateLastAi('Error: '+e.message)}
+}
+function cancelRequest(){
+  sending=false;$('sendBtn').disabled=false;
+  if(streamingContent)updateLastAi(streamingContent+'\n\n[Canceled]');
+  streamingContent='';currentStreamEl=null;
+}
+
+// Files
+function addFiles(){$('fileInput').click()}
+function onFiles(i){for(const f of i.files){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:f.name,content:r.result,isImage:f.type.startsWith('image/'),text:f.type.startsWith('image/')?null:r.result,blob:f});updateFiles()};f.type.startsWith('image/')?r.readAsDataURL(f):r.readAsText(f)}i.value=''}
+function updateFiles(){$('attachBar').innerHTML=pendingFiles.map((f,i)=>`<span class="yh-file-chip">${f.isImage?'🖼':'📄'} ${Y.esc(f.name.slice(0,15))} <span class="yh-file-x" onclick="pendingFiles.splice(${i},1);updateFiles()">x</span></span>`).join('')}
+
+// Voice
+function toggleMic(){micOn?stopMic():startMic()}
+function startMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){Y.toast('Voice not supported');return}recognition=new SR();recognition.continuous=false;recognition.lang='zh-CN';recognition.interimResults=true;recognition.onresult=e=>{const t=e.results[0][0].transcript.trim();if(t){$('input').value=($('input').value+' '+t).trim();stopMic();$('input').focus()}};recognition.onerror=e=>{if(e.error==='no-speech'){stopMic();setTimeout(startMic,500);return}if(e.error!=='aborted')Y.toast('Mic: '+e.error);stopMic()};recognition.onend=()=>{if(micOn)stopMic()};recognition.start();micOn=true;$('micBtn').classList.add('btn-rec')}
+function stopMic(){if(recognition){try{recognition.stop()}catch{}}micOn=false;$('micBtn').classList.remove('btn-rec')}
+
+// Self-reflect
+async function selfReflect(){
+  const key=getActiveKey();if(!key){Y.toast('Set API Key first');return}
+  prog('Self-reflecting...','ac');
+  const all=Object.values(conversations).flatMap(c=>c.messages||[]).slice(-10);
+  const summary=all.map(m=>`[${m.role}]: ${(m.text||'').slice(0,100)}`).join('\n');
+  const prompt='[SELF-UPGRADE] Read the Workbench codebase and make ONE concrete improvement.\n\n'+
+    'Files: chat-ui.html (frontend), server.js (Express backend), lib/ai-client.js (AI engine), lib/tool-registry.js (tools), public/shared/theme.css, public/shared/utils.js\n\n'+
+    'Recent context:\n'+summary+'\n\nMake actual code changes using edit_file or write_file.';
+  addMsg('ai','Thinking...');
+  try{
+    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:prompt,apiKey:key,model:$('model').value})});
+    const d=await r.json();
+    updateLastAi('## Self-Reflection\n\n'+(d.text||'Error: '+(d.error||'Unknown')));
+    prog('Done','green');
+  }catch(e){updateLastAi('Error: '+e.message);prog('Error','red')}
+}
+
+// Panel
+function togglePanel(){$('toolsPanel').classList.toggle('show');$('panelOverlay').classList.toggle('show')}
+function closePanel(){$('toolsPanel').classList.remove('show');$('panelOverlay').classList.remove('show')}
+function showPreview(url){const p=$('previewPanel');p.innerHTML=`<div class="pp-bar"><span>Preview</span><a href="${url}" target="_blank" class="yh-btn">Open in tab</a><button class="yh-btn" onclick="this.closest('.preview-panel').classList.remove('show')">Close</button></div><iframe src="${url}"></iframe>`;p.classList.add('show')}
+function previewFile(url){showPreview(url)}
+function exportChat(){
+  const msgs=conversations[activeConv]?.messages||[];
+  const text=msgs.map(m=>`[${m.role==='user'?'You':'AI'}] ${m.text||''}`).join('\n\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text]));a.download='chat-export.txt';a.click();
+}
+
+function newChat(){const id='c_'+Date.now();conversations[id]={name:'New Chat',messages:[],created:Date.now()};activeConv=id;save();renderSidebar();renderMsgs()}
+
+// Drag/drop & paste
+document.addEventListener('dragover',e=>e.preventDefault());
 document.addEventListener('drop',e=>{e.preventDefault();for(const f of e.dataTransfer.files){const r=new FileReader();r.onload=()=>{pendingFiles.push({name:f.name,content:r.result,isImage:f.type.startsWith('image/'),text:f.type.startsWith('image/')?null:r.result,blob:f});updateFiles()};f.type.startsWith('image/')?r.readAsDataURL(f):r.readAsText(f)}});
 document.addEventListener('paste',e=>{for(const it of e.clipboardData?.items||[]){if(it.type.startsWith('image/')){const f=it.getAsFile();const r=new FileReader();r.onload=()=>{pendingFiles.push({name:'paste-'+Date.now()+'.png',content:r.result,isImage:true,blob:f});updateFiles()};r.readAsDataURL(f)}}});
 $('input').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'});

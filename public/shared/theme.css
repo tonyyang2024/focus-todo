@@ -1,0 +1,149 @@
+/* === Yoohome Shared Theme — Dark + Light === */
+:root {
+  /* Light theme (default) */
+  --yh-bg: #f2f2f7;
+  --yh-card: #ffffff;
+  --yh-border: rgba(0,0,0,0.06);
+  --yh-text: #1d1d1f;
+  --yh-text2: #86868b;
+  --yh-text3: #aeaeb2;
+  --yh-accent: #007aff;
+  --yh-accent2: #0066d6;
+  --yh-red: #ff3b30;
+  --yh-green: #34c759;
+  --yh-orange: #ff9500;
+  --yh-purple: #7c3aed;
+  --yh-radius: 10px;
+  --yh-radius-sm: 7px;
+  --yh-radius-lg: 18px;
+  --yh-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --yh-shadow-lg: 0 4px 16px rgba(0,0,0,0.1);
+  --yh-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'PingFang SC', sans-serif;
+  --yh-mono: 'SF Mono', 'Cascadia Code', Consolas, monospace;
+  --yh-safe-bottom: env(safe-area-inset-bottom, 8px);
+  --yh-transition: 0.18s ease;
+}
+
+/* Dark theme */
+[data-theme="dark"], .yh-dark {
+  --yh-bg: #1c1c1e;
+  --yh-card: #2c2c2e;
+  --yh-border: rgba(255,255,255,0.08);
+  --yh-text: #e5e5ea;
+  --yh-text2: #8e8e93;
+  --yh-text3: #636366;
+  --yh-accent: #0a84ff;
+  --yh-accent2: #0070e0;
+  --yh-red: #ff453a;
+  --yh-green: #30d158;
+  --yh-orange: #ff9f0a;
+  --yh-purple: #bf5af2;
+  --yh-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  --yh-shadow-lg: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+/* === Reset & Base === */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: var(--yh-font);
+  background: var(--yh-bg);
+  color: var(--yh-text);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+}
+
+/* === Typography === */
+.yh-text-xs { font-size: 10px; }
+.yh-text-sm { font-size: 12px; }
+.yh-text-md { font-size: 13.5px; }
+.yh-text-lg { font-size: 16px; }
+.yh-mono { font-family: var(--yh-mono); }
+.yh-bold { font-weight: 600; }
+.yh-text2 { color: var(--yh-text2); }
+.yh-text3 { color: var(--yh-text3); }
+
+/* === Buttons === */
+.yh-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  padding: 6px 14px; border-radius: var(--yh-radius-sm); border: 1px solid var(--yh-border);
+  background: var(--yh-card); color: var(--yh-text2); cursor: pointer;
+  font-size: 11.5px; font-family: inherit; transition: all var(--yh-transition);
+  text-decoration: none; white-space: nowrap;
+}
+.yh-btn:hover { border-color: var(--yh-accent); color: var(--yh-accent); background: rgba(0,122,255,0.05); }
+.yh-btn-primary { background: var(--yh-accent); color: #fff; border: none; font-weight: 560; }
+.yh-btn-primary:hover { background: var(--yh-accent2); color: #fff; }
+.yh-btn-danger { color: var(--yh-red); border-color: var(--yh-red); }
+.yh-btn-danger:hover { background: rgba(255,59,48,0.08); color: var(--yh-red); }
+.yh-btn-icon {
+  width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 17px; background: rgba(0,0,0,0.04); color: var(--yh-text2);
+  transition: all var(--yh-transition); flex-shrink: 0;
+}
+.yh-btn-icon:hover { background: rgba(0,0,0,0.08); color: var(--yh-text); }
+
+/* === Form Elements === */
+.yh-input, .yh-select, .yh-textarea {
+  width: 100%; padding: 7px 10px; border: 1px solid var(--yh-border); border-radius: var(--yh-radius-sm);
+  font-size: 12px; font-family: inherit; outline: none; background: var(--yh-bg); color: var(--yh-text);
+  transition: border-color var(--yh-transition);
+}
+.yh-input:focus, .yh-select:focus, .yh-textarea:focus {
+  border-color: var(--yh-accent); box-shadow: 0 0 0 3px rgba(0,122,255,0.1);
+}
+
+/* === Card === */
+.yh-card {
+  background: var(--yh-card); border: 1px solid var(--yh-border);
+  border-radius: var(--yh-radius); box-shadow: var(--yh-shadow);
+}
+
+/* === Toast === */
+.yh-toast {
+  position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  color: #fff; padding: 9px 18px; border-radius: 20px; font-size: 12px;
+  z-index: 9999; opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease; font-weight: 500;
+}
+.yh-toast.show { opacity: 1; }
+
+/* === Modal / Overlay === */
+.yh-overlay {
+  display: none; position: fixed; inset: 0; z-index: 90;
+  background: rgba(0,0,0,0.3); backdrop-filter: blur(4px);
+}
+.yh-overlay.show { display: block; }
+.yh-modal {
+  display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  z-index: 95; background: var(--yh-card); border-radius: var(--yh-radius-lg);
+  box-shadow: var(--yh-shadow-lg); padding: 24px; max-width: 90vw; max-height: 85vh;
+  overflow-y: auto; flex-direction: column; gap: 12px;
+}
+.yh-modal.show { display: flex; }
+
+/* === Scrollbar === */
+.yh-scroll::-webkit-scrollbar { width: 5px; }
+.yh-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 10px; }
+.yh-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* === File chip === */
+.yh-file-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; background: var(--yh-card); border: 1px solid var(--yh-border);
+  border-radius: 10px; font-size: 10.5px; color: var(--yh-text2);
+}
+.yh-file-chip .yh-file-x { cursor: pointer; color: var(--yh-text3); font-size: 12px; }
+.yh-file-chip .yh-file-x:hover { color: var(--yh-red); }
+
+/* === Diff View === */
+.yh-diff { font-family: var(--yh-mono); font-size: 11px; line-height: 1.6; }
+.yh-diff .diff-add { background: rgba(52,199,89,0.15); color: var(--yh-green); }
+.yh-diff .diff-rem { background: rgba(255,59,48,0.12); color: var(--yh-red); }
+.yh-diff .diff-hdr { color: var(--yh-text3); font-weight: 600; }
+
+/* === Responsive === */
+@media (max-width: 768px) {
+  .yh-hide-mobile { display: none !important; }
+}

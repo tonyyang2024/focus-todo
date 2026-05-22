@@ -17,7 +17,33 @@
       "Read(//c/Users/18233563536/Desktop/claude skills//**)",
       "Read(//c/Users/18233563536/Desktop//**)",
       "Bash(/c/Users/18233563536/.fly/bin/flyctl version *)",
-      "Bash(powershell *)"
+      "Bash(powershell *)",
+      "Bash(reg query *)",
+      "Bash(setx ANTHROPIC_AUTH_TOKEN *)",
+      "Read(//c/Users/182335363636/.claude/**)",
+      "Read(//c/Users/18233563536/.claude/**)",
+      "Bash(python3 *)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //PID 12120 //F)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(curl -s \"https://api.render.com/v1/services/srv-d85iijfaqgkc73bdue10/deploys?limit=1\" -H \"Authorization: Bearer q23xc0hfU-Y\")",
+      "Bash(curl *)",
+      "Bash(npx acorn *)",
+      "Bash(rm -f _test.js)",
+      "Bash(cp /c/workspace/yoohome-claudecloud/.vscode/chat-extension/webview.html \"/c/Users/18233563536/.vscode/extensions/code-chat-panel/webview.html\" && echo \"Copied successfully\")",
+      "Read(//c/Users/18233563536/.vscode/extensions/code-chat-panel/**)",
+      "Bash(code --command codechat.open)",
+      "Bash(code --open-url \"vscode://command/codechat.open\")",
+      "Bash(grep -oP '.{0,80}\\(microphone|mic-button|startRecording|voiceInput|audioCapture\\).{0,80}' \"/c/Users/18233563536/.vscode/extensions/anthropic.claude-code-2.1.145-win32-x64/webview/index.js\")",
+      "Bash(cp \"/c/Users/18233563536/.vscode/extensions/anthropic.claude-code-2.1.145-win32-x64/webview/index.js\" \"/c/Users/18233563536/.vscode/extensions/anthropic.claude-code-2.1.145-win32-x64/webview/index.js.bak\" && echo \"Backup created\")",
+      "Bash(taskkill //F //IM code.exe)",
+      "Bash(code /c/workspace/yoohome-claudecloud)",
+      "Bash(code --command workbench.action.reloadWindow)",
+      "Bash(code --reload-window)"
+    ],
+    "additionalDirectories": [
+      "C:\\workspace\\yoohome-claudecloud\\.vscode\\chat-extension",
+      "C:\\Users\\18233563536\\.vscode\\extensions\\anthropic.claude-code-2.1.145-win32-x64\\webview"
     ]
   }
 }

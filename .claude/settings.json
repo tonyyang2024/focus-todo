@@ -1,6 +1,11 @@
 {
   "description": "Yoohome 个人助手 - Claude Code + DeepSeek 项目配置",
   "model": "deepseek-chat",
+  "voice": {
+    "enabled": true,
+    "mode": "hold",
+    "autoSubmit": true
+  },
   "env": {
     "PROJECT_NAME": "yoohome-claudecloud",
     "WORKSPACE": "C:\\workspace\\yoohome-claudecloud"
@@ -13,6 +18,7 @@
       "Bash(node:*)",
       "Bash(python:*)",
       "Bash(pip:*)",
+      "Bash(python3:*)",
       "Bash(dir)",
       "Bash(ls)",
       "Bash(cat)",
@@ -24,6 +30,22 @@
       "Bash(cat:*)",
       "Bash(type:*)",
       "Bash(echo:*)",
+      "Bash(rm:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(curl:*)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(code:*)",
+      "Bash(powershell:*)",
+      "Bash(kill:*)",
+      "Bash(grep:*)",
+      "Bash(cd:*)",
+      "Bash(which:*)",
+      "Bash(where:*)",
+      "Bash(setx:*)",
+      "Bash(reg:*)",
+      "Bash(nodemon:*)",
       "WebSearch",
       "WebFetch",
       "Read(*)",
@@ -35,25 +57,40 @@
       "Bash(git push --force:*)",
       "Bash(git reset --hard:*)",
       "Bash(npm publish:*)",
-      "Bash(curl:*)",
-      "Bash(wget:*)"
+      "Bash(curl: *|bash)",
+      "Bash(wget: *-O-|sh)"
     ]
   },
   "hooks": {
-    "onStart": [
+    "SessionStart": [
       {
-        "description": "显示助手就绪信息和当前工作区状态",
-        "command": "echo 'Yoohome 个人助手已就绪' && echo '工作区: C:\\workspace\\yoohome-claudecloud' && echo '时间: %date% %time%'"
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Yoohome 个人助手已就绪' && echo '工作区: C:\\workspace\\yoohome-claudecloud' && echo '时间: %date% %time%'"
+          }
+        ]
       },
       {
-        "description": "检查 git 仓库状态",
-        "command": "cd C:\\workspace\\yoohome-claudecloud && git status --short 2>nul || echo '非 git 仓库或未初始化'"
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd C:\\workspace\\yoohome-claudecloud && git status --short 2>nul || echo '非 git 仓库或未初始化'"
+          }
+        ]
       }
     ],
-    "onStop": [
+    "Stop": [
       {
-        "description": "记录会话结束时间",
-        "command": "echo %date% %time% >> C:\\workspace\\yoohome-claudecloud\\.claude\\session-log.txt"
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo %date% %time% >> C:\\workspace\\yoohome-claudecloud\\.claude\\session-log.txt"
+          }
+        ]
       }
     ]
   }

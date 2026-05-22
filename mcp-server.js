@@ -91,6 +91,60 @@ const tools = {
     }
   },
 
+  document_parse: {
+    name: 'document_parse',
+    description: 'Retrieve a parsed document by its docId (from /api/documents/upload). Returns text content and metadata.',
+    parameters: { docId: 'string (required) - Document ID from /api/documents/upload' },
+    handler: async (params) => {
+      try {
+        const docPath = path.join(__dirname, 'data', 'documents', params.docId + '.json');
+        if (!fs.existsSync(docPath)) return { ok: false, error: 'Document not found or expired' };
+        const doc = JSON.parse(fs.readFileSync(docPath, 'utf8'));
+        return { ok: true, text: doc.text, metadata: doc.metadata, fileName: doc.fileName };
+      } catch (e) { return { ok: false, error: e.message }; }
+    }
+  },
+
+  task_queue_manage: {
+    name: 'task_queue_manage',
+    description: 'List or update task queue items. action: "list" to view pending tasks, "complete" to mark a task done, "update" to change status.',
+    parameters: {
+      action: 'string (required) - "list", "complete", or "update"',
+      taskId: 'string (optional) - Task ID for complete/update actions',
+      status: 'string (optional) - New status for update action (pending/processing/completed/failed)',
+      result: 'string (optional) - Result text for completed tasks'
+    },
+    handler: async (params) => {
+      try {
+        const db = require('./db');
+        if (params.action === 'list') {
+          const rows = db.searchMemory('task:');
+          const tasks = rows.map(r => {
+            try { return { id: r.key, ...JSON.parse(r.value), tags: r.tags }; }
+            catch { return { id: r.key, tags: r.tags }; }
+          });
+          return { ok: true, count: tasks.length, tasks };
+        }
+        if ((params.action === 'complete' || params.action === 'update') && params.taskId) {
+          const rows = db.searchMemory(params.taskId);
+          if (!rows.length) return { ok: false, error: 'Task not found' };
+          const task = JSON.parse(rows[0].value);
+          if (params.action === 'complete') {
+            task.status = 'completed';
+            task.result = params.result || '';
+            task.completedAt = new Date().toISOString();
+          } else {
+            if (params.status) task.status = params.status;
+            if (params.result !== undefined) task.result = params.result;
+          }
+          db.saveMemory(params.taskId, task, ['task', task.status || 'pending']);
+          return { ok: true, task: { id: params.taskId, ...task } };
+        }
+        return { ok: false, error: 'Invalid action. Use "list", "complete", or "update".' };
+      } catch (e) { return { ok: false, error: e.message }; }
+    }
+  },
+
   // ====== SAP Joule (A2A Protocol) Tools ======
   joule_chat: {
     name: 'joule_chat',

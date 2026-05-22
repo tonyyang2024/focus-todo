@@ -1,8 +1,9 @@
 const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
-const https = require('https');
 const http = require('http');
+
+const SERVER_PORT = 3000;
 
 class ChatViewProvider {
   constructor(extensionPath) {
@@ -26,7 +27,7 @@ class ChatViewProvider {
     webviewView.webview.onDidReceiveMessage(async (msg) => {
       switch (msg.type) {
         case 'api':
-          await this.handleApi(msg, webviewView);
+          await this.handleChatStream(msg, webviewView);
           break;
         case 'openFile':
           await this.handleOpenFile(webviewView);
@@ -37,54 +38,114 @@ class ChatViewProvider {
         case 'saveFile':
           this.handleSaveFile(msg, webviewView);
           break;
+        case 'fetchConfig':
+          this.handleFetchConfig(webviewView);
+          break;
       }
     });
 
     webviewView.onDidDispose(() => { this.view = null; });
   }
 
-  async handleApi(msg, webviewView) {
-    const { endpoint, apiKey, model, messages } = msg;
-    const url = new URL(endpoint);
-    const isHttps = url.protocol === 'https:';
-    const transport = isHttps ? https : http;
+  async handleChatStream(msg, webviewView) {
+    const { id, model, messages, tools } = msg;
 
-    const body = JSON.stringify({
-      model: model,
-      messages: messages,
-      max_tokens: 4096,
-      stream: false
-    });
-
-    const options = {
-      hostname: url.hostname,
-      port: url.port || (isHttps ? 443 : 80),
-      path: url.pathname + url.search,
+    const body = JSON.stringify({ messages, model, tools });
+    const req = http.request({
+      hostname: 'localhost',
+      port: SERVER_PORT,
+      path: '/api/chat/stream',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey,
         'Content-Length': Buffer.byteLength(body)
       },
-      timeout: 120000
-    };
+      timeout: 300000
+    }, (res) => {
+      if (res.statusCode !== 200) {
+        let errData = '';
+        res.on('data', c => errData += c);
+        res.on('end', () => {
+          webviewView.webview.postMessage({
+            type: 'apiResponse', id, content: `Server error ${res.statusCode}: ${errData.slice(0, 300)}`
+          });
+        });
+        return;
+      }
 
-    const req = transport.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          const content = json.choices?.[0]?.message?.content || json.error?.message || data;
-          webviewView.webview.postMessage({ type: 'apiResponse', id: msg.id, content });
-        } catch {
-          webviewView.webview.postMessage({ type: 'apiResponse', id: msg.id, content: data });
+      let buffer = '';
+      let content = '';
+
+      res.on('data', (chunk) => {
+        buffer += chunk.toString('utf8');
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+          const dataStr = trimmed.slice(6);
+
+          try {
+            const data = JSON.parse(dataStr);
+
+            if (data.type === 'token') {
+              content += data.text;
+              webviewView.webview.postMessage({ type: 'apiToken', id, token: data.text });
+            } else if (data.type === 'done') {
+              webviewView.webview.postMessage({
+                type: 'apiResponse', id,
+                content: data.content || content,
+                model: data.model
+              });
+            } else if (data.type === 'error') {
+              webviewView.webview.postMessage({
+                type: 'apiResponse', id,
+                content: 'Error: ' + data.message
+              });
+            } else if (data.type === 'tool_call') {
+              webviewView.webview.postMessage({
+                type: 'toolCall', id,
+                tool: data.tool, params: data.params
+              });
+            } else if (data.type === 'tool_result') {
+              webviewView.webview.postMessage({
+                type: 'toolResult', id,
+                tool: data.tool, result: data.result
+              });
+            }
+          } catch {}
         }
+      });
+
+      res.on('end', () => {
+        // If no explicit done event was sent, send one with accumulated content
+        if (content && !buffer) {
+          // Already handled via done event
+        }
+      });
+
+      res.on('error', (e) => {
+        webviewView.webview.postMessage({
+          type: 'apiResponse', id,
+          content: 'Stream error: ' + e.message
+        });
       });
     });
 
     req.on('error', (e) => {
-      webviewView.webview.postMessage({ type: 'apiResponse', id: msg.id, content: 'Error: ' + e.message });
+      webviewView.webview.postMessage({
+        type: 'apiResponse', id,
+        content: 'Connection error: Cannot reach local server (port ' + SERVER_PORT + '). Is `node server.js` running?'
+      });
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      webviewView.webview.postMessage({
+        type: 'apiResponse', id,
+        content: 'Request timed out (5 min)'
+      });
     });
 
     req.write(body);
@@ -111,7 +172,6 @@ class ChatViewProvider {
             truncated: content.length > 50000
           });
         } catch (e) {
-          // Binary file - read as base64
           try {
             const buf = fs.readFileSync(f.fsPath);
             const base64 = buf.toString('base64');
@@ -160,11 +220,41 @@ class ChatViewProvider {
 
   handleSaveFile(msg, webviewView) {
     try {
-      fs.writeFileSync(msg.path, msg.content, 'utf8');
+      const fullPath = path.isAbsolute(msg.path) ? msg.path : path.join(this.extensionPath, '..', '..', msg.path);
+      const dir = path.dirname(fullPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(fullPath, msg.content, 'utf8');
       webviewView.webview.postMessage({ type: 'fileSaved', path: msg.path, ok: true });
     } catch (e) {
       webviewView.webview.postMessage({ type: 'fileSaved', path: msg.path, ok: false, error: e.message });
     }
+  }
+
+  handleFetchConfig(webviewView) {
+    const req = http.get({
+      hostname: 'localhost',
+      port: SERVER_PORT,
+      path: '/api/config/key',
+      timeout: 5000
+    }, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          const cfg = JSON.parse(data);
+          webviewView.webview.postMessage({ type: 'configLoaded', config: cfg });
+        } catch {
+          webviewView.webview.postMessage({ type: 'configLoaded', config: {} });
+        }
+      });
+    });
+    req.on('error', () => {
+      webviewView.webview.postMessage({ type: 'configLoaded', config: {} });
+    });
+    req.on('timeout', () => {
+      req.destroy();
+      webviewView.webview.postMessage({ type: 'configLoaded', config: {} });
+    });
   }
 
   show() {

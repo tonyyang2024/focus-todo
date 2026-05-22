@@ -8,6 +8,7 @@
     --bg: #1e1e1e; --surface: #252526; --border: #3e3e42;
     --text: #cccccc; --text-secondary: #8a8a8a; --accent: #0078d4;
     --user-bg: #094771; --assistant-bg: #2d2d2d; --code-bg: #1a1a1a;
+    --tool-bg: #1a2b3d; --tool-border: #2a4a6a;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -27,7 +28,7 @@
   }
   .msg.user .avatar { background: var(--accent); }
   .msg.assistant .avatar { background: #3c3c3c; }
-  .msg .content { max-width: calc(100% - 44px); display: flex; flex-direction: column; }
+  .msg .content { max-width: calc(100% - 44px); display: flex; flex-direction: column; min-width: 0; }
   .msg .bubble {
     padding: 10px 14px; border-radius: 10px; line-height: 1.55; font-size: 13px;
     word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;
@@ -57,6 +58,60 @@
   }
   .attachment-chip .remove:hover { color: #f48771; }
   .image-preview { max-width: 200px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; }
+
+  /* Code block wrapper */
+  .code-block-wrap {
+    border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin: 8px 0;
+    background: #0d0d0d;
+  }
+  .code-block-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 10px; background: #1e1e1e; border-bottom: 1px solid var(--border);
+    font-size: 11px; color: var(--text-secondary);
+  }
+  .code-block-header .lang-tag { font-weight: 600; text-transform: uppercase; }
+  .code-block-header .actions { display: flex; gap: 4px; }
+  .code-block-header .actions button {
+    background: transparent; border: none; color: var(--text-secondary);
+    cursor: pointer; font-size: 11px; padding: 2px 8px; border-radius: 4px;
+    font-family: inherit;
+  }
+  .code-block-header .actions button:hover { background: #333; color: var(--text); }
+  .code-block-wrap pre { margin: 0 !important; border: none !important; border-radius: 0 !important; }
+  .code-block-wrap .apply-path {
+    font-size: 10px; color: #569cd6; margin-left: 6px; max-width: 200px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* Tool call cards */
+  .tool-call-card {
+    border: 1px solid var(--tool-border); border-radius: 8px; margin: 6px 0;
+    background: var(--tool-bg); font-size: 12px; overflow: hidden;
+  }
+  .tool-call-card .tool-header {
+    display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+    cursor: pointer; user-select: none;
+  }
+  .tool-call-card .tool-header:hover { background: rgba(255,255,255,0.03); }
+  .tool-call-card .tool-icon { font-size: 14px; flex-shrink: 0; }
+  .tool-call-card .tool-name { font-weight: 600; }
+  .tool-call-card .tool-summary { color: var(--text-secondary); font-size: 11px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tool-call-card .tool-body { padding: 8px 10px; border-top: 1px solid var(--tool-border); display: none; }
+  .tool-call-card.open .tool-body { display: block; }
+  .tool-call-card .tool-body pre {
+    margin: 0; font-size: 11px; max-height: 200px; overflow-y: auto;
+    background: #111; border: 1px solid #333; border-radius: 4px; padding: 8px;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: #333; color: #fff; padding: 6px 18px; border-radius: 20px;
+    font-size: 12px; z-index: 100; pointer-events: none;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .toast.show { opacity: 1; }
+
   .drop-zone {
     display: none; position: absolute; inset: 0;
     background: rgba(0,120,212,0.15); border: 2px dashed var(--accent);
@@ -79,6 +134,11 @@
     background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary);
     padding: 4px 10px; border-radius: 14px; font-size: 11px; outline: none; font-family: inherit;
   }
+  .cancel-btn {
+    background: #5a1d1d !important; border-color: #8b3a3a !important; color: #f48771 !important;
+    display: none;
+  }
+  .cancel-btn.visible { display: inline-block; }
   .input-area { padding: 10px 16px 14px; border-top: 1px solid var(--border); flex-shrink: 0; }
   .input-wrap {
     display: flex; gap: 6px; background: var(--code-bg);
@@ -100,6 +160,20 @@
     transition: all 0.15s; flex-shrink: 0;
   }
   .input-wrap .btn-icon:hover { color: var(--text); background: #333; }
+  .input-wrap .btn-mic {
+    background: transparent; border: none; color: var(--text-secondary);
+    cursor: pointer; padding: 6px 8px; font-size: 16px; border-radius: 50%;
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .input-wrap .btn-mic:hover { color: var(--text); background: #333; }
+  .input-wrap .btn-mic.recording {
+    color: #ff4444; background: rgba(255,68,68,0.15);
+    animation: micPulse 1.4s infinite;
+  }
+  @keyframes micPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,68,0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(255,68,68,0); }
+  }
   .input-wrap .btn-send {
     background: var(--accent); border: none; color: #fff;
     padding: 8px 14px; border-radius: 6px; cursor: pointer;
@@ -111,7 +185,6 @@
   .key-setup input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 6px; font-size: 11px; outline: none; font-family: inherit; }
   .key-setup input:focus { border-color: var(--accent); }
   .key-setup span { font-size: 10px; color: var(--text-secondary); white-space: nowrap; }
-  .typing { color: var(--text-secondary); font-style: italic; padding: 4px 0; }
   .stored-files { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 16px 0; }
   .stored-file {
     display: flex; align-items: center; gap: 4px;
@@ -121,11 +194,17 @@
   .stored-file:hover { background: #3c3c3c; }
   .stored-file .remove-file { cursor: pointer; color: #888; margin-left: 2px; }
   .stored-file .remove-file:hover { color: #f48771; }
+  .streaming-cursor {
+    display: inline-block; width: 6px; height: 14px; background: var(--accent);
+    animation: blink 0.8s infinite; vertical-align: text-bottom; margin-left: 1px;
+  }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 </style>
 </head>
 <body>
 
-<div class="drop-zone" id="dropZone">&#x1F4C1; 拖放文件到这里添加到对话</div>
+<div class="drop-zone" id="dropZone">拖放文件到这里添加到对话</div>
+<div class="toast" id="toast"></div>
 
 <div class="messages" id="messages">
   <div class="msg assistant">
@@ -137,7 +216,7 @@
           <b>AI Code Chat</b><br>
           提问、粘贴代码、发送截图<br>
           拖放文件到窗口即可添加到对话<br>
-          <small style="color:#666">点击右下角 &#x1F4CE; 添加文件 &nbsp;|&nbsp; 可直接粘贴图片</small>
+          <small style="color:#666">流式输出 | 代码块操作 | 工具调用可视化</small>
         </div>
       </div>
     </div>
@@ -146,25 +225,28 @@
 
 <div class="stored-files" id="storedFiles"></div>
 
-<div class="key-setup">
+<div class="key-setup" id="keySetup">
   <span>API Key:</span>
   <input type="password" id="apiKey" placeholder="输入 DeepSeek API Key (sk-...)" onchange="saveKey()">
-  <span style="font-size:9px;color:#666">仅存本地</span>
+  <span id="keyStatus" style="font-size:9px;color:#666">仅存本地</span>
 </div>
+
 <div class="toolbar">
-  <button onclick="clearAll()">&#x1F5D1; 清空</button>
-  <button onclick="exportChat()">&#x1F4E5; 导出</button>
+  <button onclick="clearAll()">清空</button>
+  <button onclick="exportChat()">导出</button>
   <select class="model-select" id="modelSelect" onchange="switchModel(this.value)">
     <option value="deepseek-chat">DeepSeek V3</option>
     <option value="deepseek-reasoner">DeepSeek R1</option>
   </select>
+  <button class="cancel-btn" id="cancelBtn" onclick="cancelRequest()">取消</button>
   <span style="font-size:10px;color:var(--text-secondary);margin-left:auto;" id="statusText">就绪</span>
 </div>
 
 <div class="input-area">
   <div class="input-wrap">
     <button class="btn-icon" onclick="addFiles()" title="添加文件">&#x1F4CE;</button>
-    <textarea id="input" rows="1" placeholder="输入消息... 可以直接粘贴图片&#10;Enter 发送, Shift+Enter 换行" onkeydown="handleKey(event)"></textarea>
+    <button class="btn-mic" id="micBtn" onclick="toggleVoice()" title="语音输入">&#x1F3A4;</button>
+    <textarea id="input" rows="1" placeholder="输入消息... Enter 发送, Shift+Enter 换行" onkeydown="handleKey(event)"></textarea>
     <button class="btn-icon" onclick="captureScreen()" title="截屏(需要权限)">&#x1F4F8;</button>
     <button class="btn-send" id="sendBtn" onclick="send()">发送</button>
   </div>
@@ -174,66 +256,220 @@
 const vscode = acquireVsCodeApi();
 let pendingAttachments = [];
 let conversationHistory = [];
-let msgId = 0;
+let msgCounter = 0;
+let activeRequestId = null;
+let currentAssistantEl = null;
+let streamingContent = '';
 
-function addMsg(role, text, attachments) {
+// ---- Message rendering ----
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderMarkdown(text) {
+  if (!text) return '';
+  // Process code blocks first (```lang\ncode\n```) or (```lang:path\ncode\n```)
+  let html = '';
+  let remaining = text;
+  const fenceRegex = /```(\w+)?(?::(\S+))?\n([\s\S]*?)```/g;
+  let lastIdx = 0;
+  let match;
+
+  while ((match = fenceRegex.exec(text)) !== null) {
+    // Text before this code block
+    const before = text.slice(lastIdx, match.index);
+    html += renderInline(before);
+
+    const lang = match[1] || '';
+    const filePath = match[2] || '';
+    const code = match[3];
+
+    html += '<div class="code-block-wrap">';
+    html += '<div class="code-block-header">';
+    html += '<span>' + esc(lang || 'code') + '</span>';
+    if (filePath) html += '<span class="apply-path">' + esc(filePath) + '</span>';
+    html += '<span style="flex:1"></span>';
+    html += '<div class="actions">';
+    html += '<button onclick="copyCodeBlock(this)" title="Copy">Copy</button>';
+    if (filePath) html += '<button onclick="applyCodeBlock(this,\'' + esc(filePath) + '\')" title="Apply to project">Apply</button>';
+    if (lang === 'html' || lang === 'htm') html += '<button onclick="previewHtmlBlock(this)" title="Preview in browser">Preview</button>';
+    html += '</div></div>';
+    html += '<pre><code>' + esc(code) + '</code></pre>';
+    html += '</div>';
+
+    lastIdx = match.index + match[0].length;
+  }
+
+  // Remaining text after last code block
+  html += renderInline(text.slice(lastIdx));
+  return html;
+}
+
+function renderInline(text) {
+  if (!text) return '';
+  return text
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/\*([^*]+)\*/g, '<i>$1</i>')
+    .replace(/\n/g, '<br>');
+}
+
+function createMsgElement(role) {
   const div = document.createElement('div');
   div.className = 'msg ' + role;
+  div.innerHTML = `
+    <div class="avatar">${role === 'user' ? '&#x1F464;' : '&#x1F916;'}</div>
+    <div class="content"><div class="bubble"></div></div>
+  `;
+  return div;
+}
+
+function addUserMsg(text, attachments) {
+  const div = createMsgElement('user');
   let attachHtml = '';
   if (attachments && attachments.length) {
     attachHtml = '<div class="attachments">' + attachments.map(a => {
-      if (a.isImage) return `<img class="image-preview" src="${a.content}" alt="${a.name}" onclick="showImage('${a.content}')">`;
+      if (a.isImage) return `<img class="image-preview" src="${a.content}" alt="${esc(a.name)}" onclick="showImage('${a.content.replace(/'/g,"\\'")}')">`;
       return `<span class="attachment-chip">&#x1F4C4; <span class="name">${esc(a.name)}</span></span>`;
     }).join('') + '</div>';
   }
-  let bodyHtml = '';
-  if (text) {
-    bodyHtml = text
-      .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>');
-  }
-  div.innerHTML = `
-    <div class="avatar">${role === 'user' ? '&#x1F464;' : '&#x1F916;'}</div>
-    <div class="content"><div class="bubble">${bodyHtml}${attachHtml}</div></div>
-  `;
+  div.querySelector('.bubble').innerHTML = esc(text) + attachHtml;
   const msgs = document.getElementById('messages');
   msgs.appendChild(div);
+  scrollToBottom();
+  return div;
+}
+
+function addAssistantMsg() {
+  const div = createMsgElement('assistant');
+  document.getElementById('messages').appendChild(div);
+  scrollToBottom();
+  return div;
+}
+
+function updateAssistantBubble(el, text, isStreaming) {
+  const bubble = el.querySelector('.bubble');
+  bubble.innerHTML = renderMarkdown(text);
+  if (isStreaming) {
+    bubble.innerHTML += '<span class="streaming-cursor"></span>';
+  }
+  scrollToBottom();
+}
+
+function scrollToBottom() {
+  const msgs = document.getElementById('messages');
   msgs.scrollTop = msgs.scrollHeight;
 }
 
-function addTyping() {
-  const div = document.createElement('div');
-  div.className = 'msg assistant';
-  div.id = 'typing-' + msgId;
-  div.innerHTML = `
-    <div class="avatar">&#x1F916;</div>
-    <div class="content"><div class="bubble"><span class="typing">思考中...</span></div></div>
+// ---- Tool call cards ----
+
+function addToolCallCard(parentEl, tool, params, id) {
+  const card = document.createElement('div');
+  card.className = 'tool-call-card';
+  card.id = 'tool-' + id;
+  const summary = JSON.stringify(params || {}).slice(0, 60);
+
+  const iconMap = {
+    read_file: '&#x1F4C4;', write_file: '&#x270F;', edit_file: '&#x270F;',
+    bash_exec: '&#x2699;', glob_search: '&#x1F50D;', grep_search: '&#x1F50D;',
+    web_search: '&#x1F310;', web_fetch: '&#x1F310;', list_files: '&#x1F4C1;',
+    system_info: '&#x1F4CA;', search_kb: '&#x1F4DA;', document_parse: '&#x1F4C4;'
+  };
+
+  card.innerHTML = `
+    <div class="tool-header" onclick="this.parentElement.classList.toggle('open')">
+      <span class="tool-icon">${iconMap[tool] || '&#x1F527;'}</span>
+      <span class="tool-name">${esc(tool)}</span>
+      <span class="tool-summary">${esc(summary)}</span>
+      <span style="font-size:10px;color:#666">&#x25BC;</span>
+    </div>
+    <div class="tool-body">
+      <div style="color:var(--text-secondary);margin-bottom:4px;">Params:</div>
+      <pre>${esc(JSON.stringify(params, null, 2))}</pre>
+      <div class="tool-result" style="display:none;margin-top:6px;">
+        <div style="color:var(--text-secondary);margin-bottom:4px;">Result:</div>
+        <pre class="result-content"></pre>
+      </div>
+    </div>
   `;
-  document.getElementById('messages').appendChild(div);
+  parentEl.appendChild(card);
+  return card;
 }
 
-function removeTyping() {
-  const el = document.getElementById('typing-' + msgId);
-  if (el) el.remove();
+function updateToolResult(card, result) {
+  const resultDiv = card.querySelector('.tool-result');
+  const resultContent = card.querySelector('.result-content');
+  resultDiv.style.display = 'block';
+  resultContent.textContent = JSON.stringify(result, null, 2).slice(0, 2000);
+  card.querySelector('.tool-summary').textContent = result.ok ? 'Done' : ('Error: ' + (result.error || ''));
 }
 
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// ---- Toast ----
+
+let toastTimer;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// ---- Chat actions ----
+
+function copyCodeBlock(btn) {
+  const code = btn.closest('.code-block-wrap').querySelector('code').textContent;
+  navigator.clipboard.writeText(code).then(() => showToast('Copied!'));
+}
+
+function applyCodeBlock(btn, filePath) {
+  const code = btn.closest('.code-block-wrap').querySelector('code').textContent;
+  vscode.postMessage({ type: 'saveFile', path: filePath, content: code });
+  showToast('Applied to ' + filePath);
+}
+
+function previewHtmlBlock(btn) {
+  const code = btn.closest('.code-block-wrap').querySelector('code').textContent;
+  const win = window.open('', '_blank', 'width=800,height=600');
+  win.document.write(code);
+}
+
+function showImage(src) {
+  const win = window.open('', '_blank');
+  win.document.write('<img src="' + src + '" style="max-width:100%">');
+}
 
 function handleKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
 }
 
+function setSending(isSending) {
+  document.getElementById('sendBtn').disabled = isSending;
+  document.getElementById('cancelBtn').classList.toggle('visible', isSending);
+  document.getElementById('statusText').textContent = isSending ? '等待回复...' : '就绪';
+}
+
+function cancelRequest() {
+  activeRequestId = null;
+  if (currentAssistantEl) {
+    updateAssistantBubble(currentAssistantEl, streamingContent + '\n\n[已取消]', false);
+    currentAssistantEl = null;
+  }
+  setSending(false);
+  showToast('Request cancelled');
+}
+
 async function send() {
   const input = document.getElementById('input');
   const text = input.value.trim();
-  const apiKey = (document.getElementById('apiKey')?.value || localStorage.getItem('deepseek_key') || '').trim();
   if (!text && !pendingAttachments.length) return;
-  if (!apiKey) { document.getElementById('statusText').textContent = '请先输入 DeepSeek API Key'; return; }
+  if (activeRequestId) return; // Already sending
 
   const atts = [...pendingAttachments];
   pendingAttachments = [];
 
-  // Build user message
+  // Build user message content
   let userContent = '';
   for (const a of atts) {
     if (a.isImage) {
@@ -243,66 +479,117 @@ async function send() {
     }
   }
   if (text) userContent += text;
+  if (!userContent) return;
 
-  addMsg('user', text, atts);
+  addUserMsg(text, atts);
   updateStoredFiles();
   conversationHistory.push({ role: 'user', content: userContent });
 
-  // Add image data separately if supported
-  const apiMessages = conversationHistory.map(m => {
-    if (m.content.includes('[图片:')) {
-      const parts = [];
-      const imgMatch = m.content.match(/\[图片: ([^\]]+)\]/);
-      if (imgMatch && atts.find(a => a.name === imgMatch[1] && a.isImage)) {
-        parts.push({
-          type: 'image_url',
-          image_url: { url: atts.find(a => a.name === imgMatch[1]).content }
-        });
-      }
-      const textPart = m.content.replace(/\[图片: [^\]]+\]\n/g, '');
-      if (textPart) parts.push({ type: 'text', text: textPart });
-      return { role: m.role, content: parts };
-    }
-    return m;
-  });
-
   input.value = '';
   input.style.height = 'auto';
-  document.getElementById('sendBtn').disabled = true;
-  document.getElementById('statusText').textContent = '等待回复...';
+  setSending(true);
 
-  addTyping();
-  const id = ++msgId;
+  const requestId = ++msgCounter;
+  activeRequestId = requestId;
+  currentAssistantEl = addAssistantMsg();
+  streamingContent = '';
 
-  // Send via extension
   vscode.postMessage({
     type: 'api',
-    id,
-    endpoint: 'https://api.deepseek.com/v1/chat/completions',
-    apiKey: apiKey,
+    id: requestId,
     model: document.getElementById('modelSelect').value,
-    messages: apiMessages
+    tools: true,
+    messages: conversationHistory.map(m => ({ role: m.role, content: m.content }))
   });
 }
 
-// Receive responses
+function handleToken(id, token) {
+  if (id !== activeRequestId) return;
+  streamingContent += token;
+  updateAssistantBubble(currentAssistantEl, streamingContent, true);
+}
+
+function handleResponse(id, content) {
+  if (id !== activeRequestId) return;
+  updateAssistantBubble(currentAssistantEl, content || streamingContent, false);
+  conversationHistory.push({ role: 'assistant', content: content || streamingContent });
+  currentAssistantEl = null;
+  streamingContent = '';
+  activeRequestId = null;
+  setSending(false);
+}
+
+function handleError(id, message) {
+  if (id !== activeRequestId) return;
+  updateAssistantBubble(currentAssistantEl, 'Error: ' + message, false);
+  currentAssistantEl = null;
+  streamingContent = '';
+  activeRequestId = null;
+  setSending(false);
+}
+
+function handleToolCall(id, tool, params) {
+  if (id !== activeRequestId || !currentAssistantEl) return;
+  const card = addToolCallCard(currentAssistantEl.querySelector('.content'), tool, params, id + '-' + tool);
+}
+
+function handleToolResult(id, tool, result) {
+  if (id !== activeRequestId || !currentAssistantEl) return;
+  // Find the matching tool call card
+  const cards = currentAssistantEl.querySelectorAll('.tool-call-card');
+  for (const card of cards) {
+    if (card.id === 'tool-' + id + '-' + tool) {
+      updateToolResult(card, result);
+      break;
+    }
+  }
+}
+
+// ---- Message listener ----
+
 window.addEventListener('message', (e) => {
   const msg = e.data;
-  if (msg.type === 'apiResponse' && msg.id === msgId) {
-    removeTyping();
-    addMsg('assistant', msg.content);
-    conversationHistory.push({ role: 'assistant', content: typeof msg.content === 'string' ? msg.content : msg.content });
-    document.getElementById('sendBtn').disabled = false;
-    document.getElementById('statusText').textContent = '就绪';
-  }
-  if (msg.type === 'fileOpened') {
-    pendingAttachments.push(msg);
-    addMsg('user', '[添加了文件: ' + esc(msg.name) + ']', msg.isImage ? [msg] : [msg]);
-    updateStoredFiles();
+  switch (msg.type) {
+    case 'apiToken':
+      handleToken(msg.id, msg.token);
+      break;
+    case 'apiResponse':
+      handleResponse(msg.id, msg.content);
+      break;
+    case 'apiError':
+      handleError(msg.id, msg.message);
+      break;
+    case 'fileOpened':
+      pendingAttachments.push(msg);
+      addUserMsg('[添加了文件: ' + esc(msg.name) + ']', msg.isImage ? [msg] : [msg]);
+      updateStoredFiles();
+      break;
+    case 'fileSaved':
+      showToast(msg.ok ? 'Saved: ' + msg.path : 'Save failed: ' + (msg.error || ''));
+      break;
+    case 'configLoaded':
+      if (msg.config && msg.config.key) {
+        localStorage.setItem('deepseek_key', msg.config.key);
+        const el = document.getElementById('apiKey');
+        if (el) el.value = msg.config.key;
+        document.getElementById('keyStatus').textContent = '服务端已配置';
+        document.getElementById('keyStatus').style.color = '#4caf50';
+      } else {
+        document.getElementById('keyStatus').textContent = '未配置服务端Key';
+        document.getElementById('keyStatus').style.color = '#ff9800';
+      }
+      break;
+    case 'toolCall':
+      handleToolCall(msg.id, msg.tool, msg.params);
+      break;
+    case 'toolResult':
+      handleToolResult(msg.id, msg.tool, msg.result);
+      break;
   }
 });
 
-// Drag & Drop
+// ---- Drag & Drop ----
+
 document.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); document.getElementById('dropZone').classList.add('active'); });
 document.addEventListener('dragleave', e => { e.preventDefault(); e.stopPropagation(); document.getElementById('dropZone').classList.remove('active'); });
 document.addEventListener('drop', e => {
@@ -320,7 +607,7 @@ document.addEventListener('paste', e => {
       const reader = new FileReader();
       reader.onload = () => {
         pendingAttachments.push({ name: 'screenshot-' + Date.now() + '.png', content: reader.result, isImage: true, isBinary: true });
-        addMsg('user', '[粘贴了截图]', [{ name: '截图', content: reader.result, isImage: true }]);
+        addUserMsg('[粘贴了截图]', [{ name: '截图', content: reader.result, isImage: true }]);
         updateStoredFiles();
       };
       reader.readAsDataURL(blob);
@@ -375,7 +662,7 @@ function captureScreen() {
         track.stop();
         const url = canvas.toDataURL('image/png');
         pendingAttachments.push({ name: 'screenshot-' + Date.now() + '.png', content: url, isImage: true, isBinary: true });
-        addMsg('user', '[截屏]', [{ name: '截屏', content: url, isImage: true }]);
+        addUserMsg('[截屏]', [{ name: '截屏', content: url, isImage: true }]);
         updateStoredFiles();
       };
     }).catch(() => {
@@ -384,11 +671,6 @@ function captureScreen() {
   } else {
     document.getElementById('statusText').textContent = '当前环境不支持截屏';
   }
-}
-
-function showImage(src) {
-  const win = window.open('', '_blank');
-  win.document.write('<img src="' + src + '" style="max-width:100%">');
 }
 
 function clearAll() {
@@ -413,32 +695,122 @@ function exportChat() {
   a.click();
 }
 
-function switchModel(model) { localStorage.setItem('ds_model', model); document.getElementById('statusText').textContent = '已切换: ' + model; }
-function saveKey() {
-  const key = document.getElementById('apiKey').value.trim();
-  localStorage.setItem('deepseek_key', key);
+function switchModel(model) {
+  localStorage.setItem('ds_model', model);
+  document.getElementById('statusText').textContent = 'Model: ' + model;
 }
 
-// Init API key from localStorage
+function saveKey() {
+  const key = document.getElementById('apiKey').value.trim();
+  if (key) localStorage.setItem('deepseek_key', key);
+}
+
+// ---- Voice Input ----
+
+let recognition = null;
+let isRecording = false;
+
+function initRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    document.getElementById('statusText').textContent = 'Current environment does not support speech recognition';
+    return null;
+  }
+  const rec = new SpeechRecognition();
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.lang = 'zh-CN';
+
+  rec.onresult = (event) => {
+    let final = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) final += event.results[i][0].transcript;
+    }
+    const input = document.getElementById('input');
+    if (final) input.value += final;
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 150) + 'px';
+  };
+
+  rec.onerror = (event) => {
+    if (event.error === 'no-speech') {
+      document.getElementById('statusText').textContent = 'No speech detected, please try again';
+    } else if (event.error !== 'aborted') {
+      document.getElementById('statusText').textContent = 'Speech recognition error: ' + event.error;
+    }
+    stopRecording();
+  };
+
+  rec.onend = () => {
+    if (isRecording && recognition) {
+      try { recognition.start(); } catch(e) {}
+    } else {
+      stopRecording();
+    }
+  };
+
+  return rec;
+}
+
+function toggleVoice() {
+  if (isRecording) { stopRecording(); } else { startRecording(); }
+}
+
+function startRecording() {
+  if (!recognition) recognition = initRecognition();
+  if (!recognition) return;
+
+  isRecording = true;
+  const micBtn = document.getElementById('micBtn');
+  micBtn.classList.add('recording');
+  micBtn.title = 'Click to stop recording';
+  document.getElementById('statusText').textContent = 'Listening...';
+  document.getElementById('input').placeholder = 'Listening...';
+
+  try { recognition.start(); } catch(e) {}
+}
+
+function stopRecording() {
+  isRecording = false;
+  const micBtn = document.getElementById('micBtn');
+  micBtn.classList.remove('recording');
+  micBtn.title = 'Voice input';
+  document.getElementById('statusText').textContent = 'Ready';
+  document.getElementById('input').placeholder = 'Enter message... Enter to send, Shift+Enter for new line';
+
+  if (recognition) { try { recognition.stop(); } catch(e) {} }
+}
+
+// ---- Init ----
+
 (function init() {
-  const savedKey = localStorage.getItem('deepseek_key') || '';
-  const el = document.getElementById('apiKey');
-  if (el && savedKey) el.value = savedKey;
+  document.getElementById('input').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+  });
+
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'o') { e.preventDefault(); addFiles(); }
+    if (e.key === 'Escape' && activeRequestId) { cancelRequest(); }
+  });
+
+  // Load saved model
   const savedModel = localStorage.getItem('ds_model') || 'deepseek-chat';
   document.getElementById('modelSelect').value = savedModel;
+
+  // Try to load API key from localStorage
+  const savedKey = localStorage.getItem('deepseek_key') || '';
+  if (savedKey) {
+    document.getElementById('apiKey').value = savedKey;
+    document.getElementById('keyStatus').textContent = 'Local key loaded';
+    document.getElementById('keyStatus').style.color = '#4caf50';
+  }
+
+  // Also try fetching server config (non-blocking)
+  vscode.postMessage({ type: 'fetchConfig' });
+
+  document.getElementById('input').focus();
 })();
-
-document.getElementById('input').addEventListener('input', function() {
-  this.style.height = 'auto';
-  this.style.height = Math.min(this.scrollHeight, 150) + 'px';
-});
-
-// Keyboard shortcut for add files
-document.addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'o') { e.preventDefault(); addFiles(); }
-});
-
-document.getElementById('input').focus();
 </script>
 </body>
 </html>

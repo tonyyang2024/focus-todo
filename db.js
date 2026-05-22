@@ -241,11 +241,79 @@ function deleteMemory(key) {
   run('DELETE FROM agent_memory WHERE key = ?', [key]);
 }
 
+// --- Conversation storage ---
+// Uses agent_memory table with key pattern "conv:{convId}:meta" and "conv:{convId}:msg:{seq}"
+
+function createConversation(userId, title) {
+  initMemory();
+  const convId = 'conv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  saveMemory('conv:' + convId + ':meta', {
+    userId,
+    title: title || 'New Chat',
+    createdAt: new Date().toISOString(),
+    messageCount: 0
+  }, ['conversation', 'meta']);
+  return convId;
+}
+
+function saveConversationMessage(convId, role, content) {
+  initMemory();
+  const metaKey = 'conv:' + convId + ':meta';
+  const metaRows = searchMemory(metaKey);
+  let meta = metaRows.length ? JSON.parse(metaRows[0].value) : { messageCount: 0 };
+  meta.messageCount = (meta.messageCount || 0) + 1;
+
+  const seq = String(meta.messageCount).padStart(6, '0');
+  saveMemory('conv:' + convId + ':msg:' + seq, {
+    role, content,
+    timestamp: new Date().toISOString()
+  }, ['conversation', 'message', convId]);
+
+  // Auto-title from first user message
+  if (role === 'user' && meta.messageCount === 1 && meta.title === 'New Chat') {
+    meta.title = content.slice(0, 50) + (content.length > 50 ? '...' : '');
+  }
+  saveMemory(metaKey, meta, ['conversation', 'meta']);
+}
+
+function getConversationMessages(convId) {
+  initMemory();
+  const rows = searchMemory('conv:' + convId + ':msg:');
+  return rows
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .map(r => JSON.parse(r.value))
+    .slice(-50); // Last 50 messages
+}
+
+function listConversations(userId) {
+  initMemory();
+  const rows = listMemoryKeys().filter(r =>
+    (r.tags || '').includes('meta') && (r.tags || '').includes('conversation')
+  );
+  return rows
+    .map(r => {
+      try {
+        const val = r.value ? JSON.parse(r.value) : {};
+        return { convId: r.key.replace('conv:', '').replace(':meta', ''), ...val };
+      } catch { return null; }
+    })
+    .filter(c => c && (!userId || c.userId === userId))
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+}
+
+function deleteConversation(convId) {
+  initMemory();
+  const rows = searchMemory('conv:' + convId + ':');
+  rows.forEach(r => deleteMemory(r.key));
+}
+
 module.exports = {
   init,
   createUser, getUserByUsername, getUserById, listUsers, deleteUser,
   verifyPassword, updatePassword,
   getTasks, createTask, updateTask, deleteTask,
   getTodayPomodoroCount, incrementPomodoro,
-  saveMemory, searchMemory, listMemoryKeys, deleteMemory
+  saveMemory, searchMemory, listMemoryKeys, deleteMemory,
+  createConversation, saveConversationMessage, getConversationMessages,
+  listConversations, deleteConversation
 };

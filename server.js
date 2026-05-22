@@ -423,6 +423,128 @@ app.post('/api/chat', (req, res) => {
   apiReq.write(body); apiReq.end();
 });
 
+// --- Streaming Chat Endpoint ---
+app.post('/api/chat/stream', (req, res) => {
+  const { messages, model, tools: useTools } = req.body || {};
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: 'messages array required' });
+  }
+
+  // Get API key from server config
+  let apiKey = process.env.AI_API_KEY;
+  if (!apiKey) {
+    try {
+      const rows = db.searchMemory('ccw_provider_config');
+      if (rows.length) {
+        const cfg = JSON.parse(rows[0].value);
+        apiKey = cfg.key;
+      }
+    } catch {}
+  }
+  if (!apiKey) {
+    return res.status(400).json({ error: 'No API key configured on server. Set AI_API_KEY env var or save via /api/config/key' });
+  }
+
+  const useModel = model || 'deepseek-chat';
+
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  let aborted = false;
+  let toolCallCounter = 0;
+  req.on('close', () => { aborted = true; });
+
+  function sendSSE(data) {
+    if (aborted) return;
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  }
+
+  // Extract the last user message and history for runAgent
+  let userMessage = '';
+  let history = [];
+  if (messages.length > 0 && messages[messages.length - 1].role === 'user') {
+    userMessage = messages[messages.length - 1].content;
+    history = messages.slice(0, -1);
+  } else {
+    userMessage = messages.map(m => `${m.role}: ${m.content}`).join('\n');
+  }
+
+  if (useTools) {
+    // --- Agent mode with tool support ---
+    try {
+      aiClient.runAgent(
+        userMessage,
+        history,
+        apiKey,
+        {
+          onToken: ({ text }) => { sendSSE({ type: 'token', text }); },
+          onToolCall: ({ id, tool, params }) => {
+            toolCallCounter++;
+            sendSSE({ type: 'tool_call', id: `${toolCallCounter}`, tool, params });
+          },
+          onToolResult: ({ id, tool, result }) => {
+            sendSSE({ type: 'tool_result', id: `${toolCallCounter}`, tool, result });
+          },
+          onDone: ({ text }) => {
+            if (aborted) return;
+            sendSSE({ type: 'done', content: text });
+            res.end();
+          },
+          onError: ({ code, message }) => {
+            if (aborted) return;
+            sendSSE({ type: 'error', message: `[${code}] ${message}` });
+            res.end();
+          }
+        },
+        { model: useModel, maxIterations: 8 }
+      ).catch(err => {
+        if (!aborted) {
+          sendSSE({ type: 'error', message: err.message || 'Unknown error' });
+          res.end();
+        }
+      });
+    } catch (e) {
+      if (!aborted) {
+        sendSSE({ type: 'error', message: e.message });
+        res.end();
+      }
+    }
+  } else {
+    // --- Simple chat mode (no tools) ---
+    try {
+      aiClient.callLLM(
+        messages,
+        [],
+        apiKey,
+        useModel,
+        (token) => { sendSSE({ type: 'token', text: token }); }
+      ).then(result => {
+        if (aborted) return;
+        if (result.error) {
+          sendSSE({ type: 'error', message: result.error });
+        } else {
+          sendSSE({ type: 'done', content: result.content });
+        }
+        res.end();
+      }).catch(err => {
+        if (!aborted) {
+          sendSSE({ type: 'error', message: err.message || 'Unknown error' });
+          res.end();
+        }
+      });
+    } catch (e) {
+      if (!aborted) {
+        sendSSE({ type: 'error', message: e.message });
+        res.end();
+      }
+    }
+  }
+});
+
 // --- Conversation CRUD ---
 app.get('/api/conversations', (req, res) => {
   const convs = db.listConversations(null);

@@ -468,9 +468,11 @@ app.post('/api/chat/stream', (req, res) => {
   let doneSent = false;
   let toolCallCounter = 0;
 
+  // Detect client disconnect via response stream close
+  res.on('close', () => { aborted = true; });
+
   // Set timeout (5 minutes)
   req.setTimeout(300000, () => {
-    aborted = true;
     if (!doneSent) {
       doneSent = true;
       try { res.write(`data: ${JSON.stringify({ type: 'error', message: 'Request timeout (5 min)' })}\n\n`); } catch {}
@@ -478,11 +480,11 @@ app.post('/api/chat/stream', (req, res) => {
     }
   });
 
-  req.on('close', () => { aborted = true; });
-
   function sendSSE(data) {
     if (aborted || doneSent) return;
-    if (data.type === 'done' || data.type === 'error') doneSent = true;
+    if (data.type === 'done' || data.type === 'error') {
+      doneSent = true;
+    }
     try { res.write(`data: ${JSON.stringify(data)}\n\n`); } catch {}
   }
 

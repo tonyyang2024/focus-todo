@@ -423,29 +423,95 @@
 <input type="file" id="fileInput" multiple onchange="handleFiles(this)">
 
 <script>
+// ============ MCP SERVICE CONFIGURATION ============
+let mcpServices = [];
+try { mcpServices = JSON.parse(localStorage.getItem('sc_mcp_services') || '[]'); } catch { mcpServices = []; }
+
+function saveMcpConfig() { localStorage.setItem('sc_mcp_services', JSON.stringify(mcpServices)); }
+
+async function callMCP(tool, params) {
+  const results = [];
+  // Call local MCP first
+  try {
+    const r = await fetch('http://localhost:3001/call', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tool, params })
+    });
+    const d = await r.json();
+    results.push({ source: 'local', ...d });
+  } catch {}
+
+  // Call configured remote MCP services
+  for (const svc of mcpServices) {
+    if (!svc.url) continue;
+    try {
+      const r = await fetch(svc.url + '/call', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tool, params }),
+        signal: AbortSignal.timeout(10000)
+      });
+      const d = await r.json();
+      results.push({ source: svc.name || svc.url, ...d });
+    } catch {}
+  }
+  return results.length === 1 ? results[0] : results;
+}
+
+async function listMcpTools() {
+  const allTools = [];
+  try {
+    const r = await fetch('http://localhost:3001/tools');
+    const d = await r.json();
+    if (d.tools) allTools.push(...d.tools.map(t => ({ ...t, source: 'local' })));
+  } catch {}
+  for (const svc of mcpServices) {
+    if (!svc.url) continue;
+    try {
+      const r = await fetch(svc.url + '/tools', { signal: AbortSignal.timeout(5000) });
+      const d = await r.json();
+      if (d.tools) allTools.push(...d.tools.map(t => ({ ...t, source: svc.name || svc.url })));
+    } catch {}
+  }
+  return allTools;
+}
+
 // ============ SKILL REGISTRY ============
 const SKILLS = [
   { id:'compress', icon:'&#x1F5DC;', name:'文件压缩', desc:'压缩为 zip/gzip,减小体积', keywords:['压缩','解压','tar','zip','gzip','打包'], handler:'compressFile', type:'local' },
-  { id:'code', icon:'&#x1F4BB;', name:'写代码', desc:'生成可运行代码，自动预览，可迭代修改', keywords:['写','生成','代码','脚本','编程','创建','做一个','帮我写','帮我做','改一下','修改','调整','优化代码'], handler:'codeTask', type:'ai',
-    prompt:`你是一个资深全栈工程师。生成的代码必须完整、可运行、零依赖(除了CDN)。
+  { id:'code', icon:'&#x1F4BB;', name:'写代码', desc:'生成可运行代码(含ABAP/Fiori/Java/Python/Vue)', keywords:['写','生成','代码','脚本','编程','创建','做一个','帮我写','帮我做','改一下','修改','调整','优化','abap','fiori','vue','java','python','node','sap'], handler:'codeTask', type:'ai',
+    prompt:`你是资深全栈+SAP工程师。生成完整可运行代码。按目标语言使用对应模板：
+
+**ABAP**: 生成完整的 ABAP Report/Class/Function Module,含错误处理,MESSAGE 语句
+**SAP Fiori/UI5**: 输出完整单文件 HTML(内嵌 SAPUI5 CDN),含 Controller/View 分离注释标注
+**Java**: Spring Boot 完整项目结构,含 pom.xml/Application/Main,用 Maven
+**Node.js**: 完整 Express API,含 package.json/server.js/routes
+**Python**: FastAPI/Flask 完整应用,含 requirements.txt/main.py
+**Vue.js 3**: CDN 单文件组件,使用 Vue.createApp + Options API
+**HTML5**: 完整单文件内嵌 CSS+JS,CDN 引用外部库
+
 规则:
-1. 所有Web应用(含UI界面)必须输出完整单文件HTML(内嵌CSS+JS)，可在浏览器直接打开
-2. 引用外部库用CDN(如SAP UI5、React、Vue等)，不要用npm
-3. 代码带完整的错误处理和友好提示
-4. 输出格式: 首先用简短文字说明功能，然后用 \`\`\`html 包裹完整代码
-5. 如果用户要的功能太复杂，先做一个功能完整的简化版，标注哪些是简化项
-6. 如果是"改/修改/调整"已有代码，只输出改动部分或完整新版本` },
-  { id:'debug', icon:'&#x1F50D;', name:'调试修复', desc:'分析报错,找Bug,给方案', keywords:['调试','bug','报错','错误','修复','fix'], handler:'aiTask', type:'ai', prompt:'你是调试专家。分析错误根因，给出修复步骤。' },
-  { id:'review', icon:'&#x270D;', name:'代码审查', desc:'审查代码质量与安全', keywords:['审查','review','检查','优化','重构'], handler:'aiTask', type:'ai', prompt:'你是代码审查专家。检查质量、安全、性能，给改进建议。' },
+1. 输出格式: 简短说明 → \`\`\`lang:path/to/file\n完整代码\n\`\`\`
+2. 多文件项目时,每个文件用独立代码块标注路径
+3. 代码带完整错误处理和友好提示
+4. 复杂需求先出简化版,标注待扩展项` },
+  { id:'debug', icon:'&#x1F50D;', name:'调试修复', desc:'分析报错,找Bug,给方案', keywords:['调试','bug','报错','错误','修复','fix','dump','shortdump'], handler:'aiTask', type:'ai', prompt:'你是调试专家。分析错误根因(含ABAP short dump/SAP日志),给出修复步骤和代码。' },
+  { id:'review', icon:'&#x270D;', name:'代码审查', desc:'审查代码质量与安全', keywords:['审查','review','检查','优化','重构'], handler:'aiTask', type:'ai', prompt:'你是代码审查专家。检查质量、安全、性能，给出改进建议和代码。' },
   { id:'explain', icon:'&#x1F4D6;', name:'解释概念', desc:'通俗讲解技术概念', keywords:['解释','说明','是什么','什么意思','讲解','原理'], handler:'aiTask', type:'ai', prompt:'一句话给核心答案，再用通俗语言展开。' },
-  { id:'plan', icon:'&#x1F4CB;', name:'方案规划', desc:'制定技术方案与计划', keywords:['规划','计划','方案','设计','架构','怎么做'], handler:'aiTask', type:'ai', prompt:'你是技术架构师。给出分步骤的可执行方案。' },
+  { id:'plan', icon:'&#x1F4CB;', name:'方案规划', desc:'制定技术方案与计划', keywords:['规划','计划','方案','设计','架构','怎么做'], handler:'aiTask', type:'ai', prompt:'你是技术架构师。给出分步骤的可执行方案，含技术选型和风险。' },
   { id:'translate', icon:'&#x1F310;', name:'翻译', desc:'中英互译,术语准确', keywords:['翻译','translate','英文','中文'], handler:'aiTask', type:'ai', prompt:'你是专业翻译。准确翻译，保留技术术语。' },
-  { id:'summarize', icon:'&#x1F4DD;', name:'总结摘要', desc:'提取长文核心要点', keywords:['总结','摘要','概括','归纳'], handler:'aiTask', type:'ai', prompt:'你是信息整理专家。提取核心要点，结构化呈现。' },
+  { id:'summarize', icon:'&#x1F4DD;', name:'总结摘要', desc:'提取长文核心要点', keywords:['总结','摘要','概括','归纳','要点'], handler:'aiTask', type:'ai', prompt:'你是信息整理专家。提取核心要点，用结构化列表呈现。按重要性排序。' },
+  { id:'doc-analyze', icon:'&#x1F4C4;', name:'文档分析', desc:'上传文档→解析→AI分析→提取关键信息', keywords:['分析文档','文档','阅读','解析文档','分析文件','看看文档','帮我读','读一下','这份文档'], handler:'documentAnalyze', type:'hybrid',
+    prompt:'你是文档分析专家。仔细阅读上传的文档内容，分析其结构、关键信息、潜在问题。输出格式: 1. 文档概要 2. 关键信息列表 3. 问题/风险 4. 建议行动。' },
+  { id:'doc-write', icon:'&#x270F;', name:'文档编写', desc:'AI 辅助编写技术文档/需求/方案', keywords:['写文档','编写','文档','写报告','会议纪要','需求文档','技术方案','手册','spec','README'], handler:'aiTask', type:'ai',
+    prompt:'你是技术文档专家。根据用户需求编写结构清晰、内容完整的文档。使用 Markdown 格式。包含: 标题、目录、分章节内容、代码示例(如有必要)。' },
+  { id:'page-operate', icon:'&#x1F4F1;', name:'页面操作', desc:'访问授权页面、查询信息、抓取数据', keywords:['打开页面','访问','查询','页面','网站','url','http','抓取','获取','登陆','登录'], handler:'pageOperate', type:'hybrid',
+    prompt:'你是页面操作助手。对用户提供的URL: 1.获取页面内容 2.提取关键信息 3.分析结构 4.如需要登录,指导用户提供凭证。如需要执行查询,构造正确的请求参数。' },
   { id:'file-process', icon:'&#x1F4C3;', name:'文件处理', desc:'PDF/Word/Excel/PPT 读写分析', keywords:['pdf','word','excel','ppt','docx','xlsx','pptx','文档','表格','幻灯片','读取','解析'], handler:'aiTask', type:'ai', prompt:'你是文件处理专家。分析文件内容，提取关键信息，给出处理建议。如果用户上传了文件，优先分析文件内容。' },
-  { id:'data-analysis', icon:'&#x1F4CA;', name:'数据分析', desc:'CSV/JSON/表格数据统计分析', keywords:['分析','数据','统计','csv','json','表格','报表','图表','趋势'], handler:'aiTask', type:'ai', prompt:'你是数据分析师。解读数据含义，发现趋势和异常，给出可操作的建议。' },
-  { id:'browser', icon:'&#x1F310;', name:'网页操作', desc:'网页内容抓取、搜索、截图', keywords:['打开','搜索','网页','网站','链接','url','截图','抓取','爬取'], handler:'aiTask', type:'ai', prompt:'你是网页操作助手。根据URL获取和分析网页内容，或指导用户进行浏览器操作。' },
+  { id:'data-analysis', icon:'&#x1F4CA;', name:'数据分析', desc:'CSV/JSON/表格数据统计分析', keywords:['分析','数据','统计','csv','json','表格','报表','图表','趋势'], handler:'aiTask', type:'ai', prompt:'你是数据分析师。解读数据含义，发现趋势和异常，给出可操作建议。' },
+  { id:'browser', icon:'&#x1F310;', name:'网页搜索', desc:'搜索技术资料和最新信息', keywords:['搜索','查查','搜一下','查找','找找'], handler:'aiTask', type:'ai', prompt:'你是搜索专家。提供准确的搜索关键词和方法。如能访问MCP web_fetch工具,直接获取页面内容。' },
   { id:'shell', icon:'&#x2699;', name:'命令行', desc:'生成和执行Shell/Bash命令', keywords:['命令','shell','bash','cmd','powershell','执行','运行','终端'], handler:'aiTask', type:'ai', prompt:'你是命令行专家。生成安全、可执行的shell命令。标注每个命令的作用和风险。' },
   { id:'git', icon:'&#x1F4E6;', name:'Git 操作', desc:'代码提交、分支、合并管理', keywords:['git','commit','push','pull','merge','branch','分支','提交','推送','合并','版本'], handler:'aiTask', type:'ai', prompt:'你是Git专家。给出正确的Git命令序列，附带说明。' },
+  { id:'mcp-config', icon:'&#x1F527;', name:'MCP配置', desc:'管理 MCP 服务连接(可添加远程服务)', keywords:['mcp','配置','服务','工具','连接','扩展','插件'], handler:'mcpConfigure', type:'local' },
 ];
 
 // ============ STATE ============
@@ -688,7 +754,152 @@ function toggleSkill(id) {
 function matchSkill(text) {
   const l = text.toLowerCase();
   if (activeSkill) return SKILLS.find(s => s.id === activeSkill);
-  return SKILLS.find(s => s.keywords.some(k => l.includes(k)));
+  // Scan all skills, return the one with the most keyword matches
+  let best = null, bestScore = 0;
+  for (const s of SKILLS) {
+    const score = s.keywords.filter(k => l.includes(k)).length;
+    if (score > bestScore) { bestScore = score; best = s; }
+  }
+  return best;
+}
+
+// ============ NEW SKILL HANDLERS ============
+
+async function documentAnalyze(text, skill, files) {
+  if (!files.length) {
+    // Check if user provided URL
+    const urlMatch = text.match(/https?:\/\/\S+/);
+    if (urlMatch) {
+      addMessageToSpace('ai', '正在获取页面内容并分析...', skill);
+      renderMessages();
+      try {
+        const mcpRes = await callMCP('web_fetch', { url: urlMatch[0] });
+        if (mcpRes.ok) {
+          const aiRes = await callAI(skill.prompt, '请分析以下网页内容:\n\n' + (mcpRes.text || mcpRes.content || '').slice(0, 5000), []);
+          addMessageToSpace('ai', aiRes, skill);
+        } else {
+          addMessageToSpace('ai', '获取页面失败: ' + (mcpRes.error || '未知错误'), null);
+        }
+      } catch (e) {
+        addMessageToSpace('ai', '分析出错: ' + e.message, null);
+      }
+      renderMessages();
+      return;
+    }
+    addMessageToSpace('ai', '请先上传文档或提供URL链接。支持 PDF/Word/Excel/PPT/TXT/Markdown。', skill);
+    renderMessages();
+    return;
+  }
+
+  addMessageToSpace('ai', '正在解析文档并分析...', skill);
+  renderMessages();
+
+  try {
+    // Upload to server for parsing
+    const docResults = [];
+    for (const f of files) {
+      if (f.blob) {
+        const form = new FormData();
+        form.append('file', f.blob, f.name);
+        const r = await fetch('/api/documents/upload', { method: 'POST', body: form });
+        const d = await r.json();
+        if (d.docId) docResults.push({ id: d.docId, name: f.name, text: d.text?.slice(0, 5000) || '', metadata: d.metadata });
+      } else if (f.text) {
+        docResults.push({ name: f.name, text: f.text.slice(0, 5000) });
+      }
+    }
+
+    if (!docResults.length) { addMessageToSpace('ai', '文档解析失败', null); renderMessages(); return; }
+
+    // Build analysis prompt
+    let analysisPrompt = '请分析以下文档:\n\n';
+    for (const d of docResults) {
+      analysisPrompt += `### ${d.name}\n`;
+      if (d.metadata) analysisPrompt += `类型: ${d.metadata.type}, 页数: ${d.metadata.pages || 'N/A'}\n`;
+      analysisPrompt += `\n${d.text}\n\n---\n\n`;
+    }
+    analysisPrompt += '\n请输出: 1) 文档概要 2) 关键信息 3) 潜在问题/风险 4) 建议';
+
+    const aiRes = await callAI(skill.prompt, analysisPrompt, []);
+    addMessageToSpace('ai', '## 文档分析结果\n\n' + aiRes, skill);
+  } catch (e) {
+    addMessageToSpace('ai', '文档分析出错: ' + e.message, null);
+  }
+  renderMessages();
+}
+
+async function pageOperate(text, skill, files) {
+  const urlMatch = text.match(/https?:\/\/\S+/);
+  if (!urlMatch) {
+    addMessageToSpace('ai', '请提供要操作的页面URL。例如: "帮我查询 https://example.com/api/data"', skill);
+    renderMessages();
+    return;
+  }
+
+  addMessageToSpace('ai', '正在访问页面...', skill);
+  renderMessages();
+
+  try {
+    const url = urlMatch[0];
+    const mcpRes = await callMCP('web_fetch', { url });
+
+    if (!mcpRes.ok) {
+      // Try direct fetch
+      try {
+        const r = await fetch('/api/documents/fetch-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const d = await r.json();
+        if (d.text) {
+          const aiRes = await callAI(skill.prompt, `页面URL: ${url}\n\n页面内容:\n${d.text.slice(0, 5000)}\n\n用户请求: ${text}`, []);
+          addMessageToSpace('ai', '## 页面查询结果\n\n' + aiRes, skill);
+        } else {
+          addMessageToSpace('ai', '页面获取失败: ' + (d.error || '无内容'), null);
+        }
+      } catch (e2) {
+        addMessageToSpace('ai', '访问失败: ' + e2.message, null);
+      }
+    } else {
+      const content = mcpRes.text || mcpRes.content || '';
+      const aiRes = await callAI(skill.prompt, `页面URL: ${url}\n\n页面内容:\n${content.slice(0, 5000)}\n\n用户请求: ${text}`, []);
+      addMessageToSpace('ai', '## 页面查询结果\n\n' + aiRes, skill);
+    }
+  } catch (e) {
+    addMessageToSpace('ai', '页面操作出错: ' + e.message, null);
+  }
+  renderMessages();
+}
+
+async function mcpConfigure(text, skill, files) {
+  const allTools = await listMcpTools();
+  const localTools = allTools.filter(t => t.source === 'local');
+  const remoteTools = allTools.filter(t => t.source !== 'local');
+
+  let msg = '## MCP 服务配置\n\n';
+  msg += `**已连接服务**: ${mcpServices.length + 1} 个 (1 本地 + ${mcpServices.length} 远程)\n\n`;
+  msg += '### 本地服务 (localhost:3001)\n';
+  msg += localTools.map(t => `- **${t.name}**: ${t.description || ''}`).join('\n') || '无法连接本地MCP服务';
+  msg += '\n\n### 远程服务\n';
+  msg += mcpServices.length ? mcpServices.map(s => `- **${s.name}**: ${s.url}`).join('\n') : '未配置远程服务';
+  msg += `\n\n### 可用工具 (${allTools.length})\n`;
+  msg += allTools.map(t => `- [${t.source}] **${t.name}**: ${(t.description || '').slice(0, 60)}`).join('\n');
+
+  addMessageToSpace('ai', msg, skill);
+
+  // Offer options
+  showModal('MCP 服务管理', '输入远程 MCP 服务URL 添加 (留空移除所有):', false, (val) => {
+    if (val) {
+      mcpServices.push({ name: 'Remote-' + (mcpServices.length + 1), url: val.replace(/\/+$/, '') });
+    } else {
+      mcpServices = [];
+    }
+    saveMcpConfig();
+    toast(val ? 'MCP 服务已添加' : 'MCP 服务已清空', val ? 'success' : 'info');
+    mcpConfigure('', null, []);
+  });
+  renderMessages();
 }
 
 // ============ RENDER MESSAGES ============
@@ -802,6 +1013,10 @@ async function send() {
 
   try {
     if (handler === 'compressFile') await compressFile(text, pendingFiles);
+    else if (handler === 'documentAnalyze') await documentAnalyze(text, skill, pendingFiles);
+    else if (handler === 'pageOperate') await pageOperate(text, skill, pendingFiles);
+    else if (handler === 'mcpConfigure') await mcpConfigure(text, skill, pendingFiles);
+    else if (handler === 'codeTask') await codeTask(text, skill, pendingFiles);
     else await aiTask(text, skill, pendingFiles);
   } catch (e) {
     addMessageToSpace('ai', '出错: ' + e.message, null);
@@ -930,31 +1145,35 @@ function refineCode(hint) {
 }
 
 async function runAI(text, skill, files) {
-  const key = apiKey();
-  if (!key) { addMessageToSpace('ai', '请先设置 DeepSeek API Key。刷新页面重新输入。', null); renderMessages(); return; }
+  const reply = await callAI(skill?.prompt, text, files);
+  addMessageToSpace('ai', reply, skill);
+  renderMessages();
+}
 
-  let content = text || '';
-  if (files.length) {
+// Core AI call — used by all skills. Returns text.
+async function callAI(systemPrompt, userMessage, files) {
+  const key = apiKey();
+  if (!key) return '请先设置 DeepSeek API Key。';
+
+  let content = userMessage || '';
+  if (files?.length) {
     content = '附带了以下文件:\n' + files.map(f =>
       `--- ${f.name} (${(f.size/1024).toFixed(1)}KB) ---\n${(f.text||'[二进制]').slice(0, 4000)}`
     ).join('\n') + '\n\n用户指令: ' + content;
   }
 
   const messages = [];
-  if (skill?.prompt) messages.push({ role: 'system', content: skill.prompt });
+  if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
   messages.push({ role: 'user', content });
 
   const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-    body: JSON.stringify({ model: 'deepseek-chat', messages, max_tokens: 4096 })
+    body: JSON.stringify({ model: 'deepseek-chat', messages, max_tokens: 8192 })
   });
   const data = await res.json();
-  const reply = data.choices?.[0]?.message?.content
+  return data.choices?.[0]?.message?.content
     || 'API 错误: ' + (data.error?.message || JSON.stringify(data).slice(0, 200));
-
-  addMessageToSpace('ai', reply, skill);
-  renderMessages();
 }
 
 // ============ FILE HANDLING ============

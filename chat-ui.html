@@ -178,8 +178,8 @@ body{height:100dvh;display:flex;overflow:hidden}
     <button onclick="closePanel()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--yh-text3)">&times;</button>
   </div>
   <h3>Project Context</h3>
-  <select class="yh-select" id="projTarget" onchange="saveCtx()"><option value="">Target Platform</option><option value="SAP S/4HANA">S/4HANA</option><option value="SAP BTP CF">SAP BTP CF</option><option value="Web App">Web App</option><option value="Mobile PWA">Mobile PWA</option><option value="Desktop">Desktop</option><option value="CLI">CLI</option></select>
-  <select class="yh-select" id="projLang" onchange="saveCtx()"><option value="">Language</option><option value="ABAP">ABAP</option><option value="Java">Java</option><option value="Node.js">Node.js</option><option value="Python">Python</option><option value="HTML5">HTML5</option><option value="CDS">CDS/OData</option></select>
+  <select class="yh-select" id="projTarget" onchange="saveCtx()"><option value="">Target Platform</option><option value="SAP S/4HANA">SAP S/4HANA (ABAP)</option><option value="SAP BTP CF">SAP BTP Cloud Foundry</option><option value="SAP Fiori">SAP Fiori Launchpad</option><option value="Web Static">Web App - Static</option><option value="Web Vue">Web App - Vue.js 3</option><option value="Web React">Web App - React 18</option><option value="Node.js">Node.js / Express</option><option value="Python">Python / FastAPI</option><option value="Java">Java / Spring Boot</option><option value="Mobile PWA">Mobile PWA</option><option value="CLI">CLI Script</option></select>
+  <select class="yh-select" id="projLang" onchange="saveCtx()"><option value="">Primary Language</option><option value="ABAP">ABAP (SAP)</option><option value="Fiori/UI5">SAP Fiori / SAPUI5</option><option value="Java">Java (Spring Boot)</option><option value="Node.js">Node.js / Express</option><option value="Python">Python / FastAPI</option><option value="Vue.js">Vue.js 3 (CDN)</option><option value="React">React 18 (CDN)</option><option value="HTML5/CSS/JS">HTML5 / CSS / JS</option><option value="TypeScript">TypeScript</option><option value="CDS/OData">CDS / OData</option></select>
   <input class="yh-input" type="text" id="projEnv" placeholder="API / OData endpoint URL" onchange="saveCtx()">
   <input class="yh-input" type="text" id="projUser" placeholder="Username" onchange="saveCtx()">
   <input class="yh-input" type="password" id="projPass" placeholder="Password" onchange="saveCtx()">
@@ -379,7 +379,7 @@ function fmtAI(t){
       window['_bf']=window['_bf']||{};
       window['_bf'][fid]={code:c,lang:l,filePath:fp};
       const isHTML=l==='html'||c.includes('<!DOCTYPE');
-      return`<div class="code-block"><div class="code-block-header"><span class="lang">${l}</span>${fp?`<span class="file-path">${Y.esc(fp)}</span>`:''}<span class="actions"><button onclick="copyBlock('${fid}')">Copy</button><button onclick="editBlock('${fid}')">Edit</button>${isHTML?`<button onclick="previewBlock('${fid}')">Preview</button>`:`<button onclick="saveBlock('${fid}')">Save</button>`}${fp?`<button onclick="applyBlock('${fid}')" style="color:var(--yh-purple)">Apply</button>`:''}</span></div><pre><code id="${fid}">${Y.esc(c)}</code></pre></div>`;
+      return`<div class="code-block"><div class="code-block-header"><span class="lang">${l}</span>${fp?`<span class="file-path">${Y.esc(fp)}</span>`:''}<span class="actions"><button onclick="copyBlock('${fid}')">Copy</button><button onclick="editBlock('${fid}')">Edit</button>${isHTML?`<button onclick="previewBlock('${fid}')">Preview</button>`:`<button onclick="saveBlock('${fid}')">Deploy</button>`}${fp?`<button onclick="applyBlock('${fid}')" style="color:var(--yh-purple)">Apply</button>`:''}<button onclick="integrateBlock('${fid}')" style="color:var(--yh-green);font-weight:600" title="Auto-detect path & add to project">&#x2B50; Add to Project</button></span></div><pre><code id="${fid}">${Y.esc(c)}</code></pre></div>`;
     })
     .replace(/`([^`]+)`/g,'<code>$1</code>')
     .replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
@@ -401,6 +401,29 @@ async function saveBlock(fid){const d=window['_bf']?.[fid];if(!d?.code)return;
     if(j.ok){builtFiles.unshift({name,url:j.url,time:Date.now()});saveFiles();renderSidebar();if(d.lang==='html'){previewBlock(fid)};Y.toast('Built: '+j.url)}
     else Y.toast('Failed: '+j.error);
   }catch(e){Y.toast('Build error')}
+}
+// Star & integrate into project — auto-apply with detected paths
+async function integrateBlock(fid){
+  const d=window['_bf']?.[fid];if(!d?.code)return Y.toast('No code');
+  let fp=d.filePath;
+  if(!fp){
+    // Auto-detect: if code has a path annotation, use it
+    const lang=document.getElementById(fid)?.closest('.code-block')?.querySelector('.lang')?.textContent||'';
+    const fpath=document.getElementById(fid)?.closest('.code-block')?.querySelector('.file-path')?.textContent||'';
+    const extMap={abap:'abp',java:'java',javascript:'js',js:'js',python:'py',html:'html',css:'css',vue:'html',react:'html',typescript:'ts',ts:'ts',xml:'xml',json:'json',sql:'sql',cds:'cds',yaml:'yml',md:'md',sh:'sh',bat:'bat'};
+    const ext=extMap[lang]||'txt';
+    fp=fpath||'src/'+Date.now()+'.'+ext;
+  }
+  prog('Integrating: '+fp+'...','ac');
+  try{
+    const r=await fetch('/api/workbench/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filePath:fp,code:d.code})});
+    const j=await r.json();
+    if(j.ok){
+      prog('Integrated: '+j.path+' ('+j.size+' bytes)','green');
+      Y.toast('Integrated into project: '+j.path);
+      builtFiles.unshift({name:j.path,url:'',time:Date.now(),integrated:true});saveFiles();renderSidebar();
+    }else{Y.toast(j.error);prog('Failed: '+j.error,'red')}
+  }catch(e){Y.toast('Integrate error');prog('Error','red')}
 }
 async function applyBlock(fid){const d=window['_bf']?.[fid];if(!d?.code)return Y.toast('No code');
   let fp=d.filePath;
@@ -457,6 +480,76 @@ function refineMsg(btn,action){
   $('input').focus();
 }
 
+// Language-specific system prompts
+function getLangPrompt(){
+  const ctx=JSON.parse(localStorage.getItem('wb_proj_ctx')||'{}');
+  const lang=ctx.lang||'';
+  const target=ctx.target||'';
+  const prompts={
+    'ABAP':`You are an SAP ABAP expert. Generate COMPLETE, production-ready ABAP code.
+- Use ABAP 7.5+ syntax (SELECT @DATA, inline declarations, VALUE/FOR/REDUCE)
+- Include proper error handling with MESSAGE statements
+- Follow SAP naming conventions and Clean ABAP guidelines
+- For reports: use ALV with SALV classes, selection-screen
+- For classes: use proper visibility, interfaces, exception classes
+- Output format: \`\`\`abap:z_program_name.abp\n*& Report/Class description\ncode\n\`\`\``,
+    'Fiori/UI5':`You are an SAP Fiori/SAPUI5 expert. Generate COMPLETE, runnable Fiori apps.
+- Use SAPUI5 CDN (https://sapui5.hana.ondemand.com/resources/sap-ui-core.js)
+- Full MVC: XML View + Controller + manifest.json in ONE HTML file (use script tags for Controller, template for View)
+- Use sap.m controls, data binding (JSONModel/ODataModel), routing
+- Include manifest.json in a script tag
+- Output format: \`\`\`html:webapp/index.html\n<!DOCTYPE html>\n<html>\n...\`\`\``,
+    'Java':`You are a Java/Spring Boot expert. Generate COMPLETE, buildable projects.
+- Include pom.xml with all dependencies, application.properties
+- Use Spring Boot 3.x, Java 17+, proper package structure
+- Include error handling (@ControllerAdvice), validation, JUnit tests
+- Output multi-file project with \`\`\`java:src/main/java/...\`\`\` and \`\`\`xml:pom.xml\`\`\``,
+    'Node.js':`You are a Node.js/Express expert. Generate COMPLETE, runnable APIs.
+- Include package.json with dependencies, .env.example
+- Use Express 4/5 with proper middleware, error handling, validation
+- Modular routes/controllers structure
+- Output multi-file with \`\`\`javascript:path/to/file.js\`\`\``,
+    'Python':`You are a Python/FastAPI expert. Generate COMPLETE, runnable applications.
+- Include requirements.txt or pyproject.toml
+- Use FastAPI with Pydantic models, proper error handling
+- Type hints, async/await, docstrings
+- Output multi-file with \`\`\`python:path/to/file.py\`\`\``,
+    'Vue.js':`You are a Vue.js 3 expert. Generate COMPLETE, runnable single-file apps.
+- Use Vue 3 CDN (unpkg), Vue.createApp with Options API or Composition API
+- Single HTML file with inline template, styles, and script
+- Include proper reactive data, computed, methods, watchers
+- Output format: \`\`\`html:app.html\n<!DOCTYPE html>\n...\`\`\``,
+    'React':`You are a React 18 expert. Generate COMPLETE, runnable single-file apps.
+- Use React 18 CDN + Babel standalone for JSX
+- Single HTML file with components, hooks (useState, useEffect)
+- Include proper state management and error boundaries
+- Output format: \`\`\`html:app.html\n<!DOCTYPE html>\n...\`\`\``,
+    'HTML5/CSS/JS':`You are a full-stack web developer. Generate COMPLETE, polished web apps.
+- Single HTML file with inline CSS (<style>) and JS (<script>)
+- Modern design: CSS Grid/Flexbox, smooth transitions, responsive
+- Include proper error handling, loading states, and user feedback
+- Output format: \`\`\`html:filename.html\n<!DOCTYPE html>\n...\`\`\``,
+    'TypeScript':`You are a TypeScript expert. Generate COMPLETE, type-safe code.
+- Use strict TypeScript with proper interfaces/types
+- Include tsconfig.json if multi-file
+- Output with \`\`\`typescript:path/to/file.ts\`\`\``,
+    'CDS/OData':`You are an SAP CDS/OData expert. Generate COMPLETE CDS views and OData services.
+- Use CDS syntax with annotations (@OData.publish, @Search, etc.)
+- Include entity definitions, associations, and projections
+- Output format: \`\`\`cds:service.cds\n...\`\`\``,
+  };
+  let p=prompts[lang]||'';
+  if(!p){
+    p=`You are a full-stack software engineer. Generate COMPLETE, production-ready code.
+- Follow best practices for the language/framework
+- Include error handling, tests, and documentation
+- Output format: \`\`\`lang:relative/path\ncode\n\`\`\``;
+  }
+  if(target)p+=`\n\nTarget platform: ${target}. Optimize deployment for this platform.`;
+  if(ctx.env)p+=`\n\nEnvironment/API endpoint: ${ctx.env}`;
+  return p;
+}
+
 // Send (SSE streaming)
 function prog(m,c){const p=$('progress');p.classList.add('show');$('progressLog').innerHTML+=`<div style="color:var(--yh-${c||'text2'});padding:1px 0">${m}</div>`}
 async function send(){
@@ -475,9 +568,10 @@ async function send(){
     if(f.blob){const form=new FormData();form.append('file',f.blob,f.name);
     try{const r=await fetch('/api/documents/upload',{method:'POST',body:form});const d=await r.json();if(d.docId)docIds.push({id:d.docId,name:f.name})}catch{}}
   }
-  let msgs=[];
+  // Build messages with language-specific prompt + document context
+  let msgs=[{role:'system',content:getLangPrompt()}];
   if(docIds.length){
-    msgs.push({role:'system',content:'Documents available: '+docIds.map(d=>`docId:${d.id} (${d.name})`).join(', ')+'. Use document_parse tool to read them.'});
+    msgs.push({role:'system',content:'Documents available: '+docIds.map(d=>`docId:${d.id} (${d.name})`).join(', ')+'. Use document_parse tool to read them. After reading, generate code that fulfills any requirements/specs found in the documents.'});
   }
   for(const f of files){
     if(!f.isImage)msgs.push({role:'user',content:`[File: ${f.name}]\n${(f.text||'').slice(0,3000)}`});
